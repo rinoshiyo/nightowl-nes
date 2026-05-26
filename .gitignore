@@ -1,6 +1,10 @@
 # 中間生成物・一時ファイル
 tmp/
 
+# 設計書 (個人情報・社内情報を含むためリポ管理しない)
+docs/design.md
+docs/design.html
+
 # ビルド成果物
 dist/
 node_modules/
