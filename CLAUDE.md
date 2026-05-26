@@ -43,18 +43,19 @@
 
 ノールック auto-merge を避けるため、 PR 作成直後に **sub-agent を立ててレビューさせる**。 GitHub Actions / 外部 API を使わず、 メインと同じ Anthropic 枠で完結する (追加課金ゼロ)。 メイン context を圧迫しないよう、 詳細レビューは sub-agent の独立 context で行い、 メインには致命度サマリだけ返す。
 
-1. `gh pr create` で PR が立った直後、 `Agent` tool で `general-purpose` sub-agent を **`run_in_background: true`** で起動 (フォアグラウンド起動は hook で deny される)
+**重要 (レース回避)**: `gh pr merge --auto` は **レビュー完了 + critical=0 を確認した後に初めて設定する**。 レビュー前に auto-merge を打つと、 軽量 CI (10-15 秒) が sub-agent レビュー (数十秒〜数分) を追い抜いて critical 判定前に merge される。 auto-merge を打たなければ CI が緑でも勝手に merge されないので、 レビューが追い抜かれる事故が構造的に起きない。
+
+1. `gh pr create` で PR が立った直後、 `Agent` tool で `general-purpose` sub-agent を **`run_in_background: true`** で起動 (フォアグラウンド起動は hook で deny される)。 **この時点では auto-merge を設定しない**
 2. sub-agent への prompt に以下を渡す:
    - 対象 PR 番号 / ブランチ名 / `main...night/NNN-<topic>` の diff レンジ
    - レビュー観点: ① 6502 仕様 (nesdev wiki) との一致性 ② TypeScript 型安全性 (`noUncheckedIndexedAccess` / `exactOptionalPropertyTypes`) ③ テストカバレッジの妥当性 ④ **既存 NES 実装の参照疑い** (CLAUDE.md ソース由来制約違反)
    - sub-agent は内部で `code-review` skill を `--comment` 付き・effort=medium で起動し、 PR にインラインコメントを post する
-   - sub-agent は最後に致命度サマリ (`critical` / `high` / `medium` / `low` の件数) を返却する
+   - **致命度サマリは sub-agent が算出する**: `code-review` skill の生出力は `file` / `line` / `summary` / `failure_scenario` のフラット JSON で severity フィールドを持たないため、 sub-agent が各 finding を `critical` / `high` / `medium` / `low` に分類してメインへ件数を返す
 3. sub-agent 完了通知を受領したら、 致命度サマリを transcript に出力する
 4. **連鎖中の運用方針** (誤検知で連鎖が無駄に止まるのを避ける):
    - レビューコメントの post は常に行う (朝石井がレビュー濃度を上げられる)
-   - `critical >= 1` の時のみ メインから `gh pr edit --draft` で draft 戻し + tmp/handoff/ に「draft 戻し report」 を吐き + 連鎖中断 + セッション終了
-   - `high` 以下は auto-merge を解除しない (post のみ、 連鎖続行、 朝石井判断に委ねる)
-5. sub-agent 起動と並行して `gh pr merge --auto` は先に設定して OK。 critical 判明時のみ後から手動 draft 戻し
+   - `critical == 0` の時: メインから `gh pr merge --auto --squash --delete-branch` を設定 → CI 緑で merge → 次の夜へ。 `high` 以下の指摘は post のみで連鎖続行 (朝石井判断に委ねる)
+   - `critical >= 1` の時: **auto-merge を設定しない**。 `gh pr ready --undo` で draft 戻し + tmp/handoff/ に「draft 戻し report」 を吐き + 連鎖中断 + セッション終了
 
 ### 各夜の終了処理
 
