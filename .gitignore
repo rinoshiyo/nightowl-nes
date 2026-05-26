@@ -1,0 +1,42 @@
+# 中間生成物・一時ファイル
+tmp/
+
+# ビルド成果物
+dist/
+node_modules/
+.cache/
+.parcel-cache/
+.vite/
+
+# Bun / Node 依存
+bun.lockb.bak
+
+# テスト・カバレッジ
+coverage/
+*.lcov
+
+# ROM (合法所持品でも配布禁止)
+roms/games/
+
+# Claude Code 内部 state (リポ完結ポリシー、 内部状態は公開しない)
+.claude/state/
+.claude/cache/
+.claude/retrospective/
+
+# 朝レポートの bak・一時ファイル
+reports/morning/*.html.bak
+
+# シークレット (混入事故防止)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*
+secrets*
+
+# IDE / OS
+.DS_Store
+.vscode/*.code-workspace
+*.swp
+*~
