@@ -39,6 +39,23 @@
 3. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
 4. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
 
+### 夜 N PR の自動レビュー (sub-agent + code-review skill)
+
+ノールック auto-merge を避けるため、 PR 作成直後に **sub-agent を立ててレビューさせる**。 GitHub Actions / 外部 API を使わず、 メインと同じ Anthropic 枠で完結する (追加課金ゼロ)。 メイン context を圧迫しないよう、 詳細レビューは sub-agent の独立 context で行い、 メインには致命度サマリだけ返す。
+
+1. `gh pr create` で PR が立った直後、 `Agent` tool で `general-purpose` sub-agent を **`run_in_background: true`** で起動 (フォアグラウンド起動は hook で deny される)
+2. sub-agent への prompt に以下を渡す:
+   - 対象 PR 番号 / ブランチ名 / `main...night/NNN-<topic>` の diff レンジ
+   - レビュー観点: ① 6502 仕様 (nesdev wiki) との一致性 ② TypeScript 型安全性 (`noUncheckedIndexedAccess` / `exactOptionalPropertyTypes`) ③ テストカバレッジの妥当性 ④ **既存 NES 実装の参照疑い** (CLAUDE.md ソース由来制約違反)
+   - sub-agent は内部で `code-review` skill を `--comment` 付き・effort=medium で起動し、 PR にインラインコメントを post する
+   - sub-agent は最後に致命度サマリ (`critical` / `high` / `medium` / `low` の件数) を返却する
+3. sub-agent 完了通知を受領したら、 致命度サマリを transcript に出力する
+4. **連鎖中の運用方針** (誤検知で連鎖が無駄に止まるのを避ける):
+   - レビューコメントの post は常に行う (朝石井がレビュー濃度を上げられる)
+   - `critical >= 1` の時のみ メインから `gh pr edit --draft` で draft 戻し + tmp/handoff/ に「draft 戻し report」 を吐き + 連鎖中断 + セッション終了
+   - `high` 以下は auto-merge を解除しない (post のみ、 連鎖続行、 朝石井判断に委ねる)
+5. sub-agent 起動と並行して `gh pr merge --auto` は先に設定して OK。 critical 判明時のみ後から手動 draft 戻し
+
 ### 各夜の終了処理
 
 夜 N の PR が main に merge 反映された後、 次の夜に進む前に以下を行う:
