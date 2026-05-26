@@ -11,7 +11,9 @@ import { cpuStep } from "../src/core/cpu/step.ts";
 const ROM_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.nes");
 const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 
-const TRACE_LINES = 50;
+// ADC (opcode 0x69) が nestest.log 218 行目で初出。 算術命令は夜 4 のスコープなので、
+// 夜 3 時点で実装済みの命令で到達できる 217 行目までを検証対象とする。
+const TRACE_LINES = 217;
 
 /**
  * nestest 実行用の最小 Bus。
