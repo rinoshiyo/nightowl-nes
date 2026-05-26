@@ -3,8 +3,26 @@ name: nightly
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsconfig.json'
+      - 'eslint.config.js'
+      - 'vitest.config.ts'
+      - '.github/workflows/nightly.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsconfig.json'
+      - 'eslint.config.js'
+      - 'vitest.config.ts'
+      - '.github/workflows/nightly.yml'
   workflow_dispatch:
 
 jobs:
