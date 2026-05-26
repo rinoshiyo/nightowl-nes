@@ -62,7 +62,7 @@
    | 🔧 FIX | 明らかなバグ・誤記で修正が一意に決まる / ドキュメント・コードの自己矛盾 | メインが修正 commit → push → 再レビュー。 **同一 PR の修正往復は最大 2 回**。 2 回で解消しなければ STOP に格上げ (隔離 + 朝判断) |
    | ✅ PASS | 設計の好み / 可読性 / リファクタ提案 / 将来夜への申し送り | post のみ・連鎖続行。 申し送りは次の夜 md に転記 |
 
-   全指摘が PASS、 または FIX が再レビューで解消した時のみ `gh pr merge --auto --squash --delete-branch` を設定する。 STOP が 1 件でもあれば auto-merge せず隔離。
+   全指摘が PASS、 または FIX が再レビューで解消した時のみ `gh pr merge --auto --merge --delete-branch` を設定する。 STOP が 1 件でもあれば auto-merge せず隔離。
 
    **FIX 修正は grep で一網打尽にする**: 1 箇所直したら同じパターン (誤ったコマンド・矛盾する記述・同根の設計漏れ) を `grep` で全文スキャンし、 同種箇所を同じ commit でまとめて潰す。 1 箇所ずつ直すと「同根の取りこぼし」 が次の round で新たな FIX として再浮上し、 修正往復 2 回の上限を無駄に消費する (実例: auto-merge 順序の自己矛盾を 3 箇所に分散して取りこぼし、 round-3 で STOP 隔離に至った)。
 
@@ -136,7 +136,7 @@ gh pr create \
 # 6. sub-agent で PR をレビュー →  triage (「自走連鎖プロトコル > 夜 N PR の自動レビュー」 参照)
 #    STOP 判定ゼロ (全 PASS、 または FIX が再レビューで解消) を確認してから auto-merge。
 #    レビュー前に auto-merge を打つと CI がレビューを追い抜く (レース) ため厳禁。
-gh pr merge --auto --squash --delete-branch
+gh pr merge --auto --merge --delete-branch
 ````
 
 ### ブランチ命名規約
@@ -154,7 +154,7 @@ gh pr merge --auto --squash --delete-branch
 | `git push origin main` (直 push) | ✗ hook で deny |
 | `git push --force` 任意ブランチ | ✗ hook で deny |
 | `gh pr create` | ○ |
-| `gh pr merge --auto --squash --delete-branch` | ○ |
+| `gh pr merge --auto --merge --delete-branch` | ○ |
 | `gh pr merge` (--auto 無し) | ⚠ ask (CI 確認を飛ばすため) |
 | `gh pr close` | ⚠ ask |
 | `gh pr ready` / `gh pr edit --title\|--body` | ○ |
@@ -168,7 +168,9 @@ gh pr merge --auto --squash --delete-branch
 
 ### auto-merge の挙動
 
-`gh pr merge --auto --squash --delete-branch` で立てた PR は、 必須 CI (nightly) が緑になった時点で自動的に squash merge → night ブランチ自動削除される。 つまり Claude は `gh pr merge` を再実行しなくてよく、 CI が緑にならない限り merge は実行されない。
+`gh pr merge --auto --merge --delete-branch` で立てた PR は、 必須 CI (nightly) が緑になった時点で自動的に **merge commit を作成して** main に合流 → night ブランチ自動削除される。 つまり Claude は `gh pr merge` を再実行しなくてよく、 CI が緑にならない限り merge は実行されない。
+
+**マージ方式は merge commit (`--merge`) で固定**: squash でなく merge commit を使うのは、 `git log --graph` 上で「どの night ブランチがどこで main に合流したか」 が視覚的に追え、 各夜の作業コミット (feat/test 粒度) も履歴に残るため (朝レビュー・履歴追跡しやすさ優先)。 squash / rebase は使わない。
 
 **auto-merge を打つタイミング**: sub-agent レビューの triage が完了し STOP 判定ゼロを確認した後に限る (「自走連鎖プロトコル > 夜 N PR の自動レビュー」 参照)。 レビュー前に打つと CI 緑がレビューを追い抜くレースが起きる。
 
@@ -185,7 +187,7 @@ gh pr merge --auto --squash --delete-branch
 6. /goal 評価のため、 pass / fail を必ず transcript に出力 (後述)
 7. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
 8. `gh pr create` で PR を立てる (この時点では auto-merge を打たない)
-9. sub-agent でレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --squash --delete-branch`
+9. sub-agent でレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --merge --delete-branch`
 10. CI 緑 → auto-merge 反映を見届けてセッション完了報告
 
 ## /goal 評価のための出力ルール
@@ -204,7 +206,25 @@ gh pr merge --auto --squash --delete-branch
 - 同じファイルを複数回 Read しない
 - ログファイルは `tmp/` 配下に出力 (.gitignore 済み)
 
-## 重要ルール
+## Compact Instructions
+
+auto-compact (~95% で不可避・無効化不可) や手動 `/compact` で会話履歴が要約される際、 **要約には以下を必ず保持すること**。 これらを失うと自走が空回りするため最優先で残す:
+
+1. **アクティブな /goal 条件** (設定中なら全文)。 compaction でゴールを見失うと連鎖が停止・空回りする
+2. **次にやる夜**: `nights/pending/` の最若番号の夜 md (番号 + topic)
+3. **進行中の PR**: 番号・ブランチ名・sub-agent レビュー / triage の状態 (中断 PR があれば最優先で再開対象)
+4. **nestest trace の現在の到達行数** (実装到達点。 例: 933 行)
+5. **自走連鎖プロトコルの現在地**: どの夜まで done か、 次に seed すべき夜番号
+6. **直近の未解決の設計判断・論点** (進行中のアーキ議論があれば)
+
+compaction 後は SessionStart hook (matcher: compact) が `.claude/state/latest.md` も注入する。 本セクション (要約への保持指示) と hook (外部ファイルからの復元) の二層で state を保全し、 compaction を跨いでも自走が継続できるようにする。
+
+### tmux 注入による夜毎 compaction (運用メモ)
+
+外部シェルが tmux 経由で「1 夜完了 → `/compact` → 続行指示」 を送り込む無人運用を想定する場合:
+- `/compact` 単体では Claude は入力待ちで止まる。 **後続に「続けろ」 等の指示メッセージが必須** (Claude 自身は `/compact` を能動実行できないため、 tmux send-keys で外部から注入する)
+- 2 メッセージ (`/compact` → 続行指示) を連続投入すると message queue 経由で直列処理される見込み (※ compaction 後の圧縮済み context で後続が処理されるかは要実機検証)
+- 1 夜の引き継ぎは compaction の **前** に PR (description/コメント) へ書き出す (PR-as-SSOT)
 
 - **main への直 push は禁止** (hook で deny。 必ず PR フロー経由)
 - **git push --force / git push -f は禁止** (hook で deny)
