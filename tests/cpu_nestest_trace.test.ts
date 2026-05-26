@@ -11,10 +11,9 @@ import { cpuStep } from "../src/core/cpu/step.ts";
 const ROM_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.nes");
 const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 
-// STX absolute (opcode 0x8E) が nestest.log 802 行目で初出。 store 命令の absolute 版は
-// 夜 7 のスコープなので、 夜 6 時点 (レジスタ転送 TAX/TAY/TXA/TYA/TSX/TXS まで) で到達
-// できる 801 行目までを検証対象とする。
-const TRACE_LINES = 801;
+// RTI (opcode 0x40) が nestest.log 934 行目で初出。 割り込み復帰は夜 8 以降のスコープ
+// なので、 夜 7 時点 (absolute load/store まで) で到達できる 933 行目までを検証対象とする。
+const TRACE_LINES = 933;
 
 /**
  * nestest 実行用の最小 Bus。

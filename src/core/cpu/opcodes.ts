@@ -171,6 +171,67 @@ def(0x85, {
   },
 });
 
+// ---- store / load (absolute) ----
+// absolute は固定アドレスのため page-cross 加算なし。 store は cycle 4 でフラグ非変化、
+// load は cycle 4 で Z/N 更新。
+def(0x8d, {
+  name: "STA",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.a);
+    return 0;
+  },
+});
+def(0x8e, {
+  name: "STX",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.x);
+    return 0;
+  },
+});
+def(0x8c, {
+  name: "STY",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.y);
+    return 0;
+  },
+});
+def(0xad, {
+  name: "LDA",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0xae, {
+  name: "LDX",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.x = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.x);
+    return 0;
+  },
+});
+def(0xac, {
+  name: "LDY",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.y = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.y);
+    return 0;
+  },
+});
+
 // ---- BIT (zeroPage) ----
 def(0x24, {
   name: "BIT",
