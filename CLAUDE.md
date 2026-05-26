@@ -176,7 +176,7 @@ gh pr merge --auto --squash --delete-branch
 
 ## 起動時の作法
 
-0. **`gh pr list --state open --json number,title,isDraft` で未完了 PR を確認**。 draft PR があれば最優先でその PR コメント (SSOT) を読み、 中断作業を再開する。 handoff は PR に集約しているため (後述)、 ここを飛ばすと中断が拾われない
+0. **`gh pr list --state open --json number,title,isDraft` で未完了 PR を確認**。 open PR があれば **draft / 非 draft を問わず** その PR コメント (SSOT) を読み、 中断作業か判定する。 「レビュー未完」 or 「auto-merge 未設定で放置」 の PR は最優先で再開する (draft はレビュー隔離中、 非 draft の open はレビュー途中でセッションが切れた可能性)。 handoff は PR に集約しているため (後述)、 ここを飛ばすと中断が拾われない
 1. `.claude/state/latest.md` が存在すれば Read (SessionStart hook が inject していなければ)
 2. `nights/pending/` の最若番号の md を Read
 3. 「## ゴール」セクションの /goal 条件を確認
