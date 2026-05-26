@@ -11,9 +11,9 @@ import { cpuStep } from "../src/core/cpu/step.ts";
 const ROM_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.nes");
 const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 
-// INY (opcode 0xC8) が nestest.log 506 行目で初出。 レジスタ増減は夜 5 のスコープなので、
-// 夜 4 時点 (算術 ADC/SBC + LDY まで) で到達できる 505 行目までを検証対象とする。
-const TRACE_LINES = 505;
+// TAY (opcode 0xA8) が nestest.log 678 行目で初出。 レジスタ転送は夜 6 のスコープなので、
+// 夜 5 時点 (レジスタ増減 INX/INY/DEX/DEY まで) で到達できる 677 行目までを検証対象とする。
+const TRACE_LINES = 677;
 
 /**
  * nestest 実行用の最小 Bus。
