@@ -58,20 +58,22 @@
 
    | 区分 | 条件 | アクション |
    |---|---|---|
-   | 🛑 STOP | 仕様違反 (6502/iNES/NES 挙動が nesdev wiki と食い違う) / ソース由来制約違反の疑い / データ破壊・不可逆操作 / テスト・型・lint が赤 | **auto-merge を設定しない**。 `gh pr ready --undo` で draft 戻し + tmp/handoff/ に「draft 戻し report」 + 連鎖中断 + セッション終了 |
+   | 🛑 STOP | 仕様違反 (6502/iNES/NES 挙動が nesdev wiki と食い違う) / ソース由来制約違反の疑い / データ破壊・不可逆操作 / テスト・型・lint が赤 | **auto-merge を設定しない**。 `gh pr ready --undo` で draft 戻し + **その PR にコメントで「draft 戻し report」 (再開手順・残作業を SSOT として)** + 連鎖中断 + セッション終了 |
    | 🔧 FIX | 明らかなバグ・誤記で修正が一意に決まる / ドキュメント・コードの自己矛盾 | メインが修正 commit → push → 再レビュー。 **同一 PR の修正往復は最大 2 回**。 2 回で解消しなければ STOP に格上げ (隔離 + 朝判断) |
    | ✅ PASS | 設計の好み / 可読性 / リファクタ提案 / 将来夜への申し送り | post のみ・連鎖続行。 申し送りは次の夜 md に転記 |
 
    全指摘が PASS、 または FIX が再レビューで解消した時のみ `gh pr merge --auto --squash --delete-branch` を設定する。 STOP が 1 件でもあれば auto-merge せず隔離。
 
-5. **triage 判断ログ**: 自走中に下した triage 判断は各夜の handoff md に「PR #X: 指摘 Y → STOP/FIX/PASS と判断 (理由 Z)」 形式で記録し、 朝石井が裁定を追えるようにする。
+   **FIX 修正は grep で一網打尽にする**: 1 箇所直したら同じパターン (誤ったコマンド・矛盾する記述・同根の設計漏れ) を `grep` で全文スキャンし、 同種箇所を同じ commit でまとめて潰す。 1 箇所ずつ直すと「同根の取りこぼし」 が次の round で新たな FIX として再浮上し、 修正往復 2 回の上限を無駄に消費する (実例: auto-merge 順序の自己矛盾を 3 箇所に分散して取りこぼし、 round-3 で STOP 隔離に至った)。
+
+5. **triage 判断ログ**: 自走中に下した triage 判断は **該当 PR のコメント**に「指摘 Y → STOP/FIX/PASS と判断 (理由 Z)」 形式で記録し (PR が SSOT)、 朝石井が `gh pr view --comments` で裁定を追えるようにする。
 
 ### 各夜の終了処理
 
 夜 N の PR が main に merge 反映された後、 次の夜に進む前に以下を行う:
 
 1. `🎯 GOAL CONDITION MET: night N merged` を transcript に出力
-2. **handoff md を書く**: `tmp/handoff/<yyyy-mm-dd>/<hhmm>-night-NNN-summary.md` に「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を 50-100 行で書く (context window 圧縮を兼ねる)
+2. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を **該当夜の PR description かコメント**に書く。 `tmp/handoff/` のローカル md は gitignore で push されず人間も次セッションも見えない二重管理になるため使わない (context window 圧縮は PR を `gh pr view --comments` で読み直せば代替できる)
 3. `git checkout main && git pull` で次の夜のベースを最新化
 4. `nights/pending/` の最若番号を読み込み、 次の夜ブランチ `night/NNN-<topic>` を切って着手
 
@@ -174,6 +176,7 @@ gh pr merge --auto --squash --delete-branch
 
 ## 起動時の作法
 
+0. **`gh pr list --state open --json number,title,isDraft` で未完了 PR を確認**。 draft PR があれば最優先でその PR コメント (SSOT) を読み、 中断作業を再開する。 handoff は PR に集約しているため (後述)、 ここを飛ばすと中断が拾われない
 1. `.claude/state/latest.md` が存在すれば Read (SessionStart hook が inject していなければ)
 2. `nights/pending/` の最若番号の md を Read
 3. 「## ゴール」セクションの /goal 条件を確認
@@ -181,8 +184,9 @@ gh pr merge --auto --squash --delete-branch
 5. ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
 6. /goal 評価のため、 pass / fail を必ず transcript に出力 (後述)
 7. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
-8. `gh pr create` + `gh pr merge --auto --squash --delete-branch` で PR を立てる
-9. CI 緑 → auto-merge 反映を見届けてセッション完了報告
+8. `gh pr create` で PR を立てる (この時点では auto-merge を打たない)
+9. sub-agent でレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --squash --delete-branch`
+10. CI 緑 → auto-merge 反映を見届けてセッション完了報告
 
 ## /goal 評価のための出力ルール
 
