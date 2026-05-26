@@ -64,6 +64,24 @@ function compare(cpu: Cpu, register: number, value: number): void {
   cpu.p = (r & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.N) : clearFlag(cpu.p, CpuFlags.N);
 }
 
+/**
+ * A レジスタへの加算共通処理 (ADC / SBC で共用)。
+ * `A = A + operand + C` を binary で計算し C/V/Z/N を更新する。
+ * SBC は operand に `M ^ 0xFF` (~M) を渡すことで `A - M - (1-C)` と等価になる。
+ * NES の 6502 は decimal mode 無効なので D フラグは参照しない。
+ */
+function addToA(cpu: Cpu, operand: number): void {
+  const carryIn = hasFlag(cpu.p, CpuFlags.C) ? 1 : 0;
+  const sum = cpu.a + operand + carryIn;
+  const result = sum & 0xff;
+  cpu.p = sum > 0xff ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+  // overflow: 両オペランドと結果の符号が食い違う (同符号の加算で符号が反転) 時に立つ
+  const overflow = ((cpu.a ^ result) & (operand ^ result) & 0x80) !== 0;
+  cpu.p = overflow ? setFlag(cpu.p, CpuFlags.V) : clearFlag(cpu.p, CpuFlags.V);
+  cpu.a = result;
+  setZeroNeg(cpu, cpu.a);
+}
+
 /** 分岐共通処理。 taken なら飛び先へ PC を移し +1 (page cross でさらに +1) */
 function branch(cpu: Cpu, op: Operand, taken: boolean): number {
   if (!taken) return 0;
@@ -282,6 +300,39 @@ def(0xc0, {
   cycles: 2,
   exec: (cpu, bus, op) => {
     compare(cpu, cpu.y, bus.read(op.addr));
+    return 0;
+  },
+});
+
+// ---- 算術 (immediate) ----
+def(0x69, {
+  name: "ADC",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xe9, {
+  name: "SBC",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    // SBC は ~M を足すと ADC と同じ回路になる (A - M - (1-C) = A + ~M + C)
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return 0;
+  },
+});
+
+// ---- LDY ----
+def(0xa0, {
+  name: "LDY",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    cpu.y = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.y);
     return 0;
   },
 });
