@@ -1,11 +1,19 @@
 services:
   dev:
     hostname: nightowl-nes
-    build: ./docker
+    build:
+      # build context をリポ root にしておくことで Dockerfile から
+      # bin/claude-tmux 等のリポ内ファイルを COPY できる
+      context: .
+      dockerfile: docker/Dockerfile
     tty: true
     volumes:
       - ./:/workspace/nightowl-nes
-      # 認証系のみ最小限を read-only でマウント
-      # NOTE: ${HOME}/.claude は mount しない (リポ完結ポリシー、 設計書 §6.4.5)
+      # ホストの ~/.claude を full mount。 これにより:
+      #   - transcript (~/.claude/projects/) がホスト側に永続化される
+      #   - ホスト側の skills / agents / rules が devcontainer 内 claude から見える
+      # vibe coding 実験の蓄積を活用するため、 リポ完結ポリシー (設計書 §6.4.5)
+      # より transcript 永続化と知見継承を優先する判断
+      - ${HOME}/.claude:/home/vscode/.claude
       - ${HOME}/.claude.json:/home/vscode/.claude.json:ro
       - ${HOME}/.config/gh:/home/vscode/.config/gh:ro

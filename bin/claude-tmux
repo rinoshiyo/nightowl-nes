@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# tmux内でclaudeセッションを起動するラッパー
+# 使い方: ct [オプション] [claude引数...]
+#   -d         デタッチモード（バックグラウンド起動、attachしない）
+#   -C <dir>   作業ディレクトリ指定（デフォルト: $PWD）
+#   --session  セッション名だけ出力して終了（スクリプト連携用）
+#
+# Remote Control は settings.json の `remoteControlAtStartup: true` に
+# より claude 起動時に自動有効化される（v2.1.79+ で導入）。
+# かつて本スクリプトが抱えていた schedule_remote_enable / -r / +r は
+# 2026-04-24 に削除済（冗長化のため）。
+
+DETACH=false
+WORKDIR="$PWD"
+SESSION_ONLY=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -d) DETACH=true; shift ;;
+    -C) WORKDIR="$2"; shift 2 ;;
+    --session) SESSION_ONLY=true; shift ;;
+    *) break ;;
+  esac
+done
+
+# セッション名生成（ディレクトリ名ベース）
+dir_name=$(basename "$WORKDIR")
+session=$(echo -n "$dir_name" | tr -c 'a-zA-Z0-9_-' '-')
+
+# --session: セッション名だけ返す
+if $SESSION_ONLY; then
+  echo "$session"
+  exit 0
+fi
+
+# tmuxネストガード（デタッチモード時は不要）
+if [[ -n "$TMUX" ]] && ! $DETACH; then
+  echo "既にtmux内だぞ。普通に claude 叩け" >&2
+  exit 1
+fi
+
+if tmux has-session -t "=$session" 2>/dev/null; then
+  if $DETACH; then
+    echo "EXISTS:$session"
+  else
+    tmux attach -t "=$session"
+  fi
+else
+  if $DETACH; then
+    tmux new-session -d -s "$session" -c "$WORKDIR" "claude --enable-auto-mode --allow-dangerously-skip-permissions -n '$dir_name' $*"
+    echo "CREATED:$session"
+  else
+    tmux new -s "$session" -c "$WORKDIR" "claude --enable-auto-mode --allow-dangerously-skip-permissions -n '$dir_name' $*"
+  fi
+fi

@@ -1,0 +1,18 @@
+# build context を最小化するための除外リスト (compose.yaml の build.context = . と対)
+node_modules
+.git
+dist
+coverage
+.cache
+.parcel-cache
+.vite
+roms/test
+roms/games
+tmp
+.claude/state
+.claude/cache
+.claude/retrospective
+docs/design.md
+docs/design.html
+*.log
+.DS_Store
