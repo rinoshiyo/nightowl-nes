@@ -18,24 +18,24 @@ RUN apt-get update \
 COPY bin/claude-tmux /usr/local/bin/claude-tmux
 RUN chmod +x /usr/local/bin/claude-tmux
 
-# vscode ユーザ (uid 1000) は base image で用意済み
-USER vscode
-WORKDIR /home/vscode
+# node ユーザ (uid 1000) は base image で用意済み
+USER node
+WORKDIR /home/node
 
 # Bun をユーザ環境にインストール
 RUN curl -fsSL https://bun.sh/install | bash \
-  && echo 'export PATH="$HOME/.bun/bin:$PATH"' >> /home/vscode/.bashrc \
-  && /home/vscode/.bun/bin/bun --version
+  && echo 'export PATH="$HOME/.bun/bin:$PATH"' >> /home/node/.bashrc \
+  && /home/node/.bun/bin/bun --version
 
-ENV PATH="/home/vscode/.bun/bin:${PATH}"
+ENV PATH="/home/node/.bun/bin:${PATH}"
 
 # claude-tmux を ct で呼べるように alias
-RUN echo "alias ct='claude-tmux'" >> /home/vscode/.bashrc
+RUN echo "alias ct='claude-tmux'" >> /home/node/.bashrc
 
 # Claude Code CLI (devcontainer 内で claude 起動できるように)
 USER root
 RUN npm install -g @anthropic-ai/claude-code
-USER vscode
+USER node
 
 # git の安全弁は ~/.gitconfig を compose.yaml で ro mount している前提。
 # push --force / main 直 push 等は .claude/hooks/pre-tool-use.sh で deny する
