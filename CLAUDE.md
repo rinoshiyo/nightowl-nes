@@ -226,6 +226,8 @@ compaction 後は SessionStart hook (matcher: compact) が `.claude/state/latest
 - 2 メッセージ (`/compact` → 続行指示) を連続投入すると message queue 経由で直列処理される見込み (※ compaction 後の圧縮済み context で後続が処理されるかは要実機検証)
 - 1 夜の引き継ぎは compaction の **前** に PR (description/コメント) へ書き出す (PR-as-SSOT)
 
+## 重要ルール
+
 - **main への直 push は禁止** (hook で deny。 必ず PR フロー経由)
 - **git push --force / git push -f は禁止** (hook で deny)
 - **tests/__snapshots__/ の書き換えは人間レビュー必須** (hook で ask)
