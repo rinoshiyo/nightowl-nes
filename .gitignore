@@ -26,6 +26,7 @@ roms/games/
 .claude/state/
 .claude/cache/
 .claude/retrospective/
+.claude/*.lock
 
 # 朝レポートの bak・一時ファイル
 reports/morning/*.html.bak
@@ -41,6 +42,7 @@ secrets*
 
 # IDE / OS
 .DS_Store
-.vscode/*.code-workspace
+# VSCode 設定は .devcontainer/devcontainer.json の customizations.vscode に集約 (.vscode/ は管理しない)
+.vscode/
 *.swp
 *~
