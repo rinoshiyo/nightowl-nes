@@ -52,6 +52,18 @@ function setZeroNeg(cpu: Cpu, value: number): void {
   cpu.p = (value & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.N) : clearFlag(cpu.p, CpuFlags.N);
 }
 
+/**
+ * 比較命令 (CMP/CPX/CPY) 共通処理。 符号なし減算 register - value を行い、
+ * C = (register >= value)、 Z = (register == value)、 N = 結果 bit7 を更新する
+ * (register 自体は変更しない)。
+ */
+function compare(cpu: Cpu, register: number, value: number): void {
+  const r = (register - value) & 0xff;
+  cpu.p = register >= value ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+  cpu.p = register === value ? setFlag(cpu.p, CpuFlags.Z) : clearFlag(cpu.p, CpuFlags.Z);
+  cpu.p = (r & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.N) : clearFlag(cpu.p, CpuFlags.N);
+}
+
 /** 分岐共通処理。 taken なら飛び先へ PC を移し +1 (page cross でさらに +1) */
 function branch(cpu: Cpu, op: Operand, taken: boolean): number {
   if (!taken) return 0;
@@ -173,3 +185,108 @@ def(0x90, { name: "BCC", mode: relative, cycles: 2, exec: (cpu, _b, op) => branc
 def(0xb0, { name: "BCS", mode: relative, cycles: 2, exec: (cpu, _b, op) => branch(cpu, op, hasFlag(cpu.p, CpuFlags.C)) });
 def(0xd0, { name: "BNE", mode: relative, cycles: 2, exec: (cpu, _b, op) => branch(cpu, op, !hasFlag(cpu.p, CpuFlags.Z)) });
 def(0xf0, { name: "BEQ", mode: relative, cycles: 2, exec: (cpu, _b, op) => branch(cpu, op, hasFlag(cpu.p, CpuFlags.Z)) });
+
+// ---- スタック命令 ----
+// PHP は B(bit4)|U(bit5) を立てて push、 PLP は pull 値の B を捨て U を常に 1 にする
+// (6502 の break flag の扱い。 nesdev wiki "Status flags" 参照)
+def(0x48, {
+  name: "PHA",
+  mode: implied,
+  cycles: 3,
+  exec: (cpu, bus) => {
+    push8(cpu, bus, cpu.a);
+    return 0;
+  },
+});
+def(0x68, {
+  name: "PLA",
+  mode: implied,
+  cycles: 4,
+  exec: (cpu, bus) => {
+    cpu.a = pull8(cpu, bus);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x08, {
+  name: "PHP",
+  mode: implied,
+  cycles: 3,
+  exec: (cpu, bus) => {
+    push8(cpu, bus, cpu.p | 0x30);
+    return 0;
+  },
+});
+def(0x28, {
+  name: "PLP",
+  mode: implied,
+  cycles: 4,
+  exec: (cpu, bus) => {
+    cpu.p = (pull8(cpu, bus) & ~0x10 & 0xff) | 0x20;
+    return 0;
+  },
+});
+
+// ---- 論理 / 比較 (immediate) ----
+def(0x29, {
+  name: "AND",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x09, {
+  name: "ORA",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a | bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x49, {
+  name: "EOR",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a ^ bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0xc9, {
+  name: "CMP",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.a, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xe0, {
+  name: "CPX",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.x, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xc0, {
+  name: "CPY",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.y, bus.read(op.addr));
+    return 0;
+  },
+});
+
+// ---- 割り込み禁止フラグ ----
+def(0x78, { name: "SEI", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = setFlag(cpu.p, CpuFlags.I)), 0) });
+def(0x58, { name: "CLI", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = clearFlag(cpu.p, CpuFlags.I)), 0) });
+def(0xb8, { name: "CLV", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = clearFlag(cpu.p, CpuFlags.V)), 0) });
