@@ -10,13 +10,15 @@
         "esbenp.prettier-vscode",
         "vitest.explorer",
         "anthropic.claude-code",
-        "mhutchie.git-graph"
+        "mhutchie.git-graph",
+        "ms-vscode.live-server"
       ],
       "settings": {
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "eslint.validate": ["typescript", "typescriptreact"],
-        "typescript.tsdk": "node_modules/typescript/lib"
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "livePreview.useIntegratedBrowser": false
       }
     }
   },
