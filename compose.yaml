@@ -1,0 +1,11 @@
+services:
+  dev:
+    hostname: nightowl-nes
+    build: ./docker
+    tty: true
+    volumes:
+      - ./:/workspace/nightowl-nes
+      # 認証系のみ最小限を read-only でマウント
+      # NOTE: ${HOME}/.claude は mount しない (リポ完結ポリシー、 設計書 §6.4.5)
+      - ${HOME}/.claude.json:/home/vscode/.claude.json:ro
+      - ${HOME}/.config/gh:/home/vscode/.config/gh:ro
