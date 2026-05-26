@@ -43,7 +43,7 @@
 
 ノールック auto-merge を避けるため、 PR 作成直後に **sub-agent を立ててレビューさせる**。 GitHub Actions / 外部 API を使わず、 メインと同じ Anthropic 枠で完結する (追加課金ゼロ)。 メイン context を圧迫しないよう、 詳細レビューは sub-agent の独立 context で行い、 メインには致命度サマリだけ返す。
 
-**重要 (レース回避)**: `gh pr merge --auto` は **レビュー完了 + critical=0 を確認した後に初めて設定する**。 レビュー前に auto-merge を打つと、 軽量 CI (10-15 秒) が sub-agent レビュー (数十秒〜数分) を追い抜いて critical 判定前に merge される。 auto-merge を打たなければ CI が緑でも勝手に merge されないので、 レビューが追い抜かれる事故が構造的に起きない。
+**重要 (レース回避)**: `gh pr merge --auto` は **レビュー完了 + STOP 判定ゼロを確認した後に初めて設定する** (STOP/FIX/PASS の三分類は後述)。 レビュー前に auto-merge を打つと、 CI の所要時間次第で CI 緑が sub-agent レビュー完了を追い抜き、 判定前に merge されうる。 auto-merge を打たなければ CI が緑でも勝手に merge されないので、 CI が速かろうが遅かろうがレビューが追い抜かれる事故が構造的に起きない。
 
 1. `gh pr create` で PR が立った直後、 `Agent` tool で `general-purpose` sub-agent を **`run_in_background: true`** で起動 (フォアグラウンド起動は hook で deny される)。 **この時点では auto-merge を設定しない**
 2. sub-agent への prompt に以下を渡す:
@@ -52,10 +52,19 @@
    - sub-agent は内部で `code-review` skill を `--comment` 付き・effort=medium で起動し、 PR にインラインコメントを post する
    - **致命度サマリは sub-agent が算出する**: `code-review` skill の生出力は `file` / `line` / `summary` / `failure_scenario` のフラット JSON で severity フィールドを持たないため、 sub-agent が各 finding を `critical` / `high` / `medium` / `low` に分類してメインへ件数を返す
 3. sub-agent 完了通知を受領したら、 致命度サマリを transcript に出力する
-4. **連鎖中の運用方針** (誤検知で連鎖が無駄に止まるのを避ける):
-   - レビューコメントの post は常に行う (朝石井がレビュー濃度を上げられる)
-   - `critical == 0` の時: メインから `gh pr merge --auto --squash --delete-branch` を設定 → CI 緑で merge → 次の夜へ。 `high` 以下の指摘は post のみで連鎖続行 (朝石井判断に委ねる)
-   - `critical >= 1` の時: **auto-merge を設定しない**。 `gh pr ready --undo` で draft 戻し + tmp/handoff/ に「draft 戻し report」 を吐き + 連鎖中断 + セッション終了
+4. **レビュー指摘の triage** (自走中は石井に確認できないため、 Claude が自動裁定する):
+
+   sub-agent が付ける `critical` / `high` 等の severity ラベルは主観でブレる (実測: "high" 表記でも実質プロトコルを骨抜きにする指摘があった)。 ラベルに頼らず **何が起きるか** で 3 区分に振り分ける。 レビューコメントの post はどの区分でも常に行う (朝石井がレビュー濃度を上げられる)。
+
+   | 区分 | 条件 | アクション |
+   |---|---|---|
+   | 🛑 STOP | 仕様違反 (6502/iNES/NES 挙動が nesdev wiki と食い違う) / ソース由来制約違反の疑い / データ破壊・不可逆操作 / テスト・型・lint が赤 | **auto-merge を設定しない**。 `gh pr ready --undo` で draft 戻し + tmp/handoff/ に「draft 戻し report」 + 連鎖中断 + セッション終了 |
+   | 🔧 FIX | 明らかなバグ・誤記で修正が一意に決まる / ドキュメント・コードの自己矛盾 | メインが修正 commit → push → 再レビュー。 **同一 PR の修正往復は最大 2 回**。 2 回で解消しなければ STOP に格上げ (隔離 + 朝判断) |
+   | ✅ PASS | 設計の好み / 可読性 / リファクタ提案 / 将来夜への申し送り | post のみ・連鎖続行。 申し送りは次の夜 md に転記 |
+
+   全指摘が PASS、 または FIX が再レビューで解消した時のみ `gh pr merge --auto --squash --delete-branch` を設定する。 STOP が 1 件でもあれば auto-merge せず隔離。
+
+5. **triage 判断ログ**: 自走中に下した triage 判断は各夜の handoff md に「PR #X: 指摘 Y → STOP/FIX/PASS と判断 (理由 Z)」 形式で記録し、 朝石井が裁定を追えるようにする。
 
 ### 各夜の終了処理
 
@@ -116,11 +125,15 @@ git checkout -b night/001-cpu-skeleton
 # 4. push
 git push -u origin night/001-cpu-skeleton
 
-# 5. PR 作成 + auto-merge 有効化 (CI 緑判定後に自動 squash merge)
+# 5. PR 作成 (この時点では auto-merge を打たない)
 gh pr create \
   --base main \
   --title "夜 1: CPU スケルトン + nestest ハーネス" \
   --body "<夜md ベースの description + DoD チェック + メモ>"
+
+# 6. sub-agent で PR をレビュー →  triage (「自走連鎖プロトコル > 夜 N PR の自動レビュー」 参照)
+#    STOP 判定ゼロ (全 PASS、 または FIX が再レビューで解消) を確認してから auto-merge。
+#    レビュー前に auto-merge を打つと CI がレビューを追い抜く (レース) ため厳禁。
 gh pr merge --auto --squash --delete-branch
 ````
 
@@ -155,7 +168,9 @@ gh pr merge --auto --squash --delete-branch
 
 `gh pr merge --auto --squash --delete-branch` で立てた PR は、 必須 CI (nightly) が緑になった時点で自動的に squash merge → night ブランチ自動削除される。 つまり Claude は `gh pr merge` を再実行しなくてよく、 CI が緑にならない限り merge は実行されない。
 
-詰まった場合は PR を draft に戻す (`gh pr ready --undo` or `gh pr edit --draft`) か、 ask 経由で close するか、 stuck/ 隔離フローに乗せる。
+**auto-merge を打つタイミング**: sub-agent レビューの triage が完了し STOP 判定ゼロを確認した後に限る (「自走連鎖プロトコル > 夜 N PR の自動レビュー」 参照)。 レビュー前に打つと CI 緑がレビューを追い抜くレースが起きる。
+
+詰まった場合は PR を draft に戻す (`gh pr ready --undo`) か、 ask 経由で close するか、 stuck/ 隔離フローに乗せる。
 
 ## 起動時の作法
 
