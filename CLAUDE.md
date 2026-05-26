@@ -39,12 +39,41 @@
 3. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
 4. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
 
+### 夜 N PR の自動レビュー (sub-agent + code-review skill)
+
+ノールック auto-merge を避けるため、 PR 作成直後に **sub-agent を立ててレビューさせる**。 GitHub Actions / 外部 API を使わず、 メインと同じ Anthropic 枠で完結する (追加課金ゼロ)。 メイン context を圧迫しないよう、 詳細レビューは sub-agent の独立 context で行い、 メインには致命度サマリだけ返す。
+
+**重要 (レース回避)**: `gh pr merge --auto` は **レビュー完了 + STOP 判定ゼロを確認した後に初めて設定する** (STOP/FIX/PASS の三分類は後述)。 レビュー前に auto-merge を打つと、 CI の所要時間次第で CI 緑が sub-agent レビュー完了を追い抜き、 判定前に merge されうる。 auto-merge を打たなければ CI が緑でも勝手に merge されないので、 CI が速かろうが遅かろうがレビューが追い抜かれる事故が構造的に起きない。
+
+1. `gh pr create` で PR が立った直後、 `Agent` tool で `general-purpose` sub-agent を **`run_in_background: true`** で起動 (フォアグラウンド起動は hook で deny される)。 **この時点では auto-merge を設定しない**
+2. sub-agent への prompt に以下を渡す:
+   - 対象 PR 番号 / ブランチ名 / `main...night/NNN-<topic>` の diff レンジ
+   - レビュー観点: ① 6502 仕様 (nesdev wiki) との一致性 ② TypeScript 型安全性 (`noUncheckedIndexedAccess` / `exactOptionalPropertyTypes`) ③ テストカバレッジの妥当性 ④ **既存 NES 実装の参照疑い** (CLAUDE.md ソース由来制約違反)
+   - sub-agent は内部で `code-review` skill を `--comment` 付き・effort=medium で起動し、 PR にインラインコメントを post する
+   - **致命度サマリは sub-agent が算出する**: `code-review` skill の生出力は `file` / `line` / `summary` / `failure_scenario` のフラット JSON で severity フィールドを持たないため、 sub-agent が各 finding を `critical` / `high` / `medium` / `low` に分類してメインへ件数を返す
+3. sub-agent 完了通知を受領したら、 致命度サマリを transcript に出力する
+4. **レビュー指摘の triage** (自走中は石井に確認できないため、 Claude が自動裁定する):
+
+   sub-agent が付ける `critical` / `high` 等の severity ラベルは主観でブレる (実測: "high" 表記でも実質プロトコルを骨抜きにする指摘があった)。 ラベルに頼らず **何が起きるか** で 3 区分に振り分ける。 レビューコメントの post はどの区分でも常に行う (朝石井がレビュー濃度を上げられる)。
+
+   | 区分 | 条件 | アクション |
+   |---|---|---|
+   | 🛑 STOP | 仕様違反 (6502/iNES/NES 挙動が nesdev wiki と食い違う) / ソース由来制約違反の疑い / データ破壊・不可逆操作 / テスト・型・lint が赤 | **auto-merge を設定しない**。 `gh pr ready --undo` で draft 戻し + **その PR にコメントで「draft 戻し report」 (再開手順・残作業を SSOT として)** + 連鎖中断 + セッション終了 |
+   | 🔧 FIX | 明らかなバグ・誤記で修正が一意に決まる / ドキュメント・コードの自己矛盾 | メインが修正 commit → push → 再レビュー。 **同一 PR の修正往復は最大 2 回**。 2 回で解消しなければ STOP に格上げ (隔離 + 朝判断) |
+   | ✅ PASS | 設計の好み / 可読性 / リファクタ提案 / 将来夜への申し送り | post のみ・連鎖続行。 申し送りは次の夜 md に転記 |
+
+   全指摘が PASS、 または FIX が再レビューで解消した時のみ `gh pr merge --auto --squash --delete-branch` を設定する。 STOP が 1 件でもあれば auto-merge せず隔離。
+
+   **FIX 修正は grep で一網打尽にする**: 1 箇所直したら同じパターン (誤ったコマンド・矛盾する記述・同根の設計漏れ) を `grep` で全文スキャンし、 同種箇所を同じ commit でまとめて潰す。 1 箇所ずつ直すと「同根の取りこぼし」 が次の round で新たな FIX として再浮上し、 修正往復 2 回の上限を無駄に消費する (実例: auto-merge 順序の自己矛盾を 3 箇所に分散して取りこぼし、 round-3 で STOP 隔離に至った)。
+
+5. **triage 判断ログ**: 自走中に下した triage 判断は **該当 PR のコメント**に「指摘 Y → STOP/FIX/PASS と判断 (理由 Z)」 形式で記録し (PR が SSOT)、 朝石井が `gh pr view --comments` で裁定を追えるようにする。
+
 ### 各夜の終了処理
 
 夜 N の PR が main に merge 反映された後、 次の夜に進む前に以下を行う:
 
 1. `🎯 GOAL CONDITION MET: night N merged` を transcript に出力
-2. **handoff md を書く**: `tmp/handoff/<yyyy-mm-dd>/<hhmm>-night-NNN-summary.md` に「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を 50-100 行で書く (context window 圧縮を兼ねる)
+2. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を **該当夜の PR description かコメント**に書く。 `tmp/handoff/` のローカル md は gitignore で push されず人間も次セッションも見えない二重管理になるため使わない (context window 圧縮は PR を `gh pr view --comments` で読み直せば代替できる)
 3. `git checkout main && git pull` で次の夜のベースを最新化
 4. `nights/pending/` の最若番号を読み込み、 次の夜ブランチ `night/NNN-<topic>` を切って着手
 
@@ -98,11 +127,15 @@ git checkout -b night/001-cpu-skeleton
 # 4. push
 git push -u origin night/001-cpu-skeleton
 
-# 5. PR 作成 + auto-merge 有効化 (CI 緑判定後に自動 squash merge)
+# 5. PR 作成 (この時点では auto-merge を打たない)
 gh pr create \
   --base main \
   --title "夜 1: CPU スケルトン + nestest ハーネス" \
   --body "<夜md ベースの description + DoD チェック + メモ>"
+
+# 6. sub-agent で PR をレビュー →  triage (「自走連鎖プロトコル > 夜 N PR の自動レビュー」 参照)
+#    STOP 判定ゼロ (全 PASS、 または FIX が再レビューで解消) を確認してから auto-merge。
+#    レビュー前に auto-merge を打つと CI がレビューを追い抜く (レース) ため厳禁。
 gh pr merge --auto --squash --delete-branch
 ````
 
@@ -137,10 +170,13 @@ gh pr merge --auto --squash --delete-branch
 
 `gh pr merge --auto --squash --delete-branch` で立てた PR は、 必須 CI (nightly) が緑になった時点で自動的に squash merge → night ブランチ自動削除される。 つまり Claude は `gh pr merge` を再実行しなくてよく、 CI が緑にならない限り merge は実行されない。
 
-詰まった場合は PR を draft に戻す (`gh pr ready --undo` or `gh pr edit --draft`) か、 ask 経由で close するか、 stuck/ 隔離フローに乗せる。
+**auto-merge を打つタイミング**: sub-agent レビューの triage が完了し STOP 判定ゼロを確認した後に限る (「自走連鎖プロトコル > 夜 N PR の自動レビュー」 参照)。 レビュー前に打つと CI 緑がレビューを追い抜くレースが起きる。
+
+詰まった場合は PR を draft に戻す (`gh pr ready --undo`) か、 ask 経由で close するか、 stuck/ 隔離フローに乗せる。
 
 ## 起動時の作法
 
+0. **`gh pr list --state open --json number,title,isDraft` で未完了 PR を確認**。 open PR があれば **draft / 非 draft を問わず** その PR コメント (SSOT) を読み、 中断作業か判定する。 「レビュー未完」 or 「auto-merge 未設定で放置」 の PR は最優先で再開する (draft はレビュー隔離中、 非 draft の open はレビュー途中でセッションが切れた可能性)。 handoff は PR に集約しているため (後述)、 ここを飛ばすと中断が拾われない
 1. `.claude/state/latest.md` が存在すれば Read (SessionStart hook が inject していなければ)
 2. `nights/pending/` の最若番号の md を Read
 3. 「## ゴール」セクションの /goal 条件を確認
@@ -148,8 +184,9 @@ gh pr merge --auto --squash --delete-branch
 5. ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
 6. /goal 評価のため、 pass / fail を必ず transcript に出力 (後述)
 7. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
-8. `gh pr create` + `gh pr merge --auto --squash --delete-branch` で PR を立てる
-9. CI 緑 → auto-merge 反映を見届けてセッション完了報告
+8. `gh pr create` で PR を立てる (この時点では auto-merge を打たない)
+9. sub-agent でレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --squash --delete-branch`
+10. CI 緑 → auto-merge 反映を見届けてセッション完了報告
 
 ## /goal 評価のための出力ルール
 
