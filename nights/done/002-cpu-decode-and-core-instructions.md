@@ -105,3 +105,9 @@ nights/pending/002-cpu-decode-and-core-instructions.md の DoD 全項目達成
 4. **indirect JMP のバグ再現** — `JMP ($xxFF)` は page wrap する (実機バグ)。 nestest 内で踏むので再現必須
 5. **flags の B / U bit** — push 系で立つ / 立たないが命令ごとに違う (PHP / BRK / IRQ で差異あり)。 夜 2 では JSR/RTS のみ実装するため気にしなくて OK
 6. **page-cross extraCycle** — absoluteX / absoluteY / indirectY で base + index が page を跨ぐ時 +1 cycle。 STA 系は store 命令なので extraCycle は加算しない (read 命令のみ加算) — 夜 2 で実装するのは LDA/LDX/LDY 系のみなので加算する側
+
+## 夜 1 後追いレビューからの申し送り (PR #1 sub-agent レビュー、 low×3)
+
+1. **`tests/cpu_nestest.test.ts` のテスト名と実態の不一致** → 夜 2 G4 で `cpuStep` を実装し nestest.log trace diff を回せば「実際に命令を実行して状態を検証する」 形になり名実一致する。 **本夜で自然解消する想定**
+2. **`src/core/cart.ts` の NES2.0 判定未考慮** — mapper 算出式自体は仕様どおり正しい。 NES2.0 ヘッダ判定 (`flags7 & 0x0C === 0x08`) と dirty header ヒューリスティックは未実装だが NROM/nestest only の現状は非発火。 **将来夜送り (本夜では対応しない)**
+3. **`src/core/cart.ts` の CHR RAM 未確保** — CHR バンク数 0 (CHR RAM) 時に RAM 領域を確保していない。 PPU 実装夜で 8KB 確保分岐が必要。 **PPU 夜送り (本夜では対応しない)**

@@ -1,0 +1,59 @@
+import type { Bus } from "../bus.ts";
+import type { Cpu } from "./index.ts";
+
+/**
+ * アドレッシングモードの解決結果。
+ *
+ * - addr: 実効アドレス (implied など対象アドレスを持たないモードは -1)
+ * - pageCrossed: base アドレスと実効アドレスが別ページにまたがったか
+ *   (read 系命令・分岐命令の追加 1 サイクル判定に使う)
+ */
+export interface Operand {
+  addr: number;
+  pageCrossed: boolean;
+}
+
+/**
+ * 各アドレッシング関数は「`cpu.pc` が opcode の次 (オペランド先頭) を指す」 状態で
+ * 呼ばれ、 オペランドを読み終えた分だけ `cpu.pc` を進める破壊的関数。
+ *
+ * 夜 2 では nestest 先頭 50 行で実際に使う 5 モードのみ実装する。
+ * zeroPageX/Y・absoluteX/Y・indirect 系は使用する命令を実装する夜で追加する。
+ */
+
+export function implied(_cpu: Cpu, _bus: Bus): Operand {
+  return { addr: -1, pageCrossed: false };
+}
+
+export function immediate(cpu: Cpu, _bus: Bus): Operand {
+  const addr = cpu.pc;
+  cpu.pc = (cpu.pc + 1) & 0xffff;
+  return { addr, pageCrossed: false };
+}
+
+export function zeroPage(cpu: Cpu, bus: Bus): Operand {
+  const addr = bus.read(cpu.pc);
+  cpu.pc = (cpu.pc + 1) & 0xffff;
+  return { addr, pageCrossed: false };
+}
+
+export function absolute(cpu: Cpu, bus: Bus): Operand {
+  const lo = bus.read(cpu.pc);
+  const hi = bus.read((cpu.pc + 1) & 0xffff);
+  cpu.pc = (cpu.pc + 2) & 0xffff;
+  return { addr: (lo | (hi << 8)) & 0xffff, pageCrossed: false };
+}
+
+/**
+ * relative: 分岐命令専用。 符号付き 8bit オフセットを読み、
+ * オフセット読み込み後の PC を基準とした分岐先アドレスを返す。
+ * pageCrossed は分岐成立時の追加 1 サイクル判定に使う。
+ */
+export function relative(cpu: Cpu, bus: Bus): Operand {
+  const raw = bus.read(cpu.pc);
+  cpu.pc = (cpu.pc + 1) & 0xffff;
+  const offset = raw < 0x80 ? raw : raw - 0x100;
+  const addr = (cpu.pc + offset) & 0xffff;
+  const pageCrossed = (cpu.pc & 0xff00) !== (addr & 0xff00);
+  return { addr, pageCrossed };
+}
