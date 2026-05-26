@@ -379,6 +379,69 @@ def(0x88, {
   },
 });
 
+// ---- レジスタ転送 (implied) ----
+// TXS のみ Z/N を更新しない (6502 の仕様)。 他の 5 命令は転送後に Z/N を更新する。
+def(0xaa, {
+  name: "TAX",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.x = cpu.a;
+    setZeroNeg(cpu, cpu.x);
+    return 0;
+  },
+});
+def(0xa8, {
+  name: "TAY",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.y = cpu.a;
+    setZeroNeg(cpu, cpu.y);
+    return 0;
+  },
+});
+def(0x8a, {
+  name: "TXA",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.a = cpu.x;
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x98, {
+  name: "TYA",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.a = cpu.y;
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0xba, {
+  name: "TSX",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.x = cpu.sp;
+    setZeroNeg(cpu, cpu.x);
+    return 0;
+  },
+});
+def(0x9a, {
+  name: "TXS",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    // TXS は SP を設定するだけで Z/N フラグは変化させない
+    cpu.sp = cpu.x;
+    return 0;
+  },
+});
+
 // ---- 割り込み禁止フラグ ----
 def(0x78, { name: "SEI", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = setFlag(cpu.p, CpuFlags.I)), 0) });
 def(0x58, { name: "CLI", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = clearFlag(cpu.p, CpuFlags.I)), 0) });
