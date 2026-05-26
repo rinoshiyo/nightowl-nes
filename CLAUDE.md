@@ -21,9 +21,63 @@
 ## 自走モデル
 
 - /goal 主軸 (v2.1.139+)
-- 1 セッション = 1 つの夜 md = 1 本の PR = 1 つの /goal
-- ターン上限は条件文に `or stop after N turns` で必ず明記
+- 1 夜 = 1 つの夜 md = 1 本の PR (1 夜の所要時間目安: 1-1.5 時間、 DoD 8-12 項目)
+- **1 セッション = 1〜N 夜** (pending が尽きる or 石井 stop 指示 or ターン上限到達まで連鎖)
+- ターン上限は条件文に `or stop after N turns` で必ず明記 (multi-night は 100-300 turns 目安)
 - 達成 / ターン上限到達でセッション終了 → SessionEnd hook が retrospective 生成
+
+## 自走連鎖プロトコル (重要)
+
+夜間自走の連鎖を切らさないために、 Claude は以下を主体的に行う:
+
+### 連鎖継続条件
+
+以下を全て満たす間、 Claude は次の夜を自走する:
+
+1. `nights/pending/` に未処理の夜 md が 1 つ以上ある
+2. 石井から `stop` / `止めて` / `セッション終了` 等の明示停止指示が来ていない
+3. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
+4. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
+
+### 各夜の終了処理
+
+夜 N の PR が main に merge 反映された後、 次の夜に進む前に以下を行う:
+
+1. `🎯 GOAL CONDITION MET: night N merged` を transcript に出力
+2. **handoff md を書く**: `tmp/handoff/<yyyy-mm-dd>/<hhmm>-night-NNN-summary.md` に「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を 50-100 行で書く (context window 圧縮を兼ねる)
+3. `git checkout main && git pull` で次の夜のベースを最新化
+4. `nights/pending/` の最若番号を読み込み、 次の夜ブランチ `night/NNN-<topic>` を切って着手
+
+### Claude が次の夜 md を起こす責務
+
+`nights/pending/` が空になった時、 **Claude が次の夜 md を起こす**。 朝石井が起こす想定は廃止。 起こし方:
+
+1. 直近 done になった夜の DoD と nestest.log / 設計の現状を踏まえ、 1 夜 1-1.5 時間スケールの次タスクを設計
+2. `nights/template/NNN-template.md` をコピーして `nights/pending/NNN+1-<topic>.md` を作成 (NNN は直近 done の番号 + 1)
+3. **同セッションの bootstrap PR で起こす**: 夜 N のブランチに含めず、 別の `chore/seed-NNN+1` ブランチを切って独立 PR にする (朝レビューを通すため)。 もしくは次の夜ブランチの最初の commit で md を起こすパターンも可 (この場合 `chore(nights): seed NNN+1 from done NNN insights` の commit に分離)
+4. seed PR / 夜開始 commit のいずれであっても、 main merge を待ってから実装着手
+
+### 詰み時の自動隔離 (stuck protocol)
+
+- 同じエラーで連続 30 分以上進捗ゼロを観測した時、 自動的に以下を実行:
+  1. 該当 `nights/pending/NNN-*.md` を `nights/stuck/NNN-*-stuck.md` に rename
+  2. stuck md 末尾に「詰み report」 (再現手順 / 試したこと / 仮説) を追記
+  3. PR を draft に戻す (`gh pr ready --undo`)
+  4. 該当夜の連鎖は中断し、 次の夜には進まずセッション終了
+- ターン消費目安: 「同一テスト failure / 同一エラーメッセージ」 が 5-7 ターン続いたら 30 分目安として隔離検討
+
+### /goal 文面例 (multi-night)
+
+```
+/goal nights/pending を全消化、 各夜は night/NNN-* ブランチで PR auto-merge、
+or 石井 stop 指示、 or stop after 200 turns
+```
+
+または個別指定:
+
+```
+/goal 夜 2-5 を順次 merge (各夜 PR auto-merge)、 or stop after 150 turns
+```
 
 ## ブランチ運用 + PR フロー (重要)
 
