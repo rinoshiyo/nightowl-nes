@@ -337,6 +337,48 @@ def(0xa0, {
   },
 });
 
+// ---- レジスタ増減 (implied) ----
+def(0xe8, {
+  name: "INX",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.x = (cpu.x + 1) & 0xff;
+    setZeroNeg(cpu, cpu.x);
+    return 0;
+  },
+});
+def(0xc8, {
+  name: "INY",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.y = (cpu.y + 1) & 0xff;
+    setZeroNeg(cpu, cpu.y);
+    return 0;
+  },
+});
+def(0xca, {
+  name: "DEX",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.x = (cpu.x - 1) & 0xff;
+    setZeroNeg(cpu, cpu.x);
+    return 0;
+  },
+});
+def(0x88, {
+  name: "DEY",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.y = (cpu.y - 1) & 0xff;
+    setZeroNeg(cpu, cpu.y);
+    return 0;
+  },
+});
+
 // ---- 割り込み禁止フラグ ----
 def(0x78, { name: "SEI", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = setFlag(cpu.p, CpuFlags.I)), 0) });
 def(0x58, { name: "CLI", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = clearFlag(cpu.p, CpuFlags.I)), 0) });
