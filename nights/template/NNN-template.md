@@ -5,7 +5,7 @@
 ## ゴール (/goal)
 
 ```
-/goal night/NNN-<topic> ブランチで実装し、 nightly CI 緑、 PR が auto-merge 設定済みで main に squash merge 完了、 nights/pending/NNN-<topic>.md が nights/done/ に移動済み、 or stop after <N> turns
+/goal night/NNN-<topic> ブランチで実装し、 nightly CI 緑、 PR が auto-merge 設定済みで main に merge commit 完了、 nights/pending/NNN-<topic>.md が nights/done/ に移動済み、 or stop after <N> turns
 ```
 
 完了時 transcript 必須出力: `🎯 GOAL CONDITION MET: night NNN merged`
@@ -39,7 +39,7 @@
 7. `git mv nights/pending/NNN-<topic>.md nights/done/NNN-<topic>.md` を同じブランチで commit
 8. `git push -u origin night/NNN-<topic>`
 9. `gh pr create --base main --title "夜 NNN: <題目>" --body-file tmp/pr-body.md`
-10. `gh pr merge --auto --squash --delete-branch`
+10. `gh pr merge --auto --merge --delete-branch`
 11. CI 緑 → main 自動反映を `gh pr view <PR#> --json state,mergedAt` で確認
 
 ## 検証チャンネル (transcript 出力ルール)
@@ -101,8 +101,8 @@ nights/pending/NNN-<topic>.md の DoD 全項目達成
 - [ ] `npx eslint 'src/**/*.ts' 'tests/**/*.ts' --max-warnings 0` 警告ゼロ
 - [ ] git log に最低 5 コミット
 - [ ] `nights/pending/NNN-<topic>.md` を `nights/done/NNN-<topic>.md` に `git mv`
-- [ ] PR が立っており、 `gh pr merge --auto --squash --delete-branch` で auto-merge 設定済み
-- [ ] nightly CI 緑判定後 main に squash merge 反映済み
+- [ ] PR が立っており、 `gh pr merge --auto --merge --delete-branch` で auto-merge 設定済み
+- [ ] nightly CI 緑判定後 main に merge commit 反映済み
 
 ## 詰みパターン参考
 

@@ -3,7 +3,7 @@
 ## ゴール (/goal)
 
 ```
-/goal night/002-cpu-decode-and-core-instructions ブランチで実装し、 nightly CI 緑、 PR が auto-merge 設定済みで main に squash merge 完了、 nights/pending/002-cpu-decode-and-core-instructions.md が nights/done/ に移動済み、 or stop after 80 turns
+/goal night/002-cpu-decode-and-core-instructions ブランチで実装し、 nightly CI 緑、 PR が auto-merge 設定済みで main に merge commit 完了、 nights/pending/002-cpu-decode-and-core-instructions.md が nights/done/ に移動済み、 or stop after 80 turns
 ```
 
 完了時 transcript 必須出力: `🎯 GOAL CONDITION MET: night 002 merged`
@@ -35,7 +35,7 @@
 6. G4 → commit `test(core/cpu): nestest first 50 lines diff pass`
 7. `npx vitest run` / `npx tsc --noEmit` / `npx eslint` 全緑確認
 8. `git mv nights/pending/002-*.md nights/done/002-*.md` → commit `chore(nights): move 002 to done`
-9. push → `gh pr create` → `gh pr merge --auto --squash --delete-branch`
+9. push → `gh pr create` → `gh pr merge --auto --merge --delete-branch`
 
 ## 検証チャンネル (transcript 出力ルール)
 
@@ -95,7 +95,7 @@ nights/pending/002-cpu-decode-and-core-instructions.md の DoD 全項目達成
 - [ ] git log に最低 5 コミット
 - [ ] `nights/pending/002-cpu-decode-and-core-instructions.md` を `nights/done/` に `git mv`
 - [ ] PR auto-merge 設定済み
-- [ ] nightly CI 緑判定後 main に squash merge 反映済み
+- [ ] nightly CI 緑判定後 main に merge commit 反映済み
 
 ## 詰みパターン参考
 
