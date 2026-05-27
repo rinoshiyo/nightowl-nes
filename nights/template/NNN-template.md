@@ -98,7 +98,7 @@ nights/pending/NNN-<topic>.md の DoD 全項目達成
 - [ ] G3: <観測可能な完了条件>
 - [ ] `npx vitest run` exit 0
 - [ ] `npx tsc --noEmit` 警告ゼロ
-- [ ] `npx eslint 'src/**/*.ts' 'tests/**/*.ts'` 警告ゼロ
+- [ ] `npx eslint 'src/**/*.ts' 'tests/**/*.ts' --max-warnings 0` 警告ゼロ
 - [ ] git log に最低 5 コミット
 - [ ] `nights/pending/NNN-<topic>.md` を `nights/done/NNN-<topic>.md` に `git mv`
 - [ ] PR が立っており、 `gh pr merge --auto --squash --delete-branch` で auto-merge 設定済み
