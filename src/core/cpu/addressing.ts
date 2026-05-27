@@ -45,6 +45,21 @@ export function absolute(cpu: Cpu, bus: Bus): Operand {
 }
 
 /**
+ * indexedIndirect ((indirect,X)): zeroPage のオペランドバイトに X を加算した
+ * (ゼロページ内ラップ) アドレスから 16bit ポインタを読み、 その指す先を実効
+ * アドレスとする。 ポインタの上位バイト読みも `& 0xFF` でゼロページ内にラップする
+ * (6502 の古典挙動)。 このモードは page-cross 加算を持たない (常に固定 6 cycle)。
+ */
+export function indexedIndirect(cpu: Cpu, bus: Bus): Operand {
+  const base = bus.read(cpu.pc);
+  cpu.pc = (cpu.pc + 1) & 0xffff;
+  const ptr = (base + cpu.x) & 0xff;
+  const lo = bus.read(ptr);
+  const hi = bus.read((ptr + 1) & 0xff);
+  return { addr: (lo | (hi << 8)) & 0xffff, pageCrossed: false };
+}
+
+/**
  * relative: 分岐命令専用。 符号付き 8bit オフセットを読み、
  * オフセット読み込み後の PC を基準とした分岐先アドレスを返す。
  * pageCrossed は分岐成立時の追加 1 サイクル判定に使う。

@@ -3,6 +3,7 @@ import {
   absolute,
   immediate,
   implied,
+  indexedIndirect,
   type Operand,
   relative,
   zeroPage,
@@ -179,6 +180,16 @@ def(0x85, {
   cycles: 3,
   exec: (cpu, bus, op) => {
     bus.write(op.addr, cpu.a);
+    return 0;
+  },
+});
+def(0xa5, {
+  name: "LDA",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    cpu.a = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
     return 0;
   },
 });
@@ -570,3 +581,84 @@ def(0x9a, {
 def(0x78, { name: "SEI", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = setFlag(cpu.p, CpuFlags.I)), 0) });
 def(0x58, { name: "CLI", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = clearFlag(cpu.p, CpuFlags.I)), 0) });
 def(0xb8, { name: "CLV", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = clearFlag(cpu.p, CpuFlags.V)), 0) });
+
+// ---- (indirect,X) アドレッシング ----
+// いずれも固定 6 cycle (page-cross 加算なし)。 immediate 版と同じ演算ヘルパーを
+// indexedIndirect が解決した実効アドレス越しに再利用する。
+def(0xa1, {
+  name: "LDA",
+  mode: indexedIndirect,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    cpu.a = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x81, {
+  name: "STA",
+  mode: indexedIndirect,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.a);
+    return 0;
+  },
+});
+def(0x01, {
+  name: "ORA",
+  mode: indexedIndirect,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a | bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x21, {
+  name: "AND",
+  mode: indexedIndirect,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x41, {
+  name: "EOR",
+  mode: indexedIndirect,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a ^ bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x61, {
+  name: "ADC",
+  mode: indexedIndirect,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xc1, {
+  name: "CMP",
+  mode: indexedIndirect,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.a, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xe1, {
+  name: "SBC",
+  mode: indexedIndirect,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    // SBC は ~M を足すと ADC と同じ回路になる (immediate 版と同じ)
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return 0;
+  },
+});
