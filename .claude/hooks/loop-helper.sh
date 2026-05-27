@@ -48,9 +48,11 @@ log "chain start pane=$PANE next='${NEXT:0:50}'"
 # 1) Wait for the worker to finish the current task and go idle.
 wait_idle 600 || { log "timeout waiting for worker idle, abort"; exit 1; }
 
-# 2) (production, optional) Wait for the armed auto-merge to land on green CI.
-#    Enabled only when LOOP_WAIT_MERGE=1 (off by default for prototype/tests).
-if [ "${LOOP_WAIT_MERGE:-0}" = "1" ]; then
+# 2) Wait for the armed auto-merge to land on green CI BEFORE resetting, so the
+#    next task builds on a main that already includes this task (otherwise the
+#    fresh session's `git pull` races CI and checks out a stale base).
+#    On by default; set LOOP_WAIT_MERGE=0 only for tests with no real PR in flight.
+if [ "${LOOP_WAIT_MERGE:-1}" = "1" ]; then
   log "waiting for open PRs to merge..."
   mw=0
   while :; do
