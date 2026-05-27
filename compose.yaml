@@ -7,6 +7,11 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     tty: true
+    environment:
+      # コンテナ内の全プロセス (date / loop.log のタイムスタンプ / /clear の
+      # resume ラベル等) を JST に揃える。 既定は UTC で 9 時間ずれるため明示する。
+      # zoneinfo に Asia/Tokyo が同梱済みのため tzdata の追加インストールは不要。
+      - TZ=Asia/Tokyo
     volumes:
       - ./:/workspace/nightowl-nes
       # ホストの ~/.claude を full mount。 これにより:
