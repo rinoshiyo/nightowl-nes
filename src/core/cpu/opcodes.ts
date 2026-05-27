@@ -130,6 +130,18 @@ def(0x60, {
     return 0;
   },
 });
+def(0x40, {
+  name: "RTI",
+  mode: implied,
+  cycles: 6,
+  exec: (cpu, bus) => {
+    // PLP と同じく pull 値の B(bit4) を捨て U(bit5) を 1 にして P を復元、
+    // 続けて PC を pull16 する。 RTS と違い pull した PC に +1 しない。
+    cpu.p = (pull8(cpu, bus) & ~0x10 & 0xff) | 0x20;
+    cpu.pc = pull16(cpu, bus);
+    return 0;
+  },
+});
 
 // ---- ロード / ストア ----
 def(0xa2, {
