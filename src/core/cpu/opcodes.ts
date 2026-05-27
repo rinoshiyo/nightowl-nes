@@ -860,3 +860,36 @@ def(0xc4, {
     return 0;
   },
 });
+
+// ---- absolute 論理 (夜 12) ----
+// immediate / zeroPage 版と同じ演算を absolute 実効アドレス越しに行う。 全 cycle 4。
+def(0x0d, {
+  name: "ORA",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a | bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x2d, {
+  name: "AND",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x4d, {
+  name: "EOR",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a ^ bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
