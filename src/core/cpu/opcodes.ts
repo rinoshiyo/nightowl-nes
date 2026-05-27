@@ -90,6 +90,53 @@ function branch(cpu: Cpu, op: Operand, taken: boolean): number {
   return op.pageCrossed ? 2 : 1;
 }
 
+// ---- シフト / ローテートの値演算 (accumulator・zeroPage RMW で共用) ----
+// いずれも C フラグの in/out のみ処理し、 結果値 (0-255) を返す。
+// Z/N の更新は結果値に対して呼び出し側が setZeroNeg で行う。
+
+/** ASL: bit7 を C へ、 左 1 シフト */
+function aslValue(cpu: Cpu, v: number): number {
+  cpu.p = (v & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+  return (v << 1) & 0xff;
+}
+
+/** LSR: bit0 を C へ、 右 1 シフト (bit7 へ 0 が入る) */
+function lsrValue(cpu: Cpu, v: number): number {
+  cpu.p = (v & 0x01) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+  return v >> 1;
+}
+
+/** ROL: oldC を C 更新前に退避し、 左 1 ローテート (bit0 へ oldC、 bit7 が新 C) */
+function rolValue(cpu: Cpu, v: number): number {
+  const oldC = hasFlag(cpu.p, CpuFlags.C) ? 1 : 0;
+  cpu.p = (v & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+  return ((v << 1) | oldC) & 0xff;
+}
+
+/** ROR: oldC を C 更新前に退避し、 右 1 ローテート (bit7 へ oldC、 bit0 が新 C) */
+function rorValue(cpu: Cpu, v: number): number {
+  const oldC = hasFlag(cpu.p, CpuFlags.C) ? 1 : 0;
+  cpu.p = (v & 0x01) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+  return (v >> 1) | (oldC << 7);
+}
+
+/**
+ * zeroPage read-modify-write 共通処理 (ASL/LSR/ROL/ROR/INC/DEC zp、 cycle 5)。
+ * `bus.read(addr)` した値を transform で変換し、 結果を同じ addr に write back して
+ * Z/N を更新する。 page cross は無いため追加サイクルは常に 0。
+ */
+function rmwZeroPage(
+  cpu: Cpu,
+  bus: Bus,
+  op: Operand,
+  transform: (cpu: Cpu, v: number) => number,
+): number {
+  const result = transform(cpu, bus.read(op.addr)) & 0xff;
+  bus.write(op.addr, result);
+  setZeroNeg(cpu, result);
+  return 0;
+}
+
 /**
  * 256 エントリの命令ディスパッチテーブル。 未実装の opcode は null。
  * 夜 2 では nestest 先頭 50 行で実際に出現する命令 + JSR と対の RTS を実装する。
@@ -280,14 +327,13 @@ def(0xea, { name: "NOP", mode: implied, cycles: 2, exec: () => 0 });
 
 // ---- シフト / ローテート (accumulator) ----
 // accumulator モードは addressing に無いため implied で cpu.a を直接操作する。
-// いずれも C フラグの in/out を扱い、 結果で Z/N を更新する。
+// 値演算は aslValue 等の共通ヘルパーに委譲し、 zeroPage RMW 版と挙動を共有する。
 def(0x0a, {
   name: "ASL",
   mode: implied,
   cycles: 2,
   exec: (cpu) => {
-    cpu.p = (cpu.a & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
-    cpu.a = (cpu.a << 1) & 0xff;
+    cpu.a = aslValue(cpu, cpu.a);
     setZeroNeg(cpu, cpu.a);
     return 0;
   },
@@ -297,8 +343,7 @@ def(0x4a, {
   mode: implied,
   cycles: 2,
   exec: (cpu) => {
-    cpu.p = (cpu.a & 0x01) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
-    cpu.a = cpu.a >> 1;
+    cpu.a = lsrValue(cpu, cpu.a);
     setZeroNeg(cpu, cpu.a);
     return 0;
   },
@@ -308,10 +353,7 @@ def(0x2a, {
   mode: implied,
   cycles: 2,
   exec: (cpu) => {
-    // oldC を A 更新前に退避してから C を bit7 で更新する (順序を誤ると桁が壊れる)
-    const oldC = hasFlag(cpu.p, CpuFlags.C) ? 1 : 0;
-    cpu.p = (cpu.a & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
-    cpu.a = ((cpu.a << 1) | oldC) & 0xff;
+    cpu.a = rolValue(cpu, cpu.a);
     setZeroNeg(cpu, cpu.a);
     return 0;
   },
@@ -321,13 +363,18 @@ def(0x6a, {
   mode: implied,
   cycles: 2,
   exec: (cpu) => {
-    const oldC = hasFlag(cpu.p, CpuFlags.C) ? 1 : 0;
-    cpu.p = (cpu.a & 0x01) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
-    cpu.a = (cpu.a >> 1) | (oldC << 7);
+    cpu.a = rorValue(cpu, cpu.a);
     setZeroNeg(cpu, cpu.a);
     return 0;
   },
 });
+
+// ---- シフト / ローテート (zeroPage RMW、 cycle 5) ----
+// accumulator 版と同じ値演算を rmwZeroPage 経由で実効アドレスに適用する。
+def(0x06, { name: "ASL", mode: zeroPage, cycles: 5, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, aslValue) });
+def(0x46, { name: "LSR", mode: zeroPage, cycles: 5, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, lsrValue) });
+def(0x26, { name: "ROL", mode: zeroPage, cycles: 5, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, rolValue) });
+def(0x66, { name: "ROR", mode: zeroPage, cycles: 5, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, rorValue) });
 
 // ---- 分岐 (relative) ----
 def(0x10, { name: "BPL", mode: relative, cycles: 2, exec: (cpu, _b, op) => branch(cpu, op, !hasFlag(cpu.p, CpuFlags.N)) });
@@ -470,6 +517,21 @@ def(0xa0, {
     setZeroNeg(cpu, cpu.y);
     return 0;
   },
+});
+
+// ---- メモリ増減 (zeroPage RMW、 cycle 5) ----
+// (v±1)&0xFF を write back し Z/N を更新する。 C フラグは触らない (INX/DEX と同じ)。
+def(0xe6, {
+  name: "INC",
+  mode: zeroPage,
+  cycles: 5,
+  exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, (_cpu, v) => v + 1),
+});
+def(0xc6, {
+  name: "DEC",
+  mode: zeroPage,
+  cycles: 5,
+  exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, (_cpu, v) => v - 1),
 });
 
 // ---- レジスタ増減 (implied) ----
