@@ -267,6 +267,57 @@ def(0xd8, { name: "CLD", mode: implied, cycles: 2, exec: (cpu) => ((cpu.p = clea
 // ---- NOP ----
 def(0xea, { name: "NOP", mode: implied, cycles: 2, exec: () => 0 });
 
+// ---- シフト / ローテート (accumulator) ----
+// accumulator モードは addressing に無いため implied で cpu.a を直接操作する。
+// いずれも C フラグの in/out を扱い、 結果で Z/N を更新する。
+def(0x0a, {
+  name: "ASL",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.p = (cpu.a & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+    cpu.a = (cpu.a << 1) & 0xff;
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x4a, {
+  name: "LSR",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    cpu.p = (cpu.a & 0x01) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+    cpu.a = cpu.a >> 1;
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x2a, {
+  name: "ROL",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    // oldC を A 更新前に退避してから C を bit7 で更新する (順序を誤ると桁が壊れる)
+    const oldC = hasFlag(cpu.p, CpuFlags.C) ? 1 : 0;
+    cpu.p = (cpu.a & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+    cpu.a = ((cpu.a << 1) | oldC) & 0xff;
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x6a, {
+  name: "ROR",
+  mode: implied,
+  cycles: 2,
+  exec: (cpu) => {
+    const oldC = hasFlag(cpu.p, CpuFlags.C) ? 1 : 0;
+    cpu.p = (cpu.a & 0x01) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+    cpu.a = (cpu.a >> 1) | (oldC << 7);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+
 // ---- 分岐 (relative) ----
 def(0x10, { name: "BPL", mode: relative, cycles: 2, exec: (cpu, _b, op) => branch(cpu, op, !hasFlag(cpu.p, CpuFlags.N)) });
 def(0x30, { name: "BMI", mode: relative, cycles: 2, exec: (cpu, _b, op) => branch(cpu, op, hasFlag(cpu.p, CpuFlags.N)) });
