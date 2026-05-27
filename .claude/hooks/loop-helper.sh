@@ -16,19 +16,46 @@ PANE="${2:-}"
 
 log() { echo "[$(date +%T)] $*"; }
 
-# Busy when the pane shows a work-in-progress marker.
-is_busy() {
-  tmux capture-pane -t "$PANE" -p 2>/dev/null \
-    | grep -qiE 'esc to interrupt|Compacting|Summarizing|Cogitat'
+# Footer markers shown while Claude is actively working. The footer does not
+# scroll, so these are reliable. ASCII-safe; intentionally NOT matching loose
+# "tokens" text, which can appear on an idle footer and wedge detection (#1).
+BUSY_RE='esc to interrupt|ctrl\+o|Compacting|Summarizing'
+
+# Static when two captures across a short gap are identical AND non-empty. An
+# empty/failed capture (dead or wrong pane) must NOT count as "static idle",
+# otherwise we could /clear a pane that is gone or actually busy (#2).
+screen_static() {
+  local a b
+  a=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
+  [ -n "$a" ] || return 1
+  sleep 2
+  b=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
+  [ -n "$b" ] && [ "$a" = "$b" ]
 }
 
-# Wait until the pane is stably idle ($1 = max seconds); needs 3 consecutive idle reads.
+# Confirm idle when activity markers have been continuously absent AND either
+# the screen is static OR markers stayed absent for a sustained window (#4
+# fallback, so an idle screen with a ticking element can't wedge us forever).
+# An empty capture is treated as "cannot confirm" (resets the streak) so a dead
+# or wrong pane never triggers /clear (#2). Wall-clock deadline keeps the timeout
+# honest regardless of per-branch sleeps (#3). Biased toward false-busy (safe
+# wait) over false-idle (which would /clear mid-task). $1 = max seconds.
 wait_idle() {
-  local max="$1" w=0 s=0
-  sleep 4   # let the just-sent action spin up first
-  while [ "$w" -lt "$max" ]; do
-    if is_busy; then s=0; else s=$((s + 1)); [ "$s" -ge 3 ] && return 0; fi
-    sleep 3; w=$((w + 3))
+  local max="$1" snap
+  local deadline=$(( $(date +%s) + max ))
+  local quiet_since=0   # epoch markers first went absent this streak (0 = busy/unknown)
+  sleep 5   # let the just-sent action spin up first
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    snap=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
+    if [ -z "$snap" ] || printf '%s' "$snap" | grep -qiE "$BUSY_RE"; then
+      quiet_since=0   # busy, or capture failed -> cannot declare idle
+    else
+      [ "$quiet_since" -eq 0 ] && quiet_since=$(date +%s)
+      if screen_static || [ $(( $(date +%s) - quiet_since )) -ge 20 ]; then
+        return 0
+      fi
+    fi
+    sleep 3
   done
   return 1
 }
