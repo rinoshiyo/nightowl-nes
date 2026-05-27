@@ -32,10 +32,14 @@ ENV PATH="/home/node/.bun/bin:${PATH}"
 # claude-tmux を ct で呼べるように alias
 RUN echo "alias ct='claude-tmux'" >> /home/node/.bashrc
 
-# Claude Code CLI (devcontainer 内で claude 起動できるように)
-USER root
-RUN npm install -g @anthropic-ai/claude-code
-USER node
+# Claude Code CLI: 公式ネイティブインストーラで導入。
+# npm global は container 環境で auto-update が失敗する (npm のバージョン管理と競合 +
+# 権限) ため、公式推奨のネイティブインストーラに切替。~/.local/bin に node 権限で
+# 入る = root 切替不要。auto-update は有効のまま (実行時に最新へ、更新時は再ビルド)。
+RUN curl -fsSL https://claude.ai/install.sh | bash \
+  && echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/node/.bashrc \
+  && /home/node/.local/bin/claude --version
+ENV PATH="/home/node/.local/bin:${PATH}"
 
 # git の安全弁は ~/.gitconfig を compose.yaml で ro mount している前提。
 # push --force / main 直 push 等は .claude/hooks/pre-tool-use.sh で deny する
