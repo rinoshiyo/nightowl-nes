@@ -1,6 +1,6 @@
 {
   "name": "nightowl-nes",
-  "dockerComposeFile": ["../compose.yaml"],
+  "dockerComposeFile": ["../compose.yaml", "../compose.override.yaml"],
   "service": "dev",
   "workspaceFolder": "/workspace/nightowl-nes",
   "customizations": {

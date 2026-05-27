@@ -1,0 +1,19 @@
+# Template for the machine-local compose override (review-bot identity setup).
+#
+#   1. cp compose.override.yaml.example compose.override.yaml
+#   2. create a gitignored .env at the repo root with:
+#        GH_APP_CLIENT_ID=<your GitHub App client id>
+#        GH_APP_KEY=/home/node/.config/gh-app-keys/<your-app>.private-key.pem
+#        GH_APP_REPO=<owner>/<repo>
+#   3. put the App private key PEM under ~/.config/gh-app-keys on the host (XDG config)
+#
+# devcontainer.json lists compose.override.yaml, so it is applied on container
+# (re)build. Both this override and .env are gitignored because they reference
+# machine-local paths / config; only this .example is committed.
+services:
+  dev:
+    env_file:
+      - .env            # injects GH_APP_* into the container (see .env.example)
+    volumes:
+      # host ~/.config/gh-app-keys (holds the App private key) -> read-only in container
+      - ${HOME}/.config/gh-app-keys:/home/node/.config/gh-app-keys:ro
