@@ -10,8 +10,8 @@ REASON=$(echo "$input" | jq -r '.reason // "other"')
 [ "$REASON" = "resume" ] && exit 0
 [ -z "$CWD" ] && exit 0
 
-DATE=$(TZ=Asia/Tokyo date +%F)
-TIME=$(TZ=Asia/Tokyo date +%H%M)
+DATE=$(date +%F)
+TIME=$(date +%H%M)
 OUTPUT_DIR="$CWD/.claude/retrospective"
 mkdir -p "$OUTPUT_DIR"
 
