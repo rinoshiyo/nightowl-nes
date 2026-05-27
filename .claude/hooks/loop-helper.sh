@@ -8,8 +8,9 @@
 # Args: $1 = next goal string to inject  /  $2 = worker tmux pane id (e.g. "%5")
 set -uo pipefail
 
-NEXT="$1"
+NEXT="${1:-}"
 PANE="${2:-}"
+[ -z "$NEXT" ] && { echo "[$(date +%T)] no next goal given, abort"; exit 1; }
 [ -z "$PANE" ] && PANE=$(tmux list-panes -F '#{pane_id}' 2>/dev/null | head -1)
 [ -z "$PANE" ] && { echo "[$(date +%T)] no pane, abort"; exit 1; }
 
@@ -35,7 +36,9 @@ wait_idle() {
 # Send a message: type the body, pause, then Enter separately. The separate
 # Enter avoids the concatenation bug where two rapid send-keys merge into one line.
 send() {
-  tmux send-keys -t "$PANE" -l "$1"
+  # `--` terminates flag parsing so a goal starting with "-" is typed literally
+  # instead of being misread by tmux as an option.
+  tmux send-keys -t "$PANE" -l -- "$1"
   sleep 1
   tmux send-keys -t "$PANE" Enter
 }
@@ -49,9 +52,15 @@ wait_idle 600 || { log "timeout waiting for worker idle, abort"; exit 1; }
 #    Enabled only when LOOP_WAIT_MERGE=1 (off by default for prototype/tests).
 if [ "${LOOP_WAIT_MERGE:-0}" = "1" ]; then
   log "waiting for open PRs to merge..."
+  mw=0
   while :; do
     open=$(gh pr list -s open --json isDraft -q '[.[]|select(.isDraft|not)]|length' 2>/dev/null || echo 0)
     [ "${open:-0}" = "0" ] && break
+    mw=$((mw + 1))
+    if [ "$mw" -ge 60 ]; then   # 60 * 30s = 30 min cap; give up so the helper always exits
+      log "timeout waiting for PR merge (30m), abort"
+      exit 1
+    fi
     sleep 30
   done
   log "PRs merged"
