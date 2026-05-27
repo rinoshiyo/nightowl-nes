@@ -16,19 +16,41 @@ PANE="${2:-}"
 
 log() { echo "[$(date +%T)] $*"; }
 
-# Busy when the pane shows a work-in-progress marker.
+# Activity markers shown while Claude works. The spinner's gerund word is
+# unpredictable, so besides the interrupt/compaction hints we match the live
+# token meter "<n> tokens" (ASCII-safe). Marker matching is the fast path; the
+# real safety net is screen_static below.
+BUSY_RE='esc to interrupt|ctrl\+o|Compacting|Summarizing|[0-9]+ tokens'
 is_busy() {
-  tmux capture-pane -t "$PANE" -p 2>/dev/null \
-    | grep -qiE 'esc to interrupt|Compacting|Summarizing|Cogitat'
+  tmux capture-pane -t "$PANE" -p 2>/dev/null | grep -qiE "$BUSY_RE"
 }
 
-# Wait until the pane is stably idle ($1 = max seconds); needs 3 consecutive idle reads.
+# Capture the pane twice across a short gap; identical content => static screen.
+# This catches "busy" even when no known marker matches, because an active
+# spinner/stream keeps the screen changing (elapsed seconds tick every second).
+screen_static() {
+  local a b
+  a=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
+  sleep 2
+  b=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
+  [ "$a" = "$b" ]
+}
+
+# Idle is confirmed only when BOTH hold for 3 consecutive checks: no activity
+# marker AND the screen is static. Deliberately biased toward false-busy (wait
+# longer) over false-idle (which would /clear mid-task and destroy work).
+# $1 = max seconds to wait.
 wait_idle() {
-  local max="$1" w=0 s=0
-  sleep 4   # let the just-sent action spin up first
+  local max="$1" w=0 stable=0
+  sleep 5   # let the just-sent action spin up first
   while [ "$w" -lt "$max" ]; do
-    if is_busy; then s=0; else s=$((s + 1)); [ "$s" -ge 3 ] && return 0; fi
-    sleep 3; w=$((w + 3))
+    if ! is_busy && screen_static; then
+      stable=$((stable + 1))
+      [ "$stable" -ge 3 ] && return 0   # ~15s of confirmed idle
+    else
+      stable=0
+    fi
+    sleep 3; w=$((w + 5))   # ~5s/iter (screen_static sleeps 2 + this sleep 3)
   done
   return 1
 }
