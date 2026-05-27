@@ -96,8 +96,12 @@ if [ "${LOOP_WAIT_MERGE:-1}" = "1" ]; then
 fi
 
 # 3) Reset context. The SessionStart "clear" hook re-injects the handoff state.
+#    The /clear [name] arg labels the just-cleared conversation in the /resume
+#    picker. Use a timestamp so successive nights are distinguishable; a fixed
+#    label made every past night show up identically and useless to pick from.
+#    Relies on the container TZ being JST (set in compose.yaml) for a local time.
 log "sending /clear"
-send "/clear loop-night-done"
+send "/clear loop-clear-$(date +%Y%m%d-%H%M)"
 wait_idle 300 || { log "timeout waiting for idle after /clear, abort"; exit 1; }
 
 # 4) Feed the next goal -> hands the baton to the next task.
