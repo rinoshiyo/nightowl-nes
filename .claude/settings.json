@@ -39,12 +39,33 @@
         ]
       },
       {
+        "matcher": "clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/loop-session-restore.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "startup",
         "hooks": [
           {
             "type": "command",
             "command": "bash .claude/hooks/session-start.sh",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/stop-hook.sh",
+            "timeout": 15
           }
         ]
       }
