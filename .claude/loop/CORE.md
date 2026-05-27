@@ -10,6 +10,8 @@
 - **各夜は有限の /goal** (`or stop after N turns`、 N=50 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
 - 連鎖停止条件: pending 枯渇 / 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達
 - 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
+- **連鎖の起動**: `loop-start` skill (description マッチで起動。 slash コマンドではない) か、 最初の夜ゴールを手で投入する。 以降は各夜末のフラグ書込で /clear 連鎖が自走する
+- **アンチパターン**: 「pending 全消化を 1 つの /goal で」 は使わない (夜ごとに /clear リセットするため)。 旧「1 セッションで N 夜をターン上限まで /goal 連鎖」 は context 肥大化で廃止済み
 
 ## 連鎖継続条件
 
@@ -74,7 +76,7 @@
 1. `.claude/state/latest.md` が存在すれば Read (SessionStart hook が inject していなければ)
 2. `nights/pending/` の最若番号の md を Read
 3. 「## ゴール」セクションの /goal 条件を確認
-4. PR フローに沿って `night/NNN-<topic>` ブランチを切ってから実装着手
+4. `git checkout main && git pull` で main を最新化 → PR フローに沿って `night/NNN-<topic>` ブランチを切ってから実装着手
 5. ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
 6. /goal 評価のため pass / fail を必ず transcript に出力
 7. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
@@ -128,7 +130,7 @@
 
 ## コンテキスト管理
 
-- コマンドは `command > tmp/log.log 2>&1 && tail -20 tmp/log.log` 形式で実行 (生 stdout を直接コンテキストに流さない)
-- 大きなファイルは `grep -n "pattern" file | head -30` で参照、 Read 全体を避ける
+- コマンドは `command > tmp/log.log 2>&1 && tail -20 tmp/log.log` 形式で実行 — 生 stdout を直接コンテキストに流さない (200k 上限対策・evaluator API #62345 対策)
+- 大きなファイルは `grep -n "pattern" file | head -30` で参照、 Read 全体は禁止
 - 同じファイルを複数回 Read しない
 - ログファイルは `tmp/` 配下に出力 (.gitignore 済み)
