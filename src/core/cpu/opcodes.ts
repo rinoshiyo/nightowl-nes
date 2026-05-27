@@ -893,3 +893,55 @@ def(0x4d, {
     return 0;
   },
 });
+
+// ---- absolute 算術 (夜 12) ----
+// addToA を再利用 (SBC は ~M)。 全 cycle 4。
+def(0x6d, {
+  name: "ADC",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xed, {
+  name: "SBC",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    // SBC は ~M を足すと ADC と同じ回路になる (immediate 版と同じ)
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return 0;
+  },
+});
+
+// ---- absolute 比較 (夜 12) ----
+// compare ヘルパーで C/Z/N のみ更新 (register は変更しない)。 全 cycle 4。
+def(0xcd, {
+  name: "CMP",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.a, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xec, {
+  name: "CPX",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.x, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xcc, {
+  name: "CPY",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.y, bus.read(op.addr));
+    return 0;
+  },
+});
