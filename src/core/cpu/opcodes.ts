@@ -66,6 +66,17 @@ function compare(cpu: Cpu, register: number, value: number): void {
 }
 
 /**
+ * BIT 命令 (zeroPage / absolute) 共通処理。 A は変更せず、
+ * Z = (A & M) == 0、 V = M の bit6、 N = M の bit7 を更新する
+ * (V/N は A ではなく被テスト値 M のビットを直接反映する点に注意)。
+ */
+function bitTest(cpu: Cpu, m: number): void {
+  cpu.p = (cpu.a & m) === 0 ? setFlag(cpu.p, CpuFlags.Z) : clearFlag(cpu.p, CpuFlags.Z);
+  cpu.p = (m & 0x40) !== 0 ? setFlag(cpu.p, CpuFlags.V) : clearFlag(cpu.p, CpuFlags.V);
+  cpu.p = (m & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.N) : clearFlag(cpu.p, CpuFlags.N);
+}
+
+/**
  * A レジスタへの加算共通処理 (ADC / SBC で共用)。
  * `A = A + operand + C` を binary で計算し C/V/Z/N を更新する。
  * SBC は operand に `M ^ 0xFF` (~M) を渡すことで `A - M - (1-C)` と等価になる。
@@ -302,16 +313,23 @@ def(0xac, {
   },
 });
 
-// ---- BIT (zeroPage) ----
+// ---- BIT (zeroPage cycle 3 / absolute cycle 4) ----
+// フラグ演算は bitTest ヘルパーに集約し zp/abs で共用する。
 def(0x24, {
   name: "BIT",
   mode: zeroPage,
   cycles: 3,
   exec: (cpu, bus, op) => {
-    const m = bus.read(op.addr);
-    cpu.p = (cpu.a & m) === 0 ? setFlag(cpu.p, CpuFlags.Z) : clearFlag(cpu.p, CpuFlags.Z);
-    cpu.p = (m & 0x40) !== 0 ? setFlag(cpu.p, CpuFlags.V) : clearFlag(cpu.p, CpuFlags.V);
-    cpu.p = (m & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.N) : clearFlag(cpu.p, CpuFlags.N);
+    bitTest(cpu, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0x2c, {
+  name: "BIT",
+  mode: absolute,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    bitTest(cpu, bus.read(op.addr));
     return 0;
   },
 });
