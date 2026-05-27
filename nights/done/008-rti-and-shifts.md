@@ -100,8 +100,8 @@ nights/pending/008-rti-and-shifts.md の DoD 全項目達成
 - [ ] `night/008-rti-and-shifts` ブランチで作業
 - [ ] G1: RTI (0x40) 実装、 trace が 976 行手前まで伸びる
 - [ ] G2: accumulator ASL/LSR/ROL/ROR (0x0A/0x4A/0x2A/0x6A) 実装、 C/Z/N 正しく更新
-- [ ] G3: zeroPage ASL/LSR/ROL/ROR (0x06/0x46/0x26/0x66) 実装 (到達状況次第)
-- [ ] G4: `TRACE_LINES` を 933 → 実到達行 (976 行超) に更新
+- [~] G3: zeroPage シフトは nestest 1061 行目以降に出現するため**夜 9 へ繰り越し** (本夜の trace 範囲 1060 行では未到達。 1061 行目 LDA zeroPage $A5 が先に来る)
+- [x] G4: `TRACE_LINES` を 933 → 1060 に更新
 - [ ] `npx vitest run` exit 0
 - [ ] `npx tsc --noEmit` 警告ゼロ
 - [ ] `npx eslint 'src/**/*.ts' 'tests/**/*.ts'` 警告ゼロ
