@@ -662,3 +662,121 @@ def(0xe1, {
     return 0;
   },
 });
+
+// ---- zeroPage load / store (夜 10) ----
+// LDA/STA/STX zp は実装済み。 残る load/store として LDY/LDX/STY zp を追加する。
+// load は cycle 3 で Z/N 更新、 store は cycle 3 でフラグ非変化。
+def(0xa4, {
+  name: "LDY",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    cpu.y = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.y);
+    return 0;
+  },
+});
+def(0xa6, {
+  name: "LDX",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    cpu.x = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.x);
+    return 0;
+  },
+});
+def(0x84, {
+  name: "STY",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.y);
+    return 0;
+  },
+});
+
+// ---- zeroPage 論理 (夜 10) ----
+// immediate / (ind,X) 版と同じ演算を zeroPage 実効アドレス越しに行う。 全 cycle 3。
+def(0x05, {
+  name: "ORA",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a | bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x25, {
+  name: "AND",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x45, {
+  name: "EOR",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a ^ bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+
+// ---- zeroPage 算術 (夜 10) ----
+// addToA を再利用 (SBC は ~M)。 全 cycle 3。
+def(0x65, {
+  name: "ADC",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xe5, {
+  name: "SBC",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    // SBC は ~M を足すと ADC と同じ回路になる (immediate 版と同じ)
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return 0;
+  },
+});
+
+// ---- zeroPage 比較 (夜 10) ----
+// compare ヘルパーで C/Z/N のみ更新 (register は変更しない)。 全 cycle 3。
+def(0xc5, {
+  name: "CMP",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.a, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xe4, {
+  name: "CPX",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.x, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xc4, {
+  name: "CPY",
+  mode: zeroPage,
+  cycles: 3,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.y, bus.read(op.addr));
+    return 0;
+  },
+});
