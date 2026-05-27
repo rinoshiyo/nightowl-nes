@@ -11,10 +11,11 @@ import { cpuStep } from "../src/core/cpu/step.ts";
 const ROM_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.nes");
 const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 
-// 夜 9 で LDA zeroPage ($A5) と (indirect,X) アドレッシングモード
-// (LDA/STA/ORA/AND/EOR/ADC/CMP/SBC ($A1/$81/$01/$21/$41/$61/$C1/$E1)) を実装し 1500 行まで到達。
-// 1501 行目の LDY zeroPage ($A4) が次の未実装命令 (夜 10 の起点)。
-const TRACE_LINES = 1500;
+// 夜 10 で zeroPage の load/store/logic/arith/compare 本体ブロック
+// (LDY/LDX/STY/ORA/AND/EOR/ADC/SBC/CMP/CPX/CPY zp = $A4/$A6/$84/$05/$25/$45/$65/$E5/$C5/$E4/$C4)
+// を実装し 2070 行まで到達。 2071 行目の LSR zeroPage ($46) が次の未実装命令
+// (夜 11 = zeroPage read-modify-write の起点)。
+const TRACE_LINES = 2070;
 
 /**
  * nestest 実行用の最小 Bus。
