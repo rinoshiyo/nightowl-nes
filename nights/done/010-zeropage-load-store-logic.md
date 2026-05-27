@@ -95,19 +95,19 @@ nights/pending/010-zeropage-load-store-logic.md の DoD 全項目達成
 
 ## DoD (完了条件、 /goal 条件と同期)
 
-- [ ] `night/010-zeropage-load-store-logic` ブランチで作業
-- [ ] G1: LDY (0xA4) / LDX (0xA6) / STY (0x84) zeroPage 実装、 cycle 3
-- [ ] G2: ORA (0x05) / AND (0x25) / EOR (0x45) zeroPage 実装、 cycle 3
-- [ ] G3: ADC (0x65) / SBC (0xE5) zeroPage 実装、 cycle 3
-- [ ] G4: CMP (0xC5) / CPX (0xE4) / CPY (0xC4) zeroPage 実装、 cycle 3
-- [ ] `tests/cpu_zeropage_ops.test.ts` で load/store/logic/arith/compare のフラグとサイクルを単体検証
-- [ ] `tests/cpu_nestest_trace.test.ts` の `TRACE_LINES` を 2070 に拡張し pass
-- [ ] `npx vitest run` exit 0
-- [ ] `npx tsc --noEmit` 警告ゼロ
-- [ ] `npx eslint 'src/**/*.ts' 'tests/**/*.ts'` 警告ゼロ
-- [ ] git log に最低 5 コミット
-- [ ] `nights/pending/010-*.md` を `nights/done/` に `git mv`
-- [ ] PR が立っており auto-merge (merge commit) 設定済み
+- [x] `night/010-zeropage-load-store-logic` ブランチで作業
+- [x] G1: LDY (0xA4) / LDX (0xA6) / STY (0x84) zeroPage 実装、 cycle 3
+- [x] G2: ORA (0x05) / AND (0x25) / EOR (0x45) zeroPage 実装、 cycle 3
+- [x] G3: ADC (0x65) / SBC (0xE5) zeroPage 実装、 cycle 3
+- [x] G4: CMP (0xC5) / CPX (0xE4) / CPY (0xC4) zeroPage 実装、 cycle 3
+- [x] `tests/cpu_zeropage_ops.test.ts` で load/store/logic/arith/compare のフラグとサイクルを単体検証
+- [x] `tests/cpu_nestest_trace.test.ts` の `TRACE_LINES` を 2070 に拡張し pass
+- [x] `npx vitest run` exit 0 (28 tests pass)
+- [x] `npx tsc --noEmit` 警告ゼロ
+- [x] `npx eslint 'src/**/*.ts' 'tests/**/*.ts'` 警告ゼロ
+- [x] git log に最低 5 コミット
+- [x] `nights/pending/010-*.md` を `nights/done/` に `git mv`
+- [x] PR が立っており auto-merge (merge commit) 設定済み
 - [ ] nightly CI 緑後 main に merge 反映済み
 
 ## 詰みパターン参考
