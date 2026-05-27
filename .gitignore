@@ -40,6 +40,10 @@ reports/morning/*.html.bak
 credentials*
 secrets*
 
+# Compose 個人 override (machine-local の鍵マウント・env_file 注入。 .example のみ commit)
+compose.override.yaml
+compose.override.yml
+
 # IDE / OS
 .DS_Store
 # VSCode 設定は .devcontainer/devcontainer.json の customizations.vscode に集約 (.vscode/ は管理しない)
