@@ -17,7 +17,19 @@ CWD=$(echo "$input" | jq -r '.cwd // empty')
 
 [ "$SOURCE" = "clear" ] || exit 0
 [ -n "$CWD" ] || exit 0
-[ -f "$CWD/.claude/state/latest.md" ] || exit 0
+
+# No handoff to restore: warn instead of resuming with a blank context, so the
+# fresh session knows to reconstruct state from the PR / nights/pending/ rather
+# than silently starting over.
+if [ ! -f "$CWD/.claude/state/latest.md" ]; then
+  jq -n '{
+    hookSpecificOutput: {
+      hookEventName: "SessionStart",
+      additionalContext: "WARNING: resumed after /clear but .claude/state/latest.md is missing. The previous task may have failed to write its handoff. Reconstruct current state from the open PR (gh pr view --comments) and nights/pending/ before continuing."
+    }
+  }'
+  exit 0
+fi
 
 CONTENT=$(cat "$CWD/.claude/state/latest.md")
 jq -n --arg content "$CONTENT" '{
