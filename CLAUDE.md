@@ -20,11 +20,11 @@
 
 ## 自走モデル
 
-- /goal 主軸 (v2.1.139+)
-- 1 夜 = 1 つの夜 md = 1 本の PR (1 夜の所要時間目安: 1-1.5 時間、 DoD 8-12 項目)
-- **1 セッション = 1〜N 夜** (pending が尽きる or 石井 stop 指示 or ターン上限到達まで連鎖)
-- ターン上限は条件文に `or stop after N turns` で必ず明記 (multi-night は 100-300 turns 目安)
-- 達成 / ターン上限到達でセッション終了 → SessionEnd hook が retrospective 生成
+- **1 夜 = 1 つの夜 md = 1 本の PR = 1 つの /clear リセット境界** (所要目安 1-1.5 時間、 DoD 8-12 項目)
+- **各夜は有限の /goal** (`or stop after N turns`、 N=50 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (「/clear 自走ループ駆動」 参照)
+- 連鎖停止条件: pending 枯渇 / 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達
+- **旧「1 セッションで N 夜をターン上限まで /goal 連鎖」 は廃止** (context 肥大化のため)。 夜ごとに /clear で context をリセットして交代する
+- 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
 
 ## 自走連鎖プロトコル (重要)
 
@@ -70,12 +70,17 @@
 
 ### 各夜の終了処理
 
-夜 N の PR が main に merge 反映された後、 次の夜に進む前に以下を行う:
+夜 N の PR に auto-merge を arm し handoff を書いたら、 **その夜のセッションを終える前に**以下を行う (この後 Stop hook → helper が `/clear` して次の夜へ連鎖する。 「/clear 自走ループ駆動」 参照):
 
-1. `🎯 GOAL CONDITION MET: night N merged` を transcript に出力
-2. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を **該当夜の PR description かコメント**に書く。 `tmp/handoff/` のローカル md は gitignore で push されず人間も次セッションも見えない二重管理になるため使わない (context window 圧縮は PR を `gh pr view --comments` で読み直せば代替できる)
-3. `git checkout main && git pull` で次の夜のベースを最新化
-4. `nights/pending/` の最若番号を読み込み、 次の夜ブランチ `night/NNN-<topic>` を切って着手
+1. `🎯 GOAL CONDITION MET: night N merged` を transcript に出力 (auto-merge arm まで完了の意)
+2. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を **該当夜の PR description かコメント**に書く。 `tmp/handoff/` のローカル md は gitignore で push されず二重管理になるため使わない
+3. **`.claude/state/latest.md` を更新**: 次の夜番号+topic / nestest 到達行 / 進行中 PR / 連鎖プロトコル現在地。 `/clear` には PreCompact 相当の自動退避が無いので**手で書く** (SessionStart の clear matcher がこれを再注入する)
+4. **次フラグを書く** (pane スコープ):
+   - pending がまだ残る → 次ゴール文 (**単一行**) を `printf '...' > ".claude/state/loop-next.${TMUX_PANE#%}.txt"`
+   - もう無い / 詰み → `printf 'STOP' > ".claude/state/loop-next.${TMUX_PANE#%}.txt"`
+5. turn を終える → helper が idle を見て `/clear` → 次ゴール投入。 **fresh session 側**で `git checkout main && git pull` → `nights/pending/` 最若を読み next 夜ブランチ `night/NNN-<topic>` を切って着手 (「起動時の作法」 に従う)
+
+次ゴール文の例 (単一行 必須): `次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→sub-agentレビュー→triage→全PASSなら auto-merge arm、完了後 latest.md 更新と次フラグ書込まで行え、or stop after 50 turns`
 
 ### Claude が次の夜 md を起こす責務
 
@@ -95,18 +100,15 @@
   4. 該当夜の連鎖は中断し、 次の夜には進まずセッション終了
 - ターン消費目安: 「同一テスト failure / 同一エラーメッセージ」 が 5-7 ターン続いたら 30 分目安として隔離検討
 
-### /goal 文面例 (multi-night)
+### 夜ゴールの文面例 (1 夜 = 1 有限 /goal)
+
+各夜は単一行の有限 /goal で回す (フラグに書く次ゴールもこれと同形):
 
 ```
-/goal nights/pending を全消化、 各夜は night/NNN-* ブランチで PR auto-merge、
-or 石井 stop 指示、 or stop after 200 turns
+次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→sub-agentレビュー→triage→全PASSなら auto-merge arm、完了後 latest.md 更新と次フラグ書込まで行え、or stop after 50 turns
 ```
 
-または個別指定:
-
-```
-/goal 夜 2-5 を順次 merge (各夜 PR auto-merge)、 or stop after 150 turns
-```
+起動は `loop-start` skill (description マッチで起動。 slash コマンドではない) か、 上記を最初の夜として手で投入。 以降は各夜末のフラグ書込で /clear 連鎖が自走する。 **「pending 全消化を 1 つの /goal で」 は使わない** (夜ごとに /clear リセットするため)。
 
 ## ブランチ運用 + PR フロー (重要)
 
@@ -178,7 +180,7 @@ gh pr merge --auto --merge --delete-branch
 
 ## 起動時の作法
 
-0. **`gh pr list --state open --json number,title,isDraft` で未完了 PR を確認**。 open PR があれば **draft / 非 draft を問わず** その PR コメント (SSOT) を読み、 中断作業か判定する。 「レビュー未完」 or 「auto-merge 未設定で放置」 の PR は最優先で再開する (draft はレビュー隔離中、 非 draft の open はレビュー途中でセッションが切れた可能性)。 handoff は PR に集約しているため (後述)、 ここを飛ばすと中断が拾われない
+0. **`gh pr list --state open --json number,title,isDraft` で未完了 PR を確認**。 open PR があれば PR コメント (SSOT) を読み中断作業か判定する。 **判定基準**: draft = レビュー隔離中 (再開対象) / 非 draft の open は中身を見る — **auto-merge arm 済みで CI 実行中/緑なら「正常な in-flight」**。 /clear 連鎖では helper が前夜の merge を待ってから次セッションを起こすので fresh session 時点では通常もう merge 済みだが、 タイミング次第で arm 中 PR が見えても **「中断」 扱いして再開しないこと** / **auto-merge 未設定のまま放置**なら レビュー途中で切れた可能性で最優先再開。 handoff は PR に集約しているため、 ここを飛ばすと中断が拾われない
 1. `.claude/state/latest.md` が存在すれば Read (SessionStart hook が inject していなければ)
 2. `nights/pending/` の最若番号の md を Read
 3. 「## ゴール」セクションの /goal 条件を確認
@@ -219,12 +221,22 @@ auto-compact (~95% で不可避・無効化不可) や手動 `/compact` で会�
 
 compaction 後は SessionStart hook (matcher: compact) が `.claude/state/latest.md` も注入する。 本セクション (要約への保持指示) と hook (外部ファイルからの復元) の二層で state を保全し、 compaction を跨いでも自走が継続できるようにする。
 
-### tmux 注入による夜毎 compaction (運用メモ)
+### /clear 自走ループ駆動 (実装済み)
 
-外部シェルが tmux 経由で「1 夜完了 → `/compact` → 続行指示」 を送り込む無人運用を想定する場合:
-- `/compact` 単体では Claude は入力待ちで止まる。 **後続に「続けろ」 等の指示メッセージが必須** (Claude 自身は `/compact` を能動実行できないため、 tmux send-keys で外部から注入する)
-- 2 メッセージ (`/compact` → 続行指示) を連続投入すると message queue 経由で直列処理される見込み (※ compaction 後の圧縮済み context で後続が処理されるかは要実機検証)
-- 1 夜の引き継ぎは compaction の **前** に PR (description/コメント) へ書き出す (PR-as-SSOT)
+夜境界の context リセットは `/compact` ではなく **`/clear`** で行う。 handoff を PR + state ファイルに外出し済み (PR-as-SSOT) なので要約を残す意味がなく、 完全リセットの方が context 汚染ゼロ (Ralph の fresh-context 哲学に一致)。 公式ガイダンスも「新タスク=/clear / 同一会話継続=/compact」 で、 1 夜=新タスクに合致。
+
+駆動機構は `.claude/hooks/` に実装済み。 **外部シェル常駐は不要** — フック自身が自己連鎖する:
+
+- `stop-hook.sh` (Stop hook): worker が **pane スコープのフラグ** `.claude/state/loop-next.${TMUX_PANE#%}.txt` を書いたら、 進行役 `loop-helper.sh` を非同期 spawn して exit 0 (block しない)。 フラグ無しの発話終了は no-op
+- `loop-helper.sh` (外部プロセス・/clear で生き残る): worker の idle を待ち → **前夜 PR の merge 完了を待ち** (`LOOP_WAIT_MERGE` 既定 ON。 次夜が未 merge の古い main を引くレースを防ぐ。 30 分タイムアウトで安全停止。 テスト時のみ `=0`) → `/clear` → 次ゴールを send-keys
+- `loop-session-restore.sh` (SessionStart `clear` matcher): /clear 後に `.claude/state/latest.md` を再注入して状態復元
+- フラグ中身 = 次ゴール文 (単一行) なら次の夜へ連鎖 / `STOP` なら連鎖終了
+- 暴走ブレーキ: `NIGHTOWL_LOOP_MAX` (既定 20) 回で自動停止。 worker がフリーズしても helper の idle タイムアウト (600s) で安全停止 (無限課金しない)
+- カウンタが pane キーなのは `/clear` が session_id を変える (#20797) ため (session キーだと毎回リセットされ MAX が効かない)
+
+**worker (= この Claude) が各夜末に必ず守る作法** (怠ると連鎖が止まる) は「各夜の終了処理」 参照。 起動は `loop-start` skill (description マッチで起動。 slash コマンドではない) か、 最初の夜ゴールを手で投入。 以降は自己連鎖する。
+
+既知の限界 (将来 hardening): idle 検出は画面マーカーのヒューリスティックで、 worker が長時間ツール実行中に誤判定すると /clear が作業中に走るリスクがある (Stop hook が turn 終了=idle を保証するため実運用では低リスクだが要 hardening)。
 
 ## 重要ルール
 
