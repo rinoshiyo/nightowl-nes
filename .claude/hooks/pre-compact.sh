@@ -12,7 +12,7 @@ mkdir -p "$CWD/.claude/state"
 
 cat > "$CWD/.claude/state/latest.md" <<EOF
 # State Dump (PreCompact: $TRIGGER)
-Generated: $(TZ=Asia/Tokyo date '+%F %T %Z')
+Generated: $(date '+%F %T %Z')
 Session: $(echo "$input" | jq -r '.session_id // "unknown"')
 Transcript: $TRANSCRIPT
 
