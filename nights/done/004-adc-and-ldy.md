@@ -3,7 +3,7 @@
 ## ゴール (/goal)
 
 ```
-/goal night/004-adc-and-ldy ブランチで実装し、 nightly CI 緑、 PR が auto-merge 設定済みで main に squash merge 完了、 nights/pending/004-adc-and-ldy.md が nights/done/ に移動済み、 or stop after N turns
+/goal night/004-adc-and-ldy ブランチで実装し、 nightly CI 緑、 PR が auto-merge 設定済みで main に merge commit 完了、 nights/pending/004-adc-and-ldy.md が nights/done/ に移動済み、 or stop after N turns
 ```
 
 完了時 transcript 必須出力: `🎯 GOAL CONDITION MET: night 004 merged`
@@ -66,7 +66,7 @@
 - [ ] `npx tsc --noEmit` 警告ゼロ
 - [ ] `npx eslint` 警告ゼロ
 - [ ] `nights/pending/004-*.md` → `nights/done/` に git mv
-- [ ] PR auto-merge 設定済み + nightly CI 緑 → main squash merge
+- [ ] PR auto-merge 設定済み + nightly CI 緑 → main merge commit
 
 ## 詰みパターン参考
 

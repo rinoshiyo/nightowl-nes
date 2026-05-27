@@ -3,7 +3,7 @@
 ## ゴール (/goal)
 
 ```
-/goal night/001-cpu-skeleton ブランチで実装し、 nightly CI 緑、 PR が auto-merge 設定済みで main に squash merge 完了、 nights/pending/001-cpu-skeleton.md が nights/done/ に移動済み、 or stop after 25 turns
+/goal night/001-cpu-skeleton ブランチで実装し、 nightly CI 緑、 PR が auto-merge 設定済みで main に merge commit 完了、 nights/pending/001-cpu-skeleton.md が nights/done/ に移動済み、 or stop after 25 turns
 ```
 
 evaluator が「PR merge 状態」 を判定しやすいよう、 完了時には transcript に `🎯 GOAL CONDITION MET: night 001 merged` を必ず出力する。
@@ -33,7 +33,7 @@ evaluator が「PR merge 状態」 を判定しやすいよう、 完了時に�
 8. `git mv nights/pending/001-cpu-skeleton.md nights/done/001-cpu-skeleton.md` も同じブランチで commit
 9. `git push -u origin night/001-cpu-skeleton`
 10. `gh pr create --base main --title "夜 1: CPU スケルトン + nestest ハーネス" --body "<PR body テンプレ参照>"`
-11. `gh pr merge --auto --squash --delete-branch` で auto-merge 設定
+11. `gh pr merge --auto --merge --delete-branch` で auto-merge 設定
 12. CI 緑判定 → main 自動反映を待つ (`gh pr checks` / `gh pr view` で確認)
 
 ## 検証チャンネル (transcript 出力ルール)
@@ -102,8 +102,8 @@ nights/pending/001-cpu-skeleton.md の DoD 全項目達成
 - [ ] `bunx eslint src tests` 警告ゼロ
 - [ ] git log に最低 3 コミット
 - [ ] `nights/pending/001-cpu-skeleton.md` を `nights/done/001-cpu-skeleton.md` に `git mv`
-- [ ] PR が立っており、 `gh pr merge --auto --squash --delete-branch` で auto-merge 設定済み
-- [ ] nightly CI 緑判定後 main に squash merge 反映済み
+- [ ] PR が立っており、 `gh pr merge --auto --merge --delete-branch` で auto-merge 設定済み
+- [ ] nightly CI 緑判定後 main に merge commit 反映済み
 
 ## 詰みパターン参考
 

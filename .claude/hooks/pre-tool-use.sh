@@ -33,7 +33,7 @@ done
 if echo "$CMD" | grep -qE '^[[:space:]]*git[[:space:]]+push([[:space:]]+-[uU])?([[:space:]]+\S+)?[[:space:]]+(origin[[:space:]]+)?(HEAD:)?main\b' \
    && [ -z "${PUSH_MAIN_OK:-}" ] \
    && ! echo "$CMD" | grep -qE '\bPUSH_MAIN_OK=1\b'; then
-  jq -n '{decision:"deny", reason:"main 直 push は禁止 (PR フロー経由のこと: night/NNN-* ブランチ + gh pr create + gh pr merge --auto --squash)。 緊急時のみ PUSH_MAIN_OK=1 git push ... で bypass"}' >&2
+  jq -n '{decision:"deny", reason:"main 直 push は禁止 (PR フロー経由のこと: night/NNN-* ブランチ + gh pr create + gh pr merge --auto --merge)。 緊急時のみ PUSH_MAIN_OK=1 git push ... で bypass"}' >&2
   exit 2
 fi
 
