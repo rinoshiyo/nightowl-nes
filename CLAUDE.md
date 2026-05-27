@@ -45,6 +45,8 @@
 
 **重要 (レース回避)**: `gh pr merge --auto` は **レビュー完了 + STOP 判定ゼロを確認した後に初めて設定する** (STOP/FIX/PASS の三分類は後述)。 レビュー前に auto-merge を打つと、 CI の所要時間次第で CI 緑が sub-agent レビュー完了を追い抜き、 判定前に merge されうる。 auto-merge を打たなければ CI が緑でも勝手に merge されないので、 CI が速かろうが遅かろうがレビューが追い抜かれる事故が構造的に起きない。
 
+**レビューコメントは bot 名義で投稿する**: sub-agent の `code-review` 起動時とメインの triage コメント投稿時は `GH_TOKEN="$(scripts/gh-app-token.sh)"` を付ける (例: `GH_TOKEN="$(scripts/gh-app-token.sh)" gh pr comment <PR> --body ...`)。 これで投稿者が `rinoshiyo-bot-reviewer[bot]` になり石井本人のコメントと区別できる。 **付けるのはコメント投稿コマンドだけ** — `gh pr create` / `gh pr merge` / `gh pr ready --undo` 等の write 操作には付けない (bot は Contents read のみで失敗する)。 `.env` + 鍵マウント (compose override) 未設定のマシンではトークン発行が空になり gh が通常認証 (石井名義) に自動 fallback する。
+
 1. `gh pr create` で PR が立った直後、 `Agent` tool で `general-purpose` sub-agent を **`run_in_background: true`** で起動 (フォアグラウンド起動は hook で deny される)。 **この時点では auto-merge を設定しない**
 2. sub-agent への prompt に以下を渡す:
    - 対象 PR 番号 / ブランチ名 / `main...night/NNN-<topic>` の diff レンジ
