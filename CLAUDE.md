@@ -47,6 +47,8 @@
 
 **レビューコメントは bot 名義で投稿する**: sub-agent の `code-review` 起動時とメインの triage コメント投稿時は `GH_TOKEN="$(scripts/gh-app-token.sh)"` を付ける (例: `GH_TOKEN="$(scripts/gh-app-token.sh)" gh pr comment <PR> --body ...`)。 これで投稿者が `rinoshiyo-bot-reviewer[bot]` になり石井本人のコメントと区別できる。 **付けるのはコメント投稿コマンドだけ** — `gh pr create` / `gh pr merge` / `gh pr ready --undo` 等の write 操作には付けない (bot は Contents read のみで失敗する)。 `.env` + 鍵マウント (compose override) 未設定のマシンではトークン発行が空になり gh が通常認証 (石井名義) に自動 fallback する。
 
+**bot コメントの声 (フレンドリー・励まし)**: code-review の生出力 (淡々とした技術文体) をそのまま貼らず、 この声に言い換えてから投稿する — ① まず良い点・労いに一言触れる (例「✨ 実装おつかれさまです！」) ② 各指摘は断定でなく提案調 (「〜すると安心かも」「〜だと完璧かも」) ③ 絵文字を程よく (✨🙏💪🤔) ④ **致命度の情報は保ったまま角だけ取る** (STOP 級は柔らかくても「ここは直さないと merge できないかも」 と明確に伝える)。 例:「✨ 実装おつかれさまです！全体バッチリでした。1点だけ気になったところを🙏 〜が〜かもです。〜できると完璧かも💪」
+
 1. `gh pr create` で PR が立った直後、 `Agent` tool で `general-purpose` sub-agent を **`run_in_background: true`** で起動 (フォアグラウンド起動は hook で deny される)。 **この時点では auto-merge を設定しない**
 2. sub-agent への prompt に以下を渡す:
    - 対象 PR 番号 / ブランチ名 / `main...night/NNN-<topic>` の diff レンジ

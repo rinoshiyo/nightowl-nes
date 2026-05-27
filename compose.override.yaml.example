@@ -3,9 +3,9 @@
 #   1. cp compose.override.yaml.example compose.override.yaml
 #   2. create a gitignored .env at the repo root with:
 #        GH_APP_CLIENT_ID=<your GitHub App client id>
-#        GH_APP_KEY=/home/node/.local/keys/<your-app>.private-key.pem
+#        GH_APP_KEY=/home/node/.config/gh-app-keys/<your-app>.private-key.pem
 #        GH_APP_REPO=<owner>/<repo>
-#   3. put the App private key PEM under ~/.local/keys on the host
+#   3. put the App private key PEM under ~/.config/gh-app-keys on the host (XDG config)
 #
 # devcontainer.json lists compose.override.yaml, so it is applied on container
 # (re)build. Both this override and .env are gitignored because they reference
@@ -15,5 +15,5 @@ services:
     env_file:
       - .env            # injects GH_APP_* into the container (see .env.example)
     volumes:
-      # host ~/.local/keys (holds the App private key) -> read-only in container
-      - ${HOME}/.local/keys:/home/node/.local/keys:ro
+      # host ~/.config/gh-app-keys (holds the App private key) -> read-only in container
+      - ${HOME}/.config/gh-app-keys:/home/node/.config/gh-app-keys:ro
