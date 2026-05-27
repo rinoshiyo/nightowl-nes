@@ -11,10 +11,10 @@ import { cpuStep } from "../src/core/cpu/step.ts";
 const ROM_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.nes");
 const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 
-// 夜 11 で zeroPage read-modify-write ブロック
-// (ASL/LSR/ROL/ROR/INC/DEC zp = $06/$46/$26/$66/$E6/$C6) を実装し 2327 行まで到達。
-// 2328 行目の BIT absolute ($2C) が次の未実装命令 (夜 12 = absolute logic/RMW の起点)。
-const TRACE_LINES = 2327;
+// 夜 12 で absolute 論理/算術/比較 + BIT absolute
+// (BIT/ORA/AND/EOR/ADC/SBC/CMP/CPX/CPY abs = $2C/$0D/$2D/$4D/$6D/$ED/$CD/$EC/$CC) を実装し 2848 行まで到達。
+// 2849 行目の LSR absolute ($4E) が次の未実装命令 (夜 13 = absolute RMW の起点)。
+const TRACE_LINES = 2848;
 
 /**
  * nestest 実行用の最小 Bus。
