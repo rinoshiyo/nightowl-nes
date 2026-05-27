@@ -11,11 +11,10 @@ import { cpuStep } from "../src/core/cpu/step.ts";
 const ROM_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.nes");
 const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 
-// 夜 10 で zeroPage の load/store/logic/arith/compare 本体ブロック
-// (LDY/LDX/STY/ORA/AND/EOR/ADC/SBC/CMP/CPX/CPY zp = $A4/$A6/$84/$05/$25/$45/$65/$E5/$C5/$E4/$C4)
-// を実装し 2070 行まで到達。 2071 行目の LSR zeroPage ($46) が次の未実装命令
-// (夜 11 = zeroPage read-modify-write の起点)。
-const TRACE_LINES = 2070;
+// 夜 11 で zeroPage read-modify-write ブロック
+// (ASL/LSR/ROL/ROR/INC/DEC zp = $06/$46/$26/$66/$E6/$C6) を実装し 2327 行まで到達。
+// 2328 行目の BIT absolute ($2C) が次の未実装命令 (夜 12 = absolute logic/RMW の起点)。
+const TRACE_LINES = 2327;
 
 /**
  * nestest 実行用の最小 Bus。
