@@ -11,9 +11,9 @@ import { cpuStep } from "../src/core/cpu/step.ts";
 const ROM_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.nes");
 const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 
-// RTI (opcode 0x40) が nestest.log 934 行目で初出。 割り込み復帰は夜 8 以降のスコープ
-// なので、 夜 7 時点 (absolute load/store まで) で到達できる 933 行目までを検証対象とする。
-const TRACE_LINES = 933;
+// 夜 8 で RTI + accumulator シフト/ローテート (ASL/LSR/ROL/ROR A) を実装し 1060 行まで到達。
+// 1061 行目の LDA zeroPage ($A5) が次の未実装命令 (夜 9 の起点)。
+const TRACE_LINES = 1060;
 
 /**
  * nestest 実行用の最小 Bus。
