@@ -16,41 +16,46 @@ PANE="${2:-}"
 
 log() { echo "[$(date +%T)] $*"; }
 
-# Activity markers shown while Claude works. The spinner's gerund word is
-# unpredictable, so besides the interrupt/compaction hints we match the live
-# token meter "<n> tokens" (ASCII-safe). Marker matching is the fast path; the
-# real safety net is screen_static below.
-BUSY_RE='esc to interrupt|ctrl\+o|Compacting|Summarizing|[0-9]+ tokens'
-is_busy() {
-  tmux capture-pane -t "$PANE" -p 2>/dev/null | grep -qiE "$BUSY_RE"
-}
+# Footer markers shown while Claude is actively working. The footer does not
+# scroll, so these are reliable. ASCII-safe; intentionally NOT matching loose
+# "tokens" text, which can appear on an idle footer and wedge detection (#1).
+BUSY_RE='esc to interrupt|ctrl\+o|Compacting|Summarizing'
 
-# Capture the pane twice across a short gap; identical content => static screen.
-# This catches "busy" even when no known marker matches, because an active
-# spinner/stream keeps the screen changing (elapsed seconds tick every second).
+# Static when two captures across a short gap are identical AND non-empty. An
+# empty/failed capture (dead or wrong pane) must NOT count as "static idle",
+# otherwise we could /clear a pane that is gone or actually busy (#2).
 screen_static() {
   local a b
   a=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
+  [ -n "$a" ] || return 1
   sleep 2
   b=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
-  [ "$a" = "$b" ]
+  [ -n "$b" ] && [ "$a" = "$b" ]
 }
 
-# Idle is confirmed only when BOTH hold for 3 consecutive checks: no activity
-# marker AND the screen is static. Deliberately biased toward false-busy (wait
-# longer) over false-idle (which would /clear mid-task and destroy work).
-# $1 = max seconds to wait.
+# Confirm idle when activity markers have been continuously absent AND either
+# the screen is static OR markers stayed absent for a sustained window (#4
+# fallback, so an idle screen with a ticking element can't wedge us forever).
+# An empty capture is treated as "cannot confirm" (resets the streak) so a dead
+# or wrong pane never triggers /clear (#2). Wall-clock deadline keeps the timeout
+# honest regardless of per-branch sleeps (#3). Biased toward false-busy (safe
+# wait) over false-idle (which would /clear mid-task). $1 = max seconds.
 wait_idle() {
-  local max="$1" w=0 stable=0
+  local max="$1" snap
+  local deadline=$(( $(date +%s) + max ))
+  local quiet_since=0   # epoch markers first went absent this streak (0 = busy/unknown)
   sleep 5   # let the just-sent action spin up first
-  while [ "$w" -lt "$max" ]; do
-    if ! is_busy && screen_static; then
-      stable=$((stable + 1))
-      [ "$stable" -ge 3 ] && return 0   # ~15s of confirmed idle
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    snap=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
+    if [ -z "$snap" ] || printf '%s' "$snap" | grep -qiE "$BUSY_RE"; then
+      quiet_since=0   # busy, or capture failed -> cannot declare idle
     else
-      stable=0
+      [ "$quiet_since" -eq 0 ] && quiet_since=$(date +%s)
+      if screen_static || [ $(( $(date +%s) - quiet_since )) -ge 20 ]; then
+        return 0
+      fi
     fi
-    sleep 3; w=$((w + 5))   # ~5s/iter (screen_static sleeps 2 + this sleep 3)
+    sleep 3
   done
   return 1
 }
