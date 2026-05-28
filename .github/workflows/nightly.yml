@@ -41,6 +41,11 @@ jobs:
       - name: Lint
         run: bunx eslint "src/**/*.ts" "tests/**/*.ts" --max-warnings 0
 
+      # tests/loop_send.test.ts は実 tmux に対する E2E。runner には tmux が
+      # 未インストールなので明示的に入れる。無いと describe.skip で静かに素通りする。
+      - name: Install tmux (loop_send E2E に必要)
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
       - name: Test
         run: bun test
 
