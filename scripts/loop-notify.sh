@@ -11,14 +11,14 @@ set -uo pipefail
 REASON="" ERROR_MSG="" LOG_FILE="" BRANCH="" PR="" NIGHT_MD="" SESSION_ID="" CWD=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --reason)   REASON="$2";     shift 2 ;;
-    --error)    ERROR_MSG="$2";  shift 2 ;;
-    --log)      LOG_FILE="$2";   shift 2 ;;
-    --branch)   BRANCH="$2";    shift 2 ;;
-    --pr)       PR="$2";         shift 2 ;;
-    --night)    NIGHT_MD="$2";   shift 2 ;;
-    --session)  SESSION_ID="$2"; shift 2 ;;
-    --cwd)      CWD="$2";       shift 2 ;;
+    --reason)   REASON="${2:-}";     shift 2 ;;
+    --error)    ERROR_MSG="${2:-}";  shift 2 ;;
+    --log)      LOG_FILE="${2:-}";   shift 2 ;;
+    --branch)   BRANCH="${2:-}";    shift 2 ;;
+    --pr)       PR="${2:-}";         shift 2 ;;
+    --night)    NIGHT_MD="${2:-}";   shift 2 ;;
+    --session)  SESSION_ID="${2:-}"; shift 2 ;;
+    --cwd)      CWD="${2:-}";       shift 2 ;;
     *) shift ;;
   esac
 done
@@ -133,7 +133,7 @@ ${SITUATION}
 | 停止パス | \`${REASON}\` |"
 
 [ -n "$ERROR_MSG" ] && BODY="${BODY}
-| エラー | ${ERROR_MSG} |"
+| エラー | ${ERROR_MSG//|/\\|} |"
 [ -n "$SESSION_ID" ] && BODY="${BODY}
 | session_id | \`${SESSION_ID}\` |"
 [ -n "$BRANCH" ] && [ "$BRANCH" != "unknown" ] && BODY="${BODY}
