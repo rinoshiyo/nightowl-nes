@@ -49,6 +49,10 @@ cnt=$((cnt + 1))
 echo "$cnt" > "$COUNT"
 if [ "$MAX" -gt 0 ] && [ "$cnt" -gt "$MAX" ]; then
   rm -f "$COUNT"
+  NOTIFY="$CWD/scripts/loop-notify.sh"
+  if [ -x "$NOTIFY" ]; then
+    bash "$NOTIFY" --reason runaway-brake --cwd "$CWD" --log "$CWD/tmp/loop.log" 2>/dev/null &
+  fi
   exit 0
 fi
 

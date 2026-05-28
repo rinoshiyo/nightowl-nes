@@ -70,6 +70,17 @@
         ]
       }
     ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/auto-recover.sh",
+            "asyncRewake": true
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [
