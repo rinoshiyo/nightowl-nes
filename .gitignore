@@ -27,6 +27,7 @@ roms/games/
 .claude/cache/
 .claude/retrospective/
 .claude/*.lock
+.claude/settings.local.json
 
 # 個人用ローカル CLAUDE 指示 (共有しない作業方針メモ)
 CLAUDE.local.md

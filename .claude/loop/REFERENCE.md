@@ -9,7 +9,8 @@
   1. 該当 `nights/pending/NNN-*.md` を `nights/stuck/NNN-*-stuck.md` に rename
   2. stuck md 末尾に「詰み report」 (再現手順 / 試したこと / 仮説) を追記
   3. PR を draft に戻す (`gh pr ready --undo`)
-  4. 該当夜の連鎖は中断し、 次の夜には進まずセッション終了
+  4. 通知: `bash scripts/loop-notify.sh --reason stuck --night "nights/stuck/NNN-*-stuck.md"` で石井に issue 通知
+  5. 該当夜の連鎖は中断し、 次の夜には進まずセッション終了
 - ターン消費目安: 「同一テスト failure / 同一エラーメッセージ」 が 5-7 ターン続いたら 30 分目安として隔離検討
 
 ## Claude が次の夜 md を起こす責務

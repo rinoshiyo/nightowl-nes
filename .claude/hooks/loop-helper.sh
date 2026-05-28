@@ -65,10 +65,16 @@ wait_idle() {
 # point is `loop_send <pane> <body>`.
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/loop-send.sh"
 
+NOTIFY="$(dirname "${BASH_SOURCE[0]}")/../../scripts/loop-notify.sh"
+notify() {
+  [ -x "$NOTIFY" ] && bash "$NOTIFY" --cwd "$CWD" --log "$CWD/tmp/loop.log" "$@" 2>/dev/null &
+}
+CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 log "chain start pane=$PANE next='${NEXT:0:50}'"
 
 # 1) Wait for the worker to finish the current task and go idle.
-wait_idle 600 || { log "timeout waiting for worker idle, abort"; exit 1; }
+wait_idle 600 || { log "timeout waiting for worker idle, abort"; notify --reason idle-timeout; exit 1; }
 
 # 2) Wait for the armed auto-merge to land on green CI BEFORE resetting, so the
 #    next task builds on a main that already includes this task (otherwise the
@@ -83,6 +89,7 @@ if [ "${LOOP_WAIT_MERGE:-1}" = "1" ]; then
     mw=$((mw + 1))
     if [ "$mw" -ge 60 ]; then   # 60 * 30s = 30 min cap; give up so the helper always exits
       log "timeout waiting for PR merge (30m), abort"
+      notify --reason merge-timeout
       exit 1
     fi
     sleep 30
@@ -96,11 +103,11 @@ fi
 #    label made every past night show up identically and useless to pick from.
 #    Relies on the container TZ being JST (set in compose.yaml) for a local time.
 log "sending /clear"
-loop_send "$PANE" "/clear loop-clear-$(date +%Y%m%d-%H%M)" || { log "send /clear failed, abort"; exit 1; }
-wait_idle 300 || { log "timeout waiting for idle after /clear, abort"; exit 1; }
+loop_send "$PANE" "/clear loop-clear-$(date +%Y%m%d-%H%M)" || { log "send /clear failed, abort"; notify --reason send-failed --error "/clear send failed"; exit 1; }
+wait_idle 300 || { log "timeout waiting for idle after /clear, abort"; notify --reason idle-timeout --error "idle timeout after /clear"; exit 1; }
 
 # 4) Feed the next goal -> hands the baton to the next task.
 log "sending next goal"
-loop_send "$PANE" "$NEXT" || { log "send next goal failed, abort"; exit 1; }
+loop_send "$PANE" "$NEXT" || { log "send next goal failed, abort"; notify --reason send-failed --error "next goal send failed"; exit 1; }
 log "chain done"
 exit 0
