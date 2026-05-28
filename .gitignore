@@ -28,6 +28,9 @@ roms/games/
 .claude/retrospective/
 .claude/*.lock
 
+# 個人用ローカル CLAUDE 指示 (共有しない作業方針メモ)
+CLAUDE.local.md
+
 # 朝レポートの bak・一時ファイル
 reports/morning/*.html.bak
 
