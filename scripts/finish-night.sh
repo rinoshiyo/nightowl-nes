@@ -21,9 +21,9 @@ shift
 PR_NUM="" NIGHT="" NESTEST=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --pr)      PR_NUM="${2:-}";  shift 2 ;;
-    --night)   NIGHT="${2:-}";   shift 2 ;;
-    --nestest) NESTEST="${2:-}"; shift 2 ;;
+    --pr)      PR_NUM="${2:-}";  shift; [ $# -gt 0 ] && shift ;;
+    --night)   NIGHT="${2:-}";   shift; [ $# -gt 0 ] && shift ;;
+    --nestest) NESTEST="${2:-}"; shift; [ $# -gt 0 ] && shift ;;
     *) shift ;;
   esac
 done
@@ -38,7 +38,7 @@ fi
 
 # --- 夜番号の自動推測 ---
 if [ -z "$NIGHT" ] && [ -n "$PR_NUM" ]; then
-  NIGHT="$(gh pr view "$PR_NUM" --json title -q .title 2>/dev/null | grep -oP '(?<=night )\d+' || echo "")"
+  NIGHT="$(gh pr view "$PR_NUM" --json title -q .title 2>/dev/null | sed -n 's/.*night \([0-9]\{1,\}\).*/\1/p' || echo "")"
 fi
 
 # --- TMUX_PANE チェック ---
@@ -49,7 +49,9 @@ fi
 
 # --- 1. auto-merge arm ---
 if [ -n "$PR_NUM" ]; then
-  gh pr merge "$PR_NUM" --auto --merge --delete-branch 2>/dev/null || true
+  if ! gh pr merge "$PR_NUM" --auto --merge --delete-branch 2>/dev/null; then
+    echo "[finish-night] ⚠ auto-merge arm 失敗 (PR #$PR_NUM)。手動確認が必要" >&2
+  fi
 fi
 
 # --- 2. latest.md 更新 ---
