@@ -60,15 +60,10 @@ wait_idle() {
   return 1
 }
 
-# Send a message: type the body, pause, then Enter separately. The separate
-# Enter avoids the concatenation bug where two rapid send-keys merge into one line.
-send() {
-  # `--` terminates flag parsing so a goal starting with "-" is typed literally
-  # instead of being misread by tmux as an option.
-  tmux send-keys -t "$PANE" -l -- "$1"
-  sleep 1
-  tmux send-keys -t "$PANE" Enter
-}
+# Robust tmux text injection is factored into scripts/loop-send.sh so tests can
+# exercise it directly (sourcing this whole driver would run the loop). The entry
+# point is `loop_send <pane> <body>`.
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/loop-send.sh"
 
 log "chain start pane=$PANE next='${NEXT:0:50}'"
 
@@ -101,11 +96,11 @@ fi
 #    label made every past night show up identically and useless to pick from.
 #    Relies on the container TZ being JST (set in compose.yaml) for a local time.
 log "sending /clear"
-send "/clear loop-clear-$(date +%Y%m%d-%H%M)"
+loop_send "$PANE" "/clear loop-clear-$(date +%Y%m%d-%H%M)" || { log "send /clear failed, abort"; exit 1; }
 wait_idle 300 || { log "timeout waiting for idle after /clear, abort"; exit 1; }
 
 # 4) Feed the next goal -> hands the baton to the next task.
 log "sending next goal"
-send "$NEXT"
+loop_send "$PANE" "$NEXT" || { log "send next goal failed, abort"; exit 1; }
 log "chain done"
 exit 0
