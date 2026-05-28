@@ -4,7 +4,7 @@
 # 呼び出し元: auto-recover.sh / loop-helper.sh / stop-hook.sh / stuck 隔離手順
 #
 # Usage: loop-notify.sh --reason <REASON> [--error <MSG>] [--log <FILE>] [--branch <BRANCH>] [--pr <NUM>] [--night <MD>] [--session <ID>] [--cwd <DIR>]
-#   REASON: auto-recover-max | idle-timeout | merge-timeout | send-failed | runaway-brake | stuck
+#   REASON: auto-recover-max | clear-signal-timeout | merge-timeout | send-failed | runaway-brake | stuck
 set -uo pipefail
 
 # --- 引数パース ---
@@ -54,7 +54,7 @@ case "$REASON" in
 5. 復旧完了後、この issue をクローズ
 RECOVERY_EOF
     ) ;;
-  idle-timeout)
+  clear-signal-timeout)
     TITLE="🚨 自走停止: /clear 完了シグナル待ちタイムアウト (5分)"
     SITUATION="loop-helper が /clear 後の完了シグナル (SessionStart clear hook が置く名札ファイル loop-cleared.<pane>.txt) を 5 分待っても受け取れず abort した。clear hook が発火しなかった (pane 不明・hook 仕様変更等) 可能性。"
     RECOVERY=$(cat <<'RECOVERY_EOF'

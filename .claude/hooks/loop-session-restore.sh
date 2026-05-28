@@ -23,8 +23,8 @@ CWD=$(echo "$input" | jq -r '.cwd // empty')
 # versions). Pane-scoped to avoid colliding with another session sharing this
 # repo; the driver removes any stale signal before sending /clear and waits for
 # this fresh one. If the pane is unknown (hook ran outside tmux) we cannot
-# pane-scope the file, so we skip it and the driver falls back to its
-# screen-based wait -- a safe degradation rather than a wrong-pane signal.
+# pane-scope the file, so we skip it; the driver then receives no signal and
+# fail-stops on timeout rather than acting on a wrong-pane signal.
 PANE="${TMUX_PANE:-}"
 if [ -n "$PANE" ]; then
   mkdir -p "$CWD/.claude/state"

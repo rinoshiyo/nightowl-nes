@@ -14,8 +14,9 @@
 # so this function only ever observes the fresh signal from that reset.
 #
 # Returns 0 when the signal appears within <max_seconds>, 1 on timeout. On
-# timeout the caller is expected to fall back to its screen-based idle wait, so
-# a missing signal degrades safely rather than wedging the chain.
+# timeout the caller is expected to fail-stop and notify rather than guess at
+# idle: sending the next goal mid-reset would corrupt the loop chain. There is
+# deliberately no screen-scraping fallback (it broke on TUI footer changes).
 
 wait_cleared() {
   local sig="$1" max="$2"

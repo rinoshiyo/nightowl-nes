@@ -78,7 +78,7 @@ log "sending /clear"
 loop_send "$PANE" "/clear loop-clear-$(date +%Y%m%d-%H%M)" || { log "send /clear failed, abort"; notify --reason send-failed --error "/clear send failed"; exit 1; }
 if ! wait_cleared "$CLEARED_SIG" 300; then
   log "no clear signal in 300s, abort"
-  notify --reason idle-timeout --error "no /clear signal from SessionStart clear hook (hook misfired or ran without a pane?)"
+  notify --reason clear-signal-timeout --error "no /clear signal from SessionStart clear hook (hook misfired or ran without a pane?)"
   exit 1
 fi
 log "clear signal received"
