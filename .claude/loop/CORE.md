@@ -82,13 +82,13 @@
 
 夜 N の PR に auto-merge を arm し handoff を書いたら、 セッションを終える前に以下を行う (この後 Stop hook → helper が `/clear` して次の夜へ連鎖):
 
-1. `🎯 GOAL CONDITION MET: night N merged` を transcript に出力 (auto-merge arm まで完了の意)
-2. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を該当夜の PR description かコメントに書く。 `tmp/handoff/` のローカル md は gitignore で push されず二重管理になるため使わない
-3. **`.claude/state/latest.md` を更新**: 次の夜番号+topic / nestest 到達行 / 進行中 PR / 連鎖プロトコル現在地。 `/clear` には自動退避が無いので手で書く (SessionStart の clear matcher が再注入)
-4. **次フラグを書く** (pane スコープ):
-   - pending がまだ残る → 次ゴール文 (**単一行**) を `printf '...' > ".claude/state/loop-next.${TMUX_PANE#%}.txt"`
-   - もう無い / 詰み → `printf 'STOP' > ".claude/state/loop-next.${TMUX_PANE#%}.txt"`
-5. turn を終える → helper が idle を見て `/clear` → 次ゴール投入
+1. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を該当夜の PR description かコメントに書く。 `tmp/handoff/` のローカル md は gitignore で push されず二重管理になるため使わない
+2. **`scripts/finish-night.sh` を呼ぶ** (残りの機械的手順を atomic に実行):
+   ```bash
+   bash scripts/finish-night.sh "<次ゴール文 or STOP>" [--night NNN] [--nestest LINE]
+   ```
+   スクリプトが以下を一括実行: auto-merge arm / `.claude/state/latest.md` 更新 / 次フラグ書込 (pane スコープ) / `🎯 GOAL CONDITION MET` 出力
+3. turn を終える → helper が idle を見て `/clear` → 次ゴール投入
 
 次ゴール文の例 (単一行 必須): `次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→sub-agentレビュー→triage→全PASSなら auto-merge arm、完了後 latest.md 更新と次フラグ書込まで行え、or stop after 50 turns`
 
