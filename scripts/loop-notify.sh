@@ -55,13 +55,13 @@ case "$REASON" in
 RECOVERY_EOF
     ) ;;
   idle-timeout)
-    TITLE="🚨 自走停止: idle 待ちタイムアウト (10分)"
-    SITUATION="loop-helper が worker の idle 待ちで 10 分超過して abort した。worker が応答を終えていないか、idle 判定 (BUSY_RE) が画面に引っかかっている可能性。"
+    TITLE="🚨 自走停止: /clear 完了シグナル待ちタイムアウト (5分)"
+    SITUATION="loop-helper が /clear 後の完了シグナル (SessionStart clear hook が置く名札ファイル loop-cleared.<pane>.txt) を 5 分待っても受け取れず abort した。clear hook が発火しなかった (pane 不明・hook 仕様変更等) 可能性。"
     RECOVERY=$(cat <<'RECOVERY_EOF'
 1. `tmux attach` で worker pane の画面を確認
-2. worker がまだ動いている場合は完了を待ち、手動で次フラグを書く: `printf '<next-goal>' > .claude/state/loop-next.${TMUX_PANE#%}.txt`
+2. worker が既に /clear 済みで idle なら、手動で次フラグを書く: `printf '<next-goal>' > .claude/state/loop-next.${TMUX_PANE#%}.txt`
 3. worker が固まっている場合は `/clear` して夜 md を再投入
-4. idle 判定が壊れている疑いがある場合は `BUSY_RE` のパターンを確認（`.claude/hooks/loop-helper.sh` L22）
+4. シグナルが届かない疑いがある場合は SessionStart clear hook (`.claude/hooks/loop-session-restore.sh`) が `.claude/state/loop-cleared.<pane>.txt` を置けているか、settings.json の clear matcher 配線を確認
 5. 復旧完了後、この issue をクローズ
 RECOVERY_EOF
     ) ;;

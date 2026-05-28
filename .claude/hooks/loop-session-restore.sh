@@ -18,6 +18,19 @@ CWD=$(echo "$input" | jq -r '.cwd // empty')
 [ "$SOURCE" = "clear" ] || exit 0
 [ -n "$CWD" ] || exit 0
 
+# Signal "/clear completed" to the loop driver so it can detect idle without
+# scraping the worker's TUI footer (which Claude Code may reword between
+# versions). Pane-scoped to avoid colliding with another session sharing this
+# repo; the driver removes any stale signal before sending /clear and waits for
+# this fresh one. If the pane is unknown (hook ran outside tmux) we cannot
+# pane-scope the file, so we skip it and the driver falls back to its
+# screen-based wait -- a safe degradation rather than a wrong-pane signal.
+PANE="${TMUX_PANE:-}"
+if [ -n "$PANE" ]; then
+  mkdir -p "$CWD/.claude/state"
+  : > "$CWD/.claude/state/loop-cleared.${PANE#%}.txt"
+fi
+
 # No handoff to restore: warn instead of resuming with a blank context, so the
 # fresh session knows to reconstruct state from the PR / nights/pending/ rather
 # than silently starting over.

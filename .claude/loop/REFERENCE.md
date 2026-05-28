@@ -29,14 +29,14 @@
 駆動機構は `.claude/hooks/` に実装済み。 **外部シェル常駐は不要** — フック自身が自己連鎖する:
 
 - `stop-hook.sh` (Stop hook): worker が **pane スコープのフラグ** `.claude/state/loop-next.${TMUX_PANE#%}.txt` を書いたら進行役 `loop-helper.sh` を非同期 spawn して exit 0 (block しない)。 フラグ無しの発話終了は no-op
-- `loop-helper.sh` (外部プロセス・/clear で生き残る): worker の idle を待ち → **前夜 PR の merge 完了を待ち** (`LOOP_WAIT_MERGE` 既定 ON。 30 分タイムアウトで安全停止。 テスト時のみ `=0`) → `/clear` (resume ラベルは `loop-clear-$(date +%Y%m%d-%H%M)` で夜ごと一意) → 次ゴールを send-keys
-- `loop-session-restore.sh` (SessionStart `clear` matcher): /clear 後に `.claude/state/latest.md` を再注入して状態復元
+- `loop-helper.sh` (外部プロセス・/clear で生き残る): **前夜 PR の merge 完了を待ち** (`LOOP_WAIT_MERGE` 既定 ON。 30 分タイムアウトで安全停止。 テスト時のみ `=0`) → `/clear` (resume ラベルは `loop-clear-$(date +%Y%m%d-%H%M)` で夜ごと一意) → **/clear 完了シグナルを待ち** → 次ゴールを send-keys。 spawn 前に Stop hook が turn 終了 (=idle) を保証するため /clear 前の明示的な idle 待ちは不要
+- `loop-session-restore.sh` (SessionStart `clear` matcher): /clear 後に `.claude/state/latest.md` を再注入して状態復元 + **pane スコープの完了シグナル `.claude/state/loop-cleared.${TMUX_PANE#%}.txt` を置いて** helper に /clear 完了を知らせる (画面 scrape 非依存の idle 検出)
 - フラグ中身 = 次ゴール文 (単一行) なら次の夜へ連鎖 / `STOP` なら連鎖終了
-- 暴走ブレーキ: `NIGHTOWL_LOOP_MAX` (既定 20) 回で自動停止。 worker フリーズ時も helper の idle タイムアウト (600s) で安全停止 (無限課金しない)
+- 暴走ブレーキ: `NIGHTOWL_LOOP_MAX` (既定 20) 回で自動停止。 clear hook が発火せず完了シグナルが来ない場合も helper のシグナル待ちタイムアウト (300s) で安全停止 + bot 名義 gh issue 通知 (無限課金しない)
 - カウンタが pane キーなのは `/clear` が session_id を変える (#20797) ため (session キーだと毎回リセットされ MAX が効かない)
-- **helper はワンショット**: 1 連鎖 (idle 待ち→merge 待ち→/clear→次ゴール) を回して exit する常駐でない。 次の /clear は worker の Stop hook (turn 完了) が再トリガーする。 worker が turn 途中で死ぬ (例: API Error) と Stop hook が鳴らず連鎖は静かに止まる (無限 /clear ループは構造的に起きない)
+- **helper はワンショット**: 1 連鎖 (merge 待ち→/clear→完了シグナル待ち→次ゴール) を回して exit する常駐でない。 次の /clear は worker の Stop hook (turn 完了) が再トリガーする。 worker が turn 途中で死ぬ (例: API Error) と Stop hook が鳴らず連鎖は静かに止まる (無限 /clear ループは構造的に起きない)
 
-既知の限界 (将来 hardening): idle 検出は画面マーカーのヒューリスティックで、 worker が長時間ツール実行中に誤判定すると /clear が作業中に走るリスクがある (Stop hook が turn 終了=idle を保証するため実運用では低リスクだが要 hardening)。
+idle 検出は **シグナル駆動** (clear hook が置く名札ファイルの出現を待つ)。 旧実装の画面マーカー scrape (`BUSY_RE` 等) は Claude Code の TUI フッター文言変更で壊れる脆さがあったため撤去済み。 シグナルが来なければ fail-stop + 通知し、 /clear 処理中に次ゴールを送る事故を構造的に避ける。
 
 ## PR description のテンプレ
 
