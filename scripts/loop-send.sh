@@ -23,14 +23,23 @@ loop_send() {
   # a submit. printf (not echo) so nothing is appended and "-" bodies stay literal.
   printf '%s' "$body" > "$tmpf"
   local buf="loop-send-${pane_key}"
-  tmux load-buffer -b "$buf" "$tmpf"
+  if ! tmux load-buffer -b "$buf" "$tmpf"; then
+    rm -f "$tmpf"
+    return 1
+  fi
   rm -f "$tmpf"
   # Cancel copy-mode first, or paste-buffer misbehaves on a scrolled-back pane.
   # Both commands error when the pane is not in a mode; that is expected -> ignore.
   tmux copy-mode -t "$pane" -q 2>/dev/null || true
   tmux send-keys -t "$pane" -X cancel 2>/dev/null || true
   # Paste, then delete the buffer (-d) so it cannot be re-pasted or accumulate.
-  tmux paste-buffer -t "$pane" -b "$buf" -d
+  # On failure (dead/wrong pane) do NOT send Enter: swallowing it and returning 0
+  # would let the loop driver treat a lost goal as success. Drop the orphan buffer
+  # and report failure so the caller can abort.
+  if ! tmux paste-buffer -t "$pane" -b "$buf" -d; then
+    tmux delete-buffer -b "$buf" 2>/dev/null || true
+    return 1
+  fi
   # Guard the paste/Enter timing race. itodenwa ships this sleep despite a stale
   # unit test claiming it is unneeded; the shipping code proved the race real.
   sleep 0.2

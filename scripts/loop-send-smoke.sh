@@ -25,7 +25,9 @@ command -v tmux >/dev/null 2>&1 || { echo "tmux が無い。先に入れてく�
 TARGET_PANE=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --pane) TARGET_PANE="${2:-}"; shift 2 ;;
+    --pane)
+      [ $# -ge 2 ] || { echo "--pane には pane id が必要 (例: --pane '%5')"; exit 1; }
+      TARGET_PANE="$2"; shift 2 ;;
     -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
     *) echo "unknown arg: $1"; exit 1 ;;
   esac
@@ -43,6 +45,12 @@ run_builtin() {
   tmux new-session -d -s "$sess" -x 200 -y 40 "bash '$recv'"
   sleep 0.4
   pane="$(tmux list-panes -t "$sess" -F '#{pane_id}' | head -1)"
+  if [ -z "$pane" ]; then
+    echo "  ビューア pane の生成に失敗、このサンプルを skip"
+    tmux kill-session -t "$sess" 2>/dev/null
+    rm -f "$out" "$recv"
+    return 1
+  fi
 
   echo "================ $label ================"
   printf 'send (%%q): %q\n' "$body"
