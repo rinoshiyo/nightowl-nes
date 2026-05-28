@@ -22,7 +22,7 @@ cf="$cdir/${key}.count"
 
 # 連続失敗カウント。最後の失敗から 10 分超ならリセット(連続でない = 正常進行が挟まった)。
 now=$(date +%s)
-last=$(stat -c %Y "$cf" 2>/dev/null || echo 0)
+last=$(date -r "$cf" +%s 2>/dev/null || echo 0)
 n=$(cat "$cf" 2>/dev/null || echo 0)
 [ $((now - last)) -gt 600 ] && n=0
 n=$((n + 1))

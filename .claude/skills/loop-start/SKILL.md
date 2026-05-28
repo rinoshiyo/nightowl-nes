@@ -24,9 +24,7 @@ description: nightowl-nes の /clear 自走ループを開始する。pending �
 3. PR 作成 → sub-agent レビュー → triage (STOP/FIX/PASS) → 全 PASS なら auto-merge arm
 4. **各夜の終了処理** (CLAUDE.md 参照) を必ず実行:
    - handoff を PR に書く
-   - `.claude/state/latest.md` を更新
-   - 次フラグを書く: `printf '<次ゴール文・単一行>' > ".claude/state/loop-next.${TMUX_PANE#%}.txt"`
-     (pending が尽きた / 詰みなら `printf 'STOP' > ...`)
+   - `bash scripts/finish-night.sh "<次ゴール文 or STOP>"` を呼ぶ（auto-merge arm / latest.md / フラグ書込 / GOAL 出力を一括実行）
 5. turn を終える → Stop hook が helper を spawn → `/clear` → latest.md 再注入 → 次ゴール投入 → 次の夜へ
 
 暴走ブレーキは `NIGHTOWL_LOOP_MAX` (既定 20)。低くしたい場合は worker 起動時に環境変数で設定。
