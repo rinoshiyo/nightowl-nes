@@ -106,6 +106,20 @@ export function absoluteIndirect(cpu: Cpu, bus: Bus): Operand {
 }
 
 /**
+ * absoluteX: absolute の実効アドレスに X を加算する。
+ * page cross 判定: base と base+X が別ページならば pageCrossed=true。
+ */
+export function absoluteX(cpu: Cpu, bus: Bus): Operand {
+  const lo = bus.read(cpu.pc);
+  const hi = bus.read((cpu.pc + 1) & 0xffff);
+  cpu.pc = (cpu.pc + 2) & 0xffff;
+  const base = (lo | (hi << 8)) & 0xffff;
+  const addr = (base + cpu.x) & 0xffff;
+  const pageCrossed = (base & 0xff00) !== (addr & 0xff00);
+  return { addr, pageCrossed };
+}
+
+/**
  * absoluteY: absolute の実効アドレスに Y を加算する。
  * page cross 判定: base と base+Y が別ページならば pageCrossed=true。
  */

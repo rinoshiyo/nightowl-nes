@@ -17,8 +17,9 @@ const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 // 夜 14: (indirect),Y (LDA/ORA/AND/EOR/ADC/CMP/SBC/STA) を実装し 3323 行まで到達。
 // 夜 15: JMP indirect + absolute,Y (LDA/ORA/AND/EOR/ADC/SBC/CMP/STA) を実装し 3638 行まで到達。
 // 夜 16: zeroPage,X/Y 全命令を実装し 4352 行まで到達。
-// 4353 行目の LDY $0633,X = absolute,X ブロックの入口。
-const TRACE_LINES = 4352;
+// 夜 17: absolute,X 全命令 + LDX absoluteY を実装し 4994 行まで到達。
+// 4995 行目 = illegal NOP テストブロックの入口。
+const TRACE_LINES = 4994;
 
 /**
  * nestest 実行用の最小 Bus。

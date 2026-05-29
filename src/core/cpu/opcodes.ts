@@ -2,6 +2,7 @@ import type { Bus } from "../bus.ts";
 import {
   absolute,
   absoluteIndirect,
+  absoluteX,
   absoluteY,
   immediate,
   implied,
@@ -1284,5 +1285,131 @@ def(0x96, {
   exec: (cpu, bus, op) => {
     bus.write(op.addr, cpu.x);
     return 0;
+  },
+});
+
+// ---- absolute,X ----
+
+// load absX (cycle 4, +1 page cross)
+def(0xbc, {
+  name: "LDY",
+  mode: absoluteX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.y = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.y);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0xbd, {
+  name: "LDA",
+  mode: absoluteX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+
+// 論理演算 absX (cycle 4, +1 page cross)
+def(0x1d, {
+  name: "ORA",
+  mode: absoluteX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a | bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x3d, {
+  name: "AND",
+  mode: absoluteX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x5d, {
+  name: "EOR",
+  mode: absoluteX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a ^ bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+
+// 算術/比較 absX (cycle 4, +1 page cross)
+def(0x7d, {
+  name: "ADC",
+  mode: absoluteX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr));
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0xfd, {
+  name: "SBC",
+  mode: absoluteX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0xdd, {
+  name: "CMP",
+  mode: absoluteX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.a, bus.read(op.addr));
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+
+// STA absX (cycle 5, page cross ペナルティなし)
+def(0x9d, {
+  name: "STA",
+  mode: absoluteX,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.a);
+    return 0;
+  },
+});
+
+// RMW absX (cycle 7, page cross ペナルティなし)
+def(0x1e, { name: "ASL", mode: absoluteX, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, aslValue) });
+def(0x5e, { name: "LSR", mode: absoluteX, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, lsrValue) });
+def(0x3e, { name: "ROL", mode: absoluteX, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, rolValue) });
+def(0x7e, { name: "ROR", mode: absoluteX, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, rorValue) });
+def(0xfe, {
+  name: "INC",
+  mode: absoluteX,
+  cycles: 7,
+  exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, (_cpu, v) => v + 1),
+});
+def(0xde, {
+  name: "DEC",
+  mode: absoluteX,
+  cycles: 7,
+  exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, (_cpu, v) => v - 1),
+});
+
+// LDX absoluteY (cycle 4, +1 page cross)
+def(0xbe, {
+  name: "LDX",
+  mode: absoluteY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.x = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.x);
+    return op.pageCrossed ? 1 : 0;
   },
 });
