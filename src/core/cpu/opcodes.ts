@@ -4,6 +4,7 @@ import {
   immediate,
   implied,
   indexedIndirect,
+  indirectIndexed,
   type Operand,
   relative,
   zeroPage,
@@ -968,6 +969,86 @@ def(0xcc, {
   cycles: 4,
   exec: (cpu, bus, op) => {
     compare(cpu, cpu.y, bus.read(op.addr));
+    return 0;
+  },
+});
+
+// ---- (indirect),Y アドレッシング (夜 014) ----
+// read 系は cycle 5 (+1 page cross)、write 系 (STA) は cycle 6 固定。
+// 演算ロジックは (indirect,X) 版と同一。
+def(0xb1, {
+  name: "LDA",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    cpu.a = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x11, {
+  name: "ORA",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a | bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x31, {
+  name: "AND",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x51, {
+  name: "EOR",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a ^ bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x71, {
+  name: "ADC",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr));
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0xf1, {
+  name: "SBC",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0xd1, {
+  name: "CMP",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.a, bus.read(op.addr));
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x91, {
+  name: "STA",
+  mode: indirectIndexed,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.a);
     return 0;
   },
 });

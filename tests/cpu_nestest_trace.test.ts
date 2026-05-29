@@ -14,8 +14,9 @@ const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 // 夜 12 で absolute 論理/算術/比較 + BIT absolute
 // (BIT/ORA/AND/EOR/ADC/SBC/CMP/CPX/CPY abs = $2C/$0D/$2D/$4D/$6D/$ED/$CD/$EC/$CC) を実装し 2848 行まで到達。
 // 夜 13: absolute RMW (LSR/ASL/ROR/ROL/INC/DEC absolute) を実装し 3040 行まで到達。
-// 3041 行目の LDA (ind),Y ($B1) が次の未実装命令。
-const TRACE_LINES = 3040;
+// 夜 14: (indirect),Y (LDA/ORA/AND/EOR/ADC/CMP/SBC/STA) を実装し 3323 行まで到達。
+// 3324 行目の LDA #$7E = JMP indirect セットアップが次の未実装ブロック入口。
+const TRACE_LINES = 3323;
 
 /**
  * nestest 実行用の最小 Bus。

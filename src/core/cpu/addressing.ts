@@ -60,6 +60,23 @@ export function indexedIndirect(cpu: Cpu, bus: Bus): Operand {
 }
 
 /**
+ * indirectIndexed ((indirect),Y): zeroPage のオペランドバイトが指すアドレスから
+ * 16bit ポインタを読み (上位バイトも `& 0xFF` でゼロページラップ)、
+ * Y を加算して実効アドレスを算出する。
+ * page cross 判定: base と base+Y が別ページならば pageCrossed=true。
+ */
+export function indirectIndexed(cpu: Cpu, bus: Bus): Operand {
+  const zp = bus.read(cpu.pc);
+  cpu.pc = (cpu.pc + 1) & 0xffff;
+  const lo = bus.read(zp);
+  const hi = bus.read((zp + 1) & 0xff);
+  const base = (lo | (hi << 8)) & 0xffff;
+  const addr = (base + cpu.y) & 0xffff;
+  const pageCrossed = (base & 0xff00) !== (addr & 0xff00);
+  return { addr, pageCrossed };
+}
+
+/**
  * relative: 分岐命令専用。 符号付き 8bit オフセットを読み、
  * オフセット読み込み後の PC を基準とした分岐先アドレスを返す。
  * pageCrossed は分岐成立時の追加 1 サイクル判定に使う。
