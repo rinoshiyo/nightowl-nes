@@ -45,20 +45,28 @@ if [ "${1:-}" = "--inline" ]; then
     ''|*[!0-9]*) echo "ERROR: --inline の <line> は正の整数で指定してください (line=$line)。" >&2; exit 1 ;;
   esac
   # メインの HEAD がレビュー対象ブランチを指す保証がない (CORE.md は finder に checkout 禁止を
-  # 指示) ため、PR head の sha を API から引く。
-  sha=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/pulls/$PR" -q .head.sha 2>/dev/null)
+  # 指示) ため、PR head の sha を API から引く。読取は bot 名義不要 (bot は Contents read のみで
+  # pulls 読取に権限不足の恐れ)。通常認証 (GH_TOKEN なし) で引く — 投稿だけが bot 必須。
+  sha=$(gh api "repos/$REPO/pulls/$PR" -q .head.sha 2>/dev/null)
   if [ -z "$sha" ]; then
     echo "ERROR: PR #$PR の head sha 取得失敗。" >&2
     exit 1
   fi
+  # 投稿: stderr を JSON に混ぜない (混ぜると gh の warning 1 行で後段の jq 抽出が壊れ、
+  # 投稿成功でも login 空 → 名義検証が false-negative になる)。stdout=JSON のみ resp に取り、
+  # stderr は一時ファイルへ退避して失敗時のみ出す。
+  err=$(mktemp)
   resp=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/pulls/$PR/comments" \
-    -f body="$body" -f commit_id="$sha" -f path="$path_arg" -F line="$line" -f side=RIGHT 2>&1) \
-    || { echo "ERROR: inline 投稿失敗 (API): $resp" >&2; exit 1; }
+    -f body="$body" -f commit_id="$sha" -f path="$path_arg" -F line="$line" -f side=RIGHT 2>"$err") \
+    || { echo "ERROR: inline 投稿失敗 (API): $(cat "$err")" >&2; rm -f "$err"; exit 1; }
+  rm -f "$err"
 else
   body="${1:?body required}"
+  err=$(mktemp)
   resp=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/issues/$PR/comments" \
-    -f body="$body" 2>&1) \
-    || { echo "ERROR: issue comment 投稿失敗 (API): $resp" >&2; exit 1; }
+    -f body="$body" 2>"$err") \
+    || { echo "ERROR: issue comment 投稿失敗 (API): $(cat "$err")" >&2; rm -f "$err"; exit 1; }
+  rm -f "$err"
 fi
 
 # 投稿の HTTP 成否 (上の `||`) と名義検証を分離する。投稿成功レスポンスから login を
