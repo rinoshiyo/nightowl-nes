@@ -1034,3 +1034,12 @@ def(0xf1, {
     return op.pageCrossed ? 1 : 0;
   },
 });
+def(0xd1, {
+  name: "CMP",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.a, bus.read(op.addr));
+    return op.pageCrossed ? 1 : 0;
+  },
+});
