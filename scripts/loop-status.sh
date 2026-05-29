@@ -20,11 +20,11 @@ set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 pane="${TMUX_PANE:-NONE}"
-pending_list=$(ls nights/pending/*.md 2>/dev/null | sed 's#.*/##' | sort)
+pending_list=$(ls nights/pending/*.md 2>/dev/null | sed 's#.*/##' | sort -V)
 pending_n=$(ls nights/pending/*.md 2>/dev/null | wc -l | tr -d ' ')
-done_latest=$(ls nights/done/*.md 2>/dev/null | sed 's#.*/##' | sort | tail -1)
+done_latest=$(ls nights/done/*.md 2>/dev/null | sed 's#.*/##' | sort -V | tail -1)
 done_n=$(ls nights/done/*.md 2>/dev/null | wc -l | tr -d ' ')
-trace_lines=$(grep -oE 'TRACE_LINES = [0-9]+' tests/cpu_nestest_trace.test.ts 2>/dev/null | grep -oE '[0-9]+' | head -1)
+trace_lines=$(grep -oE 'TRACE_LINES *= *[0-9]+' tests/cpu_nestest_trace.test.ts 2>/dev/null | grep -oE '[0-9]+' | head -1)
 open_pr=$(gh pr list --state open --json number,isDraft,title \
   -q '.[] | "  #\(.number) draft=\(.isDraft) — \(.title)"' 2>/dev/null)
 
