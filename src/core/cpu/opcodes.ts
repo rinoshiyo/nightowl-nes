@@ -1413,3 +1413,33 @@ def(0xbe, {
     return op.pageCrossed ? 1 : 0;
   },
 });
+
+// ---- illegal/undocumented NOP ----
+// nestest が検証する 23 opcode。フラグ・レジスタを一切変更せず、
+// アドレッシングモードが PC を進めてサイクルを消費するだけ。
+
+// implied NOP (1 byte, 2 cycle)
+for (const op of [0x1a, 0x3a, 0x5a, 0x7a, 0xda, 0xfa]) {
+  def(op, { name: "*NOP", mode: implied, cycles: 2, exec: () => 0 });
+}
+
+// immediate NOP (2 byte, 2 cycle)
+def(0x80, { name: "*NOP", mode: immediate, cycles: 2, exec: () => 0 });
+
+// zeroPage NOP (2 byte, 3 cycle)
+for (const op of [0x04, 0x44, 0x64]) {
+  def(op, { name: "*NOP", mode: zeroPage, cycles: 3, exec: () => 0 });
+}
+
+// absolute NOP (3 byte, 4 cycle)
+def(0x0c, { name: "*NOP", mode: absolute, cycles: 4, exec: () => 0 });
+
+// zeroPage,X NOP (2 byte, 4 cycle)
+for (const op of [0x14, 0x34, 0x54, 0x74, 0xd4, 0xf4]) {
+  def(op, { name: "*NOP", mode: zeroPageX, cycles: 4, exec: () => 0 });
+}
+
+// absolute,X NOP (3 byte, 4 cycle + 1 page cross)
+for (const op of [0x1c, 0x3c, 0x5c, 0x7c, 0xdc, 0xfc]) {
+  def(op, { name: "*NOP", mode: absoluteX, cycles: 4, exec: (_c, _b, o) => (o.pageCrossed ? 1 : 0) });
+}
