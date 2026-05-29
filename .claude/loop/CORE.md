@@ -99,7 +99,7 @@
 
 ## 起動時の作法
 
-0. **`gh pr list --state open --json number,title,isDraft` で未完了 PR を確認**。 open PR があれば PR コメント (SSOT) を読み中断作業か判定。 **判定基準**: draft = レビュー隔離中 (再開対象) / 非 draft の open は中身を見る — **auto-merge arm 済みで CI 実行中/緑なら「正常な in-flight」** (中断扱いして再開しない) / **auto-merge 未設定のまま放置**なら レビュー途中で切れた可能性で最優先再開
+0. **`gh pr list --state open --json number,title,isDraft,mergeStateStatus` で未完了 PR を確認**。 open PR があれば PR コメント (SSOT) を読み中断作業か判定。 **判定基準**: draft = レビュー隔離中 (再開対象) / 非 draft の open は中身を見る — **CI 実行中 (`BLOCKED`) なら「正常な in-flight」** (loop-helper が merge 待ち中。中断扱いして再開しない) / **CLEAN のまま open なら** loop-helper が止まった可能性で最優先再開
 1. `.claude/state/latest.md` が存在すれば Read (SessionStart hook が inject していなければ)
 2. `nights/pending/` の最若番号の md を Read
 3. 「## ゴール」セクションの /goal 条件を確認
