@@ -986,3 +986,33 @@ def(0xb1, {
     return op.pageCrossed ? 1 : 0;
   },
 });
+def(0x11, {
+  name: "ORA",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a | bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x31, {
+  name: "AND",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x51, {
+  name: "EOR",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a ^ bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
