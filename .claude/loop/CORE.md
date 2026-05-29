@@ -22,61 +22,64 @@
 3. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
 4. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
 
-## 夜 N PR の自動レビュー (sub-agent + code-review skill)
+## 夜 N PR の自動レビュー (メインが code-review skill を直呼び)
 
-ノールック auto-merge を避けるため、 PR 作成直後に **sub-agent を立ててレビューさせる**。 GitHub Actions / 外部 API を使わず、 メインと同じ Anthropic 枠で完結する (追加課金ゼロ)。 メイン context を圧迫しないよう、 詳細レビューは sub-agent の独立 context で行い、 メインには致命度サマリだけ返す。
+ノールック auto-merge を避けるため、 PR 作成後にレビュー往復を回す。 **`code-review` skill はメインが直接呼ぶ** — skill は内部で finder 7 angle + 各 finding の verifier を `Agent` tool で spawn する設計のため、 **sub-agent から呼ぶとネスト不可 (subagents cannot spawn subagents) で機能しない**。 メインには `Agent` tool があるので正規に動く。 GitHub Actions / 外部 API を使わず Anthropic 枠で完結 (追加課金ゼロ)。
 
-### 責務と名義の分離 (Why: これがレビュー観点の土台)
+### 責務と名義の分離 (PR-as-SSOT・Why: これがレビュー観点の土台)
 
-このフローは GitHub 上で **2 つの立場**を演じ分ける。 投稿コメントを名義で分け、 朝石井が「誰が指摘し・誰が裁定したか」を PR だけ (PR-as-SSOT) で追えるようにする。 **sub-agent はこの意図を理解した上でレビューする** (自分の投稿は「レビュアーとしての証跡」であり、 指摘ゼロでも残す):
+1 つのメイン Claude が **投稿時に名義を演じ分ける**。 朝石井が「誰が指摘し・誰が裁定したか」を PR だけ (PR-as-SSOT) で追えるようにする:
 
-| 立場 | 担当 | 名義 | 投稿するもの |
+| 立場 | 名義 | 投稿経路 | 投稿するもの |
 |---|---|---|---|
-| **レビュアー** | sub-agent | bot `rinoshiyo-bot-reviewer[bot]` (`GH_TOKEN` を付ける) | レビュー結果。 **指摘ゼロでも「レビュー実施・指摘なし」を必ず1件投稿** (レビューを通した証跡) |
-| **裁定者 (リポオーナー石井の代理)** | メイン | **石井本人** (`GH_TOKEN` を付けない通常認証) | triage 裁定・修正対応の記録 |
+| **レビュアー** | bot `rinoshiyo-bot-reviewer[bot]` | **`scripts/bot-comment.sh`** (トークン適用 + fail-stop + author 検証) | レビュー結果 (severity 付き)。 **指摘ゼロでも「✅ レビュー実施・指摘なし」を必ず1件投稿** (証跡) |
+| **裁定者 (石井代理)** | **石井本人** (`GH_TOKEN` なし通常認証) | `gh pr comment` 直 | triage 裁定・対応の記録 |
 
-- **なぜ分けるか**: レビュアー (bot) の指摘を受けて オーナー (石井=メイン) が「merge してよいか」を裁定する現実のレビュー構図を GitHub 上で再現するため。 名義が同じだと朝石井が「指摘か裁定か」を区別できず PR-as-SSOT が機能しない。 この Why が無いと sub-agent はレビューの意図を読めず観点が曖昧になる
-- **`GH_TOKEN` を付けるのは sub-agent のレビュー結果コメントだけ**。 メインの triage 裁定・修正対応コメントには付けない (石井本人名義になる)。 どちらも `gh pr create` / `gh pr merge` / `gh pr ready --undo` 等の write 操作には付けない (bot は Contents read のみで失敗する)。 鍵マウント未設定のマシンでは bot トークン発行が空になり gh が石井名義に fallback する
+- **なぜ分けるか**: レビュアー (bot) の指摘を受けてオーナー (石井=メイン) が「merge してよいか」を裁定する現実のレビュー構図を再現するため。 名義が同じだと朝石井が「指摘か裁定か」を区別できず PR-as-SSOT が機能しない
+- **bot 名義投稿は必ず `scripts/bot-comment.sh` 経由**。 生の `gh pr comment` / `gh api ... comments` を直接叩くと、 トークン適用漏れで石井名義に静かに fallback したり `gh pr comment` の `--jq` 非対応で投稿失敗する事故が起きる (ラッパーが構造的に防ぐ)。 `gh pr create` / `gh pr merge` / `gh pr ready` 等の write 操作には `GH_TOKEN` を付けない (bot は Contents read のみで失敗)。 鍵マウント未設定のマシンでは bot トークンが空になり、 ラッパーが fail-stop する (石井名義への fallback を許さない)
+- **bot (レビュアー) コメントの声 = フレンドリー・励まし**: code-review の生出力をそのまま貼らず言い換える — ① まず良い点・労いに一言 (例「✨ 実装おつかれさまです！」) ② 各指摘は提案調 (「〜すると安心かも」) ③ 絵文字を程よく (✨🙏💪🤔) ④ **致命度は保ったまま角だけ取る** (STOP 級は柔らかくても「ここは直さないと merge できないかも」 と明確に)。 **Why: 石井は無駄を削いだ簡潔な物言いをするので、 bot の柔らかいレビューが「他人からレビューされている体感」を生む** — この違和感を仕組みで担保するのが狙い (memory `review-bot-identity` で確定)
 
-**重要 (レース回避)**: `gh pr merge --auto` は **レビュー完了 + STOP 判定ゼロを確認した後に初めて設定する**。 レビュー前に auto-merge を打つと CI 緑が sub-agent レビュー完了を追い抜き判定前に merge されうる。
+**重要 (レース回避)**: `gh pr merge --auto` は **全 PASS 確認後に初めて設定する**。 レビュー前に打つと CI 緑がレビューを追い抜き判定前に merge されうる。
 
-**bot (レビュアー) コメントの声 (フレンドリー・励まし)**: code-review の生出力をそのまま貼らず言い換える — ① まず良い点・労いに一言 (例「✨ 実装おつかれさまです！」) ② 各指摘は提案調 (「〜すると安心かも」) ③ 絵文字を程よく (✨🙏💪🤔) ④ **致命度は保ったまま角だけ取る** (STOP 級は柔らかくても「ここは直さないと merge できないかも」 と明確に)。
-
-### フロー (FIX 時は 2〜5 を修正往復 最大 2 回まで繰り返す)
+### フロー (findings 0 / 全 PASS の round に達するまで・往復上限 2)
 
 ```
-1. sub-agent: レビュー → 結果を bot 名義で PR 投稿 (指摘ゼロでも証跡) → 致命度サマリをメインに返す
+1. gh pr create (auto-merge まだ打たない)
    ↓
-┌→ 2. メイン: triage 裁定 → 「指摘 X → STOP/FIX/PASS と判断 (理由 Z)」を石井本人名義で PR 投稿
-│  3. (FIX のみ) メイン: 修正 commit → push
-│  4. (FIX のみ) メイン: 「○○を修正した」を石井本人名義で PR 投稿 (対応の証跡)
-│  5. (FIX のみ) sub-agent: 再レビュー → 結果を bot 名義で投稿
-└──┘ ← FIX が残る限り 2〜5 を繰り返す (修正往復 最大 2 回・超過は STOP 格上げ)
+┌→ 2. レビュー round:
+│  a. メイン: code-review --fix を直呼び (finder 7 angle + verifier を Agent spawn
+│             → findings + working tree 自動修正。--fix は「intended behavior 変更/
+│             スコープ外/false positive は skip」を内蔵)
+│  b. メイン: 各 finding を critical/high/medium/low に分類 (severity 付与)
+│  c. メイン: bot 名義 (bot-comment.sh) で投稿 — サマリ1件 (severity 件数) +
+│             各指摘を1点1インライン。指摘ゼロでも「✅ レビュー実施・指摘なし」
+│  d. メイン: triage を石井名義で投稿 (--fix で直したもの / skip 理由 / STOP/PASS)
+│  e. (修正あれば) 別 commit → push → ローカルで bun test + tsc + eslint
+└──┘ ← FIX 必須が残る限り 2 を繰り返す (往復上限 2・超過は STOP 格上げ)
+       2 回目以降の round も --fix (前 round の修正が新指摘を浮上させうるため)。
+       findings 0 / 残りが全 PASS の round に達したら収束 → 3
    ↓
-   STOP あり / 修正往復 2 回超過 → 隔離 (auto-merge せず draft 戻し)   全 PASS → 6
+   STOP あり / 往復 2 回超過 → gh pr ready --undo で draft 戻し + 隔離 + 連鎖中断
+   全 PASS → 3
    ↓
-6. メイン: `gh pr merge --auto --merge --delete-branch` で arm
+3. メイン: gh pr merge --auto --merge --delete-branch で arm
 ```
 
-1. `gh pr create` 直後、 `Agent` tool で `general-purpose` sub-agent を **`run_in_background: true`** で起動 (フォアグラウンド起動は hook で deny)。 **この時点では auto-merge を設定しない**。 sub-agent への prompt に渡すもの:
-   - 対象 PR 番号 / ブランチ名 / `main...night/NNN-<topic>` の diff レンジ
-   - レビュー観点 (NES 固有のため `nes/CORE.md` 参照)
-   - sub-agent は `code-review` skill を `--comment` 付き・effort=medium で起動し finding をインラインコメント投稿。 **加えて、 指摘の有無に関わらずレビュー結果サマリを bot 名義で PR に1件投稿する** (指摘ゼロなら「✅ レビュー実施・指摘なし」)。 これが「レビューを通した証跡」
-   - **致命度サマリは sub-agent が算出**: 生出力は severity 無しのフラット JSON のため sub-agent が各 finding を `critical`/`high`/`medium`/`low` に分類してメインへ件数を返す
-   - **共有ワークツリー保護**: 「`git checkout`/`switch` でブランチを切り替えるな、 diff は `git diff main...<branch>` / `git show <branch>:path` で見ろ」 と必ず指示 (checkout するとメインのブランチが動く事故が起きる)
-2. **triage 裁定** (自走中は石井に確認できないため Claude が自動裁定): severity ラベルは主観でブレるため、 ラベルでなく **何が起きるか** で 3 区分に振り分け、 **裁定を石井本人名義で PR に投稿**する (どの区分でも必ず・全 PASS でも):
+詳細:
+- **`code-review` は `--comment` を付けない**。 メインが findings を受け取り `bot-comment.sh` で投稿を制御するため (skill 自身に投稿させると名義制御できない)。 **`--fix` は付ける** (指摘を working tree に自動反映 = 無人 triage の前進力)
+- **メインは night ブランチに居る前提**: `code-review --fix` は **メインの working tree** を直接書き換えるため、 起動時の作法どおり `night/NNN` を checkout した状態で実行すること (`--fix` の修正先・inline の対象が PR ブランチになる)。 finder には「`git checkout`/`switch` 禁止」を指示するが、 メイン自身は night ブランチに居る (両者は矛盾しない)
+- **finder spawn は `run_in_background: true` 必須**: code-review skill が内部で Agent 起動する finder/verifier も、 メインが Agent を起動する全てと同様に background 必須 (foreground 起動は hook `check-agent-background.sh` で deny される)
+- **finder への指示** (skill が Agent spawn する各 finder に渡る観点): NES 固有のレビュー観点は `nes/CORE.md` 参照。 **共有ワークツリー保護** = 「`git checkout`/`switch` 禁止、 diff は `git diff main...<branch>` / `git show <branch>:path` で見ろ」 を必ず指示 (checkout するとメインのブランチが動く事故)
+- **severity はメインが triage 時に付与** (code-review の生 finding は severity 無しのフラット出力)。 そのうえで **何が起きるか** で 3 区分に振り分け、 **裁定を石井名義で PR 投稿** (どの区分でも必ず・全 PASS でも):
 
    | 区分 | 条件 | アクション |
    |---|---|---|
-   | 🛑 STOP | 仕様違反 (6502/iNES/NES 挙動が nesdev wiki と食い違う) / ソース由来制約違反の疑い / データ破壊・不可逆操作 / テスト・型・lint が赤 | **auto-merge 設定しない**。 `gh pr ready --undo` で draft 戻し + その PR にコメントで「draft 戻し report」 + 連鎖中断 + セッション終了 |
-   | 🔧 FIX | 明らかなバグ・誤記で修正が一意に決まる / ドキュメント・コードの自己矛盾 | 下記 3〜5 を実行 (修正→更新コメント→再レビュー)。 **同一 PR の修正往復は最大 2 回**。 2 回で解消しなければ STOP に格上げ |
+   | 🛑 STOP | 仕様違反 (6502/iNES/NES 挙動が nesdev wiki と食い違う) / ソース由来制約違反の疑い / データ破壊・不可逆操作 / テスト・型・lint が赤 | **auto-merge 設定しない**。 `gh pr ready --undo` で draft 戻し + 「draft 戻し report」コメント + 連鎖中断 + セッション終了 |
+   | 🔧 FIX | 明らかなバグ・誤記で修正が一意 / 自己矛盾 (主に --fix が自動修正) | 修正を別 commit で push → 再 round。 **修正往復は最大 2 回**。 2 回で解消しなければ STOP に格上げ |
    | ✅ PASS | 設計の好み / 可読性 / リファクタ提案 / 将来夜への申し送り | 連鎖続行。 申し送りは次の夜 md に転記 |
 
-   **FIX 修正は grep で一網打尽にする**: 1 箇所直したら同じパターンを `grep` で全文スキャンし同種箇所を同じ commit でまとめて潰す。 1 箇所ずつ直すと「同根の取りこぼし」 が次 round で再浮上し修正往復 2 回の上限を無駄に消費する。
-3. **(FIX のみ)** メインが修正 commit → push
-4. **(FIX のみ)** メインが **「○○を修正した」を石井本人名義で PR 投稿** (対応の証跡)
-5. **(FIX のみ)** sub-agent で再レビュー (手順 1 と同じ・bot 名義で結果投稿)。 結果が STOP なら隔離 / FIX が残ればループ (上限内) / 全 PASS なら 6 へ
-6. 全 PASS (または FIX が再レビューで解消) を確認し `gh pr merge --auto --merge --delete-branch` を設定。 STOP が 1 件でもあれば arm せず隔離。
+- **FIX 修正は grep で一網打尽**: 1 箇所直したら同じパターンを `grep` で全文スキャンし同種を同じ commit で潰す (同根の取りこぼしが次 round で再浮上し往復上限を無駄にするのを防ぐ)
+- **使用量**: code-review 1 回 = finder 7 個 + verifier を spawn する重い処理。 通常は「初回 --fix (修正) + 2 回目 --fix (findings 0/PASS で収束確認)」の **2 回**で済む。 新指摘が出れば往復追加 (上限内)
 
 ## 各夜の終了処理
 
@@ -90,7 +93,7 @@
    スクリプトが以下を一括実行: auto-merge arm / `.claude/state/latest.md` 更新 / 次フラグ書込 (pane スコープ) / `🎯 GOAL CONDITION MET` 出力
 3. turn を終える → helper が idle を見て `/clear` → 次ゴール投入
 
-次ゴール文の例 (単一行 必須): `次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→sub-agentレビュー→triage→全PASSなら auto-merge arm、完了後 latest.md 更新と次フラグ書込まで行え、or stop after 50 turns`
+次ゴール文の例 (単一行 必須): `次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後 latest.md 更新と次フラグ書込まで行え、or stop after 50 turns`
 
 ## 起動時の作法
 
@@ -103,7 +106,7 @@
 6. /goal 評価のため pass / fail を必ず transcript に出力
 7. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
 8. `gh pr create` で PR を立てる (この時点では auto-merge を打たない)
-9. sub-agent でレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --merge --delete-branch`
+9. メインが `code-review --fix` を直呼びでレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --merge --delete-branch`
 10. CI 緑 → auto-merge 反映を見届けてセッション完了報告
 
 ## ブランチ運用 + PR フロー
@@ -138,7 +141,7 @@
 
 **マージ方式は merge commit (`--merge`) で固定**: squash でなく merge commit を使うのは `git log --graph` 上で各 night ブランチの合流が視覚的に追え、 各夜の作業コミットも履歴に残るため。 squash / rebase は使わない。
 
-**auto-merge を打つタイミング**: sub-agent レビューの triage が完了し STOP 判定ゼロを確認した後に限る。 レビュー前に打つと CI 緑がレビューを追い抜くレースが起きる。
+**auto-merge を打つタイミング**: code-review レビューの triage が完了し STOP 判定ゼロを確認した後に限る。 レビュー前に打つと CI 緑がレビューを追い抜くレースが起きる。
 
 詰まった場合は PR を draft に戻す (`gh pr ready --undo`) か、 ask 経由で close するか、 stuck/ 隔離フロー (`loop/REFERENCE.md`) に乗せる。
 
