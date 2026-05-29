@@ -10,6 +10,8 @@ import {
   type Operand,
   relative,
   zeroPage,
+  zeroPageX,
+  zeroPageY,
 } from "./addressing.ts";
 import { clearFlag, CpuFlags, hasFlag, setFlag } from "./flags.ts";
 import type { Cpu } from "./index.ts";
@@ -1139,6 +1141,148 @@ def(0x99, {
   cycles: 5,
   exec: (cpu, bus, op) => {
     bus.write(op.addr, cpu.a);
+    return 0;
+  },
+});
+
+// ---- zeroPage,X ----
+
+// load/store zpX
+def(0xb4, {
+  name: "LDY",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.y = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.y);
+    return 0;
+  },
+});
+def(0x94, {
+  name: "STY",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.y);
+    return 0;
+  },
+});
+def(0xb5, {
+  name: "LDA",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x95, {
+  name: "STA",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.a);
+    return 0;
+  },
+});
+
+// 論理演算 zpX
+def(0x15, {
+  name: "ORA",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a | bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x35, {
+  name: "AND",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+def(0x55, {
+  name: "EOR",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a ^ bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+
+// 算術/比較 zpX
+def(0x75, {
+  name: "ADC",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr));
+    return 0;
+  },
+});
+def(0xf5, {
+  name: "SBC",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return 0;
+  },
+});
+def(0xd5, {
+  name: "CMP",
+  mode: zeroPageX,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.a, bus.read(op.addr));
+    return 0;
+  },
+});
+
+// RMW zpX (cycle 6)
+def(0x16, { name: "ASL", mode: zeroPageX, cycles: 6, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, aslValue) });
+def(0x56, { name: "LSR", mode: zeroPageX, cycles: 6, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, lsrValue) });
+def(0x36, { name: "ROL", mode: zeroPageX, cycles: 6, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, rolValue) });
+def(0x76, { name: "ROR", mode: zeroPageX, cycles: 6, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, rorValue) });
+def(0xf6, {
+  name: "INC",
+  mode: zeroPageX,
+  cycles: 6,
+  exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, (_cpu, v) => v + 1),
+});
+def(0xd6, {
+  name: "DEC",
+  mode: zeroPageX,
+  cycles: 6,
+  exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, (_cpu, v) => v - 1),
+});
+
+// ---- zeroPage,Y ----
+def(0xb6, {
+  name: "LDX",
+  mode: zeroPageY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.x = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.x);
+    return 0;
+  },
+});
+def(0x96, {
+  name: "STX",
+  mode: zeroPageY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.x);
     return 0;
   },
 });
