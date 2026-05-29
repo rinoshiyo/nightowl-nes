@@ -7,7 +7,7 @@
 # このスクリプトが制御するため、「全部 issue comment にまとめる」事故が構造的に起きない。
 #
 # usage:
-#   bot-review-post.sh <pr> <json>
+#   bot-review-post.sh <pr> <json-file>
 #
 # json 構造:
 #   {
@@ -26,13 +26,19 @@
 # gh pr merge を deny する (R2 で収束確認するまで merge 不可)。
 set -uo pipefail
 
-PR="${1:?usage: bot-review-post.sh <pr> <json>}"
-JSON="${2:?usage: bot-review-post.sh <pr> <json>}"
+PR="${1:?usage: bot-review-post.sh <pr> <json-file>}"
+JSON_FILE="${2:?usage: bot-review-post.sh <pr> <json-file>}"
 SCRIPTS="$(dirname "${BASH_SOURCE[0]}")"
 
 case "$PR" in
   ''|*[!0-9]*) echo "ERROR: PR 番号は正の整数で指定してください (pr=$PR)。" >&2; exit 1 ;;
 esac
+
+if [ ! -f "$JSON_FILE" ]; then
+  echo "ERROR: JSON ファイルが見つかりません ($JSON_FILE)。" >&2
+  exit 1
+fi
+JSON=$(cat "$JSON_FILE")
 
 summary=$(printf '%s' "$JSON" | jq -r '.summary // empty' 2>/dev/null)
 if [ -z "$summary" ]; then
