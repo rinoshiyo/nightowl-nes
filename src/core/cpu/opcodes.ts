@@ -149,6 +149,22 @@ function rmwZeroPage(
 }
 
 /**
+ * absolute read-modify-write 共通処理 (ASL/LSR/ROL/ROR/INC/DEC absolute、 cycle 6)。
+ * rmwZeroPage の兄弟。アドレスが 2 byte (absolute) になる以外は同一。
+ */
+function rmwAbsolute(
+  cpu: Cpu,
+  bus: Bus,
+  op: Operand,
+  transform: (cpu: Cpu, v: number) => number,
+): number {
+  const result = transform(cpu, bus.read(op.addr)) & 0xff;
+  bus.write(op.addr, result);
+  setZeroNeg(cpu, result);
+  return 0;
+}
+
+/**
  * 256 エントリの命令ディスパッチテーブル。 未実装の opcode は null。
  * 夜 2 では nestest 先頭 50 行で実際に出現する命令 + JSR と対の RTS を実装する。
  */
@@ -393,6 +409,16 @@ def(0x06, { name: "ASL", mode: zeroPage, cycles: 5, exec: (cpu, bus, op) => rmwZ
 def(0x46, { name: "LSR", mode: zeroPage, cycles: 5, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, lsrValue) });
 def(0x26, { name: "ROL", mode: zeroPage, cycles: 5, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, rolValue) });
 def(0x66, { name: "ROR", mode: zeroPage, cycles: 5, exec: (cpu, bus, op) => rmwZeroPage(cpu, bus, op, rorValue) });
+
+// ---- シフト / ローテート (absolute RMW、 cycle 6) ----
+def(0x0e, { name: "ASL", mode: absolute, cycles: 6, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, aslValue) });
+def(0x4e, { name: "LSR", mode: absolute, cycles: 6, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, lsrValue) });
+def(0x2e, { name: "ROL", mode: absolute, cycles: 6, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, rolValue) });
+def(0x6e, { name: "ROR", mode: absolute, cycles: 6, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, rorValue) });
+
+// ---- メモリ増減 (absolute RMW、 cycle 6) ----
+def(0xee, { name: "INC", mode: absolute, cycles: 6, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, (_cpu, v) => v + 1) });
+def(0xce, { name: "DEC", mode: absolute, cycles: 6, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, (_cpu, v) => v - 1) });
 
 // ---- 分岐 (relative) ----
 def(0x10, { name: "BPL", mode: relative, cycles: 2, exec: (cpu, _b, op) => branch(cpu, op, !hasFlag(cpu.p, CpuFlags.N)) });
