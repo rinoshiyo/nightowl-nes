@@ -30,6 +30,10 @@ PR="${1:?usage: bot-review-post.sh <pr> <json>}"
 JSON="${2:?usage: bot-review-post.sh <pr> <json>}"
 SCRIPTS="$(dirname "${BASH_SOURCE[0]}")"
 
+case "$PR" in
+  ''|*[!0-9]*) echo "ERROR: PR 番号は正の整数で指定してください (pr=$PR)。" >&2; exit 1 ;;
+esac
+
 summary=$(printf '%s' "$JSON" | jq -r '.summary // empty' 2>/dev/null)
 if [ -z "$summary" ]; then
   echo "ERROR: summary が空。サマリは必須。" >&2

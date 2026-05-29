@@ -54,6 +54,9 @@ if [ -n "$PR_NUM" ]; then
   fi
 fi
 
+# review gate の state file を cleanup (次の夜に stale state を持ち越さない)
+rm -f .claude/state/review-status.json
+
 # --- 2. latest.md 更新 ---
 mkdir -p .claude/state
 {
