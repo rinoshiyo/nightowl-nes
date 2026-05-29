@@ -44,7 +44,7 @@ $(tail -30 "$CWD/tmp/test.log" 2>/dev/null || echo "(なし)")
 | 変更ファイル数 | $(cd "$CWD" && git diff --stat HEAD~5..HEAD 2>/dev/null | tail -1 | awk '{print $1}' || echo "?") |
 
 ## NEXT
-- 次の夜 md: $(ls "$CWD/nights/pending/" 2>/dev/null | sort | head -1 || echo "なし")
+- 次の夜 md: $(ls "$CWD/nights/pending/" 2>/dev/null | sort -V | head -1 || echo "なし")
 EOF
 
 exit 0

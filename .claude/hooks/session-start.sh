@@ -20,7 +20,7 @@ fi
 
 if [ "$SOURCE" = "startup" ] && [ -n "$CWD" ]; then
   # 軽い初期化確認のみ（前回状態復元は /goal 主軸では不要）
-  NEXT_NIGHT=$(ls "$CWD/nights/pending/" 2>/dev/null | sort | head -1)
+  NEXT_NIGHT=$(ls "$CWD/nights/pending/" 2>/dev/null | sort -V | head -1)
   if [ -n "$NEXT_NIGHT" ]; then
     jq -n --arg next "$NEXT_NIGHT" '{
       hookSpecificOutput: {
