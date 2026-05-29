@@ -1,6 +1,8 @@
 import type { Bus } from "../bus.ts";
 import {
   absolute,
+  absoluteIndirect,
+  absoluteY,
   immediate,
   implied,
   indexedIndirect,
@@ -180,6 +182,15 @@ def(0x4c, {
   name: "JMP",
   mode: absolute,
   cycles: 3,
+  exec: (cpu, _bus, op) => {
+    cpu.pc = op.addr;
+    return 0;
+  },
+});
+def(0x6c, {
+  name: "JMP",
+  mode: absoluteIndirect,
+  cycles: 5,
   exec: (cpu, _bus, op) => {
     cpu.pc = op.addr;
     return 0;
@@ -1047,6 +1058,85 @@ def(0x91, {
   name: "STA",
   mode: indirectIndexed,
   cycles: 6,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.a);
+    return 0;
+  },
+});
+
+// ---- absolute,Y アドレッシング (夜 015) ----
+// read 系は cycle 4 (+1 page cross)、write 系 (STA) は cycle 5 固定。
+def(0xb9, {
+  name: "LDA",
+  mode: absoluteY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x19, {
+  name: "ORA",
+  mode: absoluteY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a | bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x39, {
+  name: "AND",
+  mode: absoluteY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x59, {
+  name: "EOR",
+  mode: absoluteY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a ^ bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x79, {
+  name: "ADC",
+  mode: absoluteY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr));
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0xf9, {
+  name: "SBC",
+  mode: absoluteY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0xd9, {
+  name: "CMP",
+  mode: absoluteY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    compare(cpu, cpu.a, bus.read(op.addr));
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0x99, {
+  name: "STA",
+  mode: absoluteY,
+  cycles: 5,
   exec: (cpu, bus, op) => {
     bus.write(op.addr, cpu.a);
     return 0;

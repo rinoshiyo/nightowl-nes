@@ -77,6 +77,37 @@ export function indirectIndexed(cpu: Cpu, bus: Bus): Operand {
 }
 
 /**
+ * absoluteIndirect (JMP indirect): 16bit のオペランドアドレスから lo/hi を読み、
+ * (hi<<8)|lo にジャンプする。6502 page boundary バグ: オペランドの lo byte が
+ * 0xFF の場合、hi byte を addr+1 (次ページ) でなく同ページ先頭から読む。
+ */
+export function absoluteIndirect(cpu: Cpu, bus: Bus): Operand {
+  const lo = bus.read(cpu.pc);
+  const hi = bus.read((cpu.pc + 1) & 0xffff);
+  cpu.pc = (cpu.pc + 2) & 0xffff;
+  const ptr = (lo | (hi << 8)) & 0xffff;
+  const targetLo = bus.read(ptr);
+  const targetHi = (ptr & 0xff) === 0xff
+    ? bus.read(ptr & 0xff00)
+    : bus.read((ptr + 1) & 0xffff);
+  return { addr: (targetLo | (targetHi << 8)) & 0xffff, pageCrossed: false };
+}
+
+/**
+ * absoluteY: absolute の実効アドレスに Y を加算する。
+ * page cross 判定: base と base+Y が別ページならば pageCrossed=true。
+ */
+export function absoluteY(cpu: Cpu, bus: Bus): Operand {
+  const lo = bus.read(cpu.pc);
+  const hi = bus.read((cpu.pc + 1) & 0xffff);
+  cpu.pc = (cpu.pc + 2) & 0xffff;
+  const base = (lo | (hi << 8)) & 0xffff;
+  const addr = (base + cpu.y) & 0xffff;
+  const pageCrossed = (base & 0xff00) !== (addr & 0xff00);
+  return { addr, pageCrossed };
+}
+
+/**
  * relative: 分岐命令専用。 符号付き 8bit オフセットを読み、
  * オフセット読み込み後の PC を基準とした分岐先アドレスを返す。
  * pageCrossed は分岐成立時の追加 1 サイクル判定に使う。
