@@ -123,6 +123,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-code-review.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
