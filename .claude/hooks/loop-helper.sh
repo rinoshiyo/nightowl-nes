@@ -48,7 +48,8 @@ if [ "${LOOP_WAIT_MERGE:-1}" = "1" ]; then
   FORCE_AFTER=${LOOP_FORCE_AFTER:-10}  # 10 × 30s = 5min
   mw=0
   while :; do
-    open=$(gh pr list -s open --json isDraft -q '[.[]|select(.isDraft|not)]|length' 2>/dev/null || echo 0)
+    pr_json=$(gh pr list -s open --json number,mergeStateStatus,autoMergeRequest,isDraft 2>/dev/null || echo '[]')
+    open=$(printf '%s' "$pr_json" | jq '[.[]|select((.isDraft|not))]|length')
     [ "${open:-0}" = "0" ] && break
     mw=$((mw + 1))
     if [ "$mw" -ge 60 ]; then   # 60 * 30s = 30 min cap; give up so the helper always exits
@@ -59,16 +60,13 @@ if [ "${LOOP_WAIT_MERGE:-1}" = "1" ]; then
     # Auto-merge レース対策 (PR #47 前例): arm が CI pass イベントを追い越すと
     # GitHub の auto-merge が発火しない。CLEAN = CI 通過済みなので強制 merge は安全。
     if [ "$mw" -ge "$FORCE_AFTER" ]; then
-      stuck=$(gh pr list -s open --json number,mergeStateStatus,autoMergeRequest,isDraft \
-        -q '[.[]|select(.isDraft|not and .mergeStateStatus=="CLEAN" and .autoMergeRequest!=null)]|.[].number' 2>/dev/null)
-      for pr in $stuck; do
+      while IFS= read -r pr; do
+        [ -z "$pr" ] && continue
         log "force-merging stuck PR #$pr (CLEAN + auto-merge armed, $((mw * 30))s elapsed)"
-        if gh pr merge "$pr" --merge --delete-branch 2>/dev/null; then
-          log "force-merged PR #$pr"
-        else
-          log "force-merge PR #$pr failed, will retry"
-        fi
-      done
+        merge_out=$(gh pr merge "$pr" --merge --delete-branch 2>&1) \
+          && log "force-merged PR #$pr" \
+          || log "force-merge PR #$pr failed: $merge_out"
+      done < <(printf '%s' "$pr_json" | jq -r '[.[]|select((.isDraft|not) and .mergeStateStatus=="CLEAN" and .autoMergeRequest!=null)]|.[].number')
     fi
     sleep 30
   done
