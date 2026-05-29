@@ -63,11 +63,12 @@ judgment が重いため機械化しない。リポ基盤（package.json / tscon
 
 1. fresh session が CLAUDE.md + 再注入された `.claude/state/latest.md` を読む
 2. `nights/pending/` 最若の夜を `night/NNN-<topic>` ブランチで実装
-3. PR 作成 → メインが `code-review --fix` を直呼びでレビュー → triage（STOP/FIX/PASS）→ 全 PASS なら auto-merge arm
-4. **各夜の終了処理**（CLAUDE.md 参照）を必ず実行:
+3. PR 作成 → メインが `code-review --fix` を直呼びでレビュー → triage（STOP/FIX/PASS）→ 全 PASS なら merge
+4. **merge 完了後、ユーザーに確認を求めず即座に終了処理を実行する**（CLAUDE.md 参照）:
    - handoff を PR に書く
    - `bash scripts/finish-night.sh "<次ゴール文 or STOP>"` を呼ぶ
      （auto-merge arm / latest.md 更新 / フラグ書込 / GOAL 出力を一括実行）
+   - 「次どうする？」「他にある？」等の質問は自走を止める違反行為
 5. turn を終える → Stop hook が helper を spawn → `/clear` → latest.md 再注入 → 次ゴール投入
 
 暴走ブレーキは `NIGHTOWL_LOOP_MAX`（既定 20）。`nights/pending/` が尽きたら、再びこのスキルの

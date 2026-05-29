@@ -89,7 +89,9 @@
 
 ## 各夜の終了処理
 
-夜 N の PR に auto-merge を arm し handoff を書いたら、 セッションを終える前に以下を行う (この後 Stop hook → helper が `/clear` して次の夜へ連鎖):
+**ユーザーに確認を求めず即座に実行する。** レビュー triage が全 PASS → merge 完了した時点で、
+立ち止まらずそのまま以下を行う。「次どうする？」「他にある？」等の質問は自走を止める違反行為。
+この後 Stop hook → helper が `/clear` して次の夜へ連鎖する:
 
 1. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を該当夜の PR description かコメントに書く。 `tmp/handoff/` のローカル md は gitignore で push されず二重管理になるため使わない
 2. **`scripts/finish-night.sh` を呼ぶ** (残りの機械的手順を atomic に実行):
