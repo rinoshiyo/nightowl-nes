@@ -15,9 +15,9 @@ const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 // (BIT/ORA/AND/EOR/ADC/SBC/CMP/CPX/CPY abs = $2C/$0D/$2D/$4D/$6D/$ED/$CD/$EC/$CC) を実装し 2848 行まで到達。
 // 夜 13: absolute RMW (LSR/ASL/ROR/ROL/INC/DEC absolute) を実装し 3040 行まで到達。
 // 夜 14: (indirect),Y (LDA/ORA/AND/EOR/ADC/CMP/SBC/STA) を実装し 3323 行まで到達。
-// 夜 15: JMP indirect + absolute,Y (LDA/ORA/AND/EOR/ADC/SBC/CMP/STA) を実装し 3628 行まで到達。
-// 3629 行目の LDY $33,X = zeroPage,X ブロックの入口。
-const TRACE_LINES = 3628;
+// 夜 15: JMP indirect + absolute,Y (LDA/ORA/AND/EOR/ADC/SBC/CMP/STA) を実装し 3638 行まで到達。
+// 3639 行目の LDY $33,X = zeroPage,X ブロックの入口。
+const TRACE_LINES = 3638;
 
 /**
  * nestest 実行用の最小 Bus。

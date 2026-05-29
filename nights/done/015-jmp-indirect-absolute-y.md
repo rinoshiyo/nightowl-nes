@@ -28,7 +28,7 @@
 3. **G3: LDA/ORA/AND/EOR abs,Y** — opcode `B9`/`19`/`39`/`59`、cycle 4 (+1 page cross)。既存の演算ロジックを absoluteY で呼ぶ
 4. **G4: ADC/SBC/CMP abs,Y** — opcode `79`/`F9`/`D9`、cycle 4 (+1 page cross)。既存の演算ロジックを absoluteY で呼ぶ
 5. **G5: STA abs,Y** — opcode `99`、cycle 5 (固定、page cross 加算なし)。write 系
-6. **G6: nestest trace 延伸** — `TRACE_LINES` を 3323 → 3628 に引き上げ (line 3629 = LDY zpX ブロックの入口)
+6. **G6: nestest trace 延伸** — `TRACE_LINES` を 3323 → 3638 に引き上げ (line 3639 = LDY zpX ブロックの入口)
 7. **G7: 単体テスト追加** — JMP indirect (page boundary バグ含む) と abs,Y 命令群のテスト
 
 各サブゴールは独立 commit 単位 (Conventional Commits)。
@@ -74,7 +74,7 @@
 | `F9` | SBC | abs,Y | 4 (+1 pgx) | 3545 (`E127`) |
 | `99` | STA | abs,Y | 5 (固定) | 3622 (`E19D`) |
 
-延伸上限 = 3628 行 (3629 行 `DBCD LDY $33,X` = zeroPage,X ブロックの入口)。
+延伸上限 = 3638 行 (3639 行 `DBCD LDY $33,X` = zeroPage,X ブロックの入口)。
 
 ## 詰まったら (nesdev wiki のみ参照)
 
@@ -127,7 +127,7 @@
 - [ ] G4: CMP が C/Z/N フラグを正しく設定 (V フラグは触らない)
 - [ ] G5: STA abs,Y (`99`) 実装、cycle 5 (固定)
 - [ ] G5: STA は bus.write で値を書き込み、フラグ変更なし
-- [ ] G6: `TRACE_LINES` を 3628 に引き上げ、nestest trace test pass
+- [ ] G6: `TRACE_LINES` を 3638 に引き上げ、nestest trace test pass
 - [ ] G7: JMP indirect テスト (通常 + page boundary バグケース)
 - [ ] G7: abs,Y 命令テスト (page cross あり/なし、フラグ、write)
 - [ ] `bun test` 全 pass
