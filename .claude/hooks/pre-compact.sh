@@ -31,7 +31,7 @@ $(tail -20 "$CWD/tmp/test.log" 2>/dev/null || echo "no test log")
 \`\`\`
 
 ## 現在の作業対象
-$(ls "$CWD/nights/pending/" 2>/dev/null | sort | head -1 || echo "no pending night")
+$(ls "$CWD/nights/pending/" 2>/dev/null | sort -V | head -1 || echo "no pending night")
 EOF
 
 exit 0
