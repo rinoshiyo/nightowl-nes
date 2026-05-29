@@ -37,6 +37,20 @@ if echo "$CMD" | grep -qE '^[[:space:]]*git[[:space:]]+push([[:space:]]+-[uU])?(
   exit 2
 fi
 
+# ==== レビュー FIX 未消化時の merge block ====
+# bot-review-post.sh が FIX/STOP ありの round で .claude/state/review-status.json に
+# has_fix=true を書く。R2 で収束するまで merge を deny する。
+if echo "$CMD" | grep -qE 'gh[[:space:]]+pr[[:space:]]+merge\b'; then
+  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  REVIEW_STATE="${REPO_ROOT:-.}/.claude/state/review-status.json"
+  if [ -f "$REVIEW_STATE" ] && [ "$(jq -r '.has_fix // false' "$REVIEW_STATE" 2>/dev/null)" = "true" ]; then
+    review_pr=$(jq -r '.pr // "?"' "$REVIEW_STATE" 2>/dev/null)
+    jq -n --arg pr "$review_pr" \
+      '{decision:"deny", reason:("PR #" + $pr + " のレビューに FIX/STOP 未消化あり。R2 (code-review --fix) を実行してから merge してください")}' >&2
+    exit 2
+  fi
+fi
+
 # ==== auto-merge 無しの gh pr merge を ask (CI 確認を飛ばすため) ====
 if echo "$CMD" | grep -qE 'gh[[:space:]]+pr[[:space:]]+merge\b' && ! echo "$CMD" | grep -qE '\-\-auto\b'; then
   jq -n '{decision:"ask", reason:"gh pr merge without --auto bypasses CI gate"}' >&2
