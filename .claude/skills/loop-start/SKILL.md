@@ -35,8 +35,9 @@ draft = レビュー隔離中（再開対象） / auto-merge arm 済みで CI �
 
 ### autorun — pending の夜がある
 
-既存の自走フロー（下記「1 夜 = 1 サイクル」）。最若の夜から着手すれば、以降は各夜末の
-フラグ書込で `/clear` 連鎖が無人継続する。
+**ユーザーに入力を求めず即座に着手する。** 最若の pending 夜のゴールセクションを読み、
+その条件で実装を開始する。`/goal` コマンドの入力やユーザーへの確認は不要（ゴール条件は
+夜 md に書いてある）。以降は各夜末のフラグ書込で `/clear` 連鎖が無人継続する。
 
 ### seed — pending 空・done あり（継続 cold start）
 
@@ -47,7 +48,10 @@ draft = レビュー隔離中（再開対象） / auto-merge arm 済みで CI �
    `nights/template/NNN-template.md` に沿って `nights/pending/NNN-<topic>.md` を設計
 3. 粒度の手本に直近 done の md（`nights/done/<最新>.md`）を参照
 4. seed を commit（`chore(nights): seed NNN`）して pending に置く
-5. seed 完了後にこのスキルを再評価 → `SUGGESTED` が `autorun` に変わるので自走へ移る
+5. seed 完了後、ユーザーに入力を求めず即座に上記「autorun」分岐の手順で着手する。
+   seed で pending に夜 md が入ったので SUGGESTED は autorun に変わる。
+   夜 md のゴールセクションを読み、その条件で実装を開始する。
+   `/goal` コマンドの入力やユーザーへのコピペ依頼は不要（ゴール条件は夜 md に書いてある）
 
 ### bootstrap — pending も done も空（真の初回）
 
