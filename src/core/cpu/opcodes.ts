@@ -1,6 +1,8 @@
 import type { Bus } from "../bus.ts";
 import {
   absolute,
+  absoluteIndirect,
+  absoluteY,
   immediate,
   implied,
   indexedIndirect,
@@ -180,6 +182,15 @@ def(0x4c, {
   name: "JMP",
   mode: absolute,
   cycles: 3,
+  exec: (cpu, _bus, op) => {
+    cpu.pc = op.addr;
+    return 0;
+  },
+});
+def(0x6c, {
+  name: "JMP",
+  mode: absoluteIndirect,
+  cycles: 5,
   exec: (cpu, _bus, op) => {
     cpu.pc = op.addr;
     return 0;
