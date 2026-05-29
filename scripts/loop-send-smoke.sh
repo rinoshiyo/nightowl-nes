@@ -84,7 +84,7 @@ run_one() {
 }
 
 run_one "single-line-ascii"  "next goal simple"
-run_one "realistic-goal"     "次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→sub-agentレビュー→triage→全PASSなら auto-merge arm、or stop after 50 turns"
+run_one "realistic-goal"     "次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、or stop after 50 turns"
 run_one "ja-emoji-arrow"     "次の pending 夜を実装→PR→auto-merge ✨"
 run_one "specialchars"       'a"b'"'"'c\d$e`f(g)h'
 run_one "dash-start"         "-foo --bar"

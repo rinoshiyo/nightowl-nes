@@ -35,21 +35,35 @@ if [ -z "$REPO" ]; then
   exit 1
 fi
 
-login=""
 if [ "${1:-}" = "--inline" ]; then
   path_arg="${2:?--inline には <path> <line> <body> が必要}"
   line="${3:?--inline には <path> <line> <body> が必要}"
   body="${4:?--inline には <path> <line> <body> が必要}"
-  sha=$(git rev-parse HEAD)
-  # 既存コミットの当該行に inline review comment を投稿。RIGHT = 追加側の行。
-  login=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/pulls/$PR/comments" \
-    -f body="$body" -f commit_id="$sha" -f path="$path_arg" -F line="$line" -f side=RIGHT \
-    --jq '.user.login' 2>&1) || { echo "ERROR: inline 投稿失敗: $login" >&2; exit 1; }
+  # gh は -F line をローカル検証しないため、非数値を渡すと API が 422 を返す。
+  # 構造的に弾く (このラッパーの目的は誤投稿の防止)。
+  case "$line" in
+    ''|*[!0-9]*) echo "ERROR: --inline の <line> は正の整数で指定してください (line=$line)。" >&2; exit 1 ;;
+  esac
+  # メインの HEAD がレビュー対象ブランチを指す保証がない (CORE.md は finder に checkout 禁止を
+  # 指示) ため、PR head の sha を API から引く。
+  sha=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/pulls/$PR" -q .head.sha 2>/dev/null)
+  if [ -z "$sha" ]; then
+    echo "ERROR: PR #$PR の head sha 取得失敗。" >&2
+    exit 1
+  fi
+  resp=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/pulls/$PR/comments" \
+    -f body="$body" -f commit_id="$sha" -f path="$path_arg" -F line="$line" -f side=RIGHT 2>&1) \
+    || { echo "ERROR: inline 投稿失敗 (API): $resp" >&2; exit 1; }
 else
   body="${1:?body required}"
-  login=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/issues/$PR/comments" \
-    -f body="$body" --jq '.user.login' 2>&1) || { echo "ERROR: issue comment 投稿失敗: $login" >&2; exit 1; }
+  resp=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/issues/$PR/comments" \
+    -f body="$body" 2>&1) \
+    || { echo "ERROR: issue comment 投稿失敗 (API): $resp" >&2; exit 1; }
 fi
+
+# 投稿の HTTP 成否 (上の `||`) と名義検証を分離する。投稿成功レスポンスから login を
+# 後段で抽出 (--jq を投稿と同段にすると「投稿失敗」と「名義漏れ」が同じ exit に潰れる)。
+login=$(printf '%s' "$resp" | jq -r '.user.login // empty' 2>/dev/null)
 
 # 投稿者が bot であることを検証 (名義漏れの構造的検出)。
 case "$login" in

@@ -25,7 +25,7 @@
 
 ## レビュー観点 (code-review の finder に渡す NES 固有の観点)
 
-`loop/CORE.md` の「夜 N PR の自動レビュー」で sub-agent に渡す観点:
+`loop/CORE.md` の「夜 N PR の自動レビュー」で、 メインが直呼びする code-review の finder に渡る観点:
 
 1. **6502 仕様との一致性** (nesdev wiki が正典): opcode・cycle 数・フラグ挙動が仕様通りか
 2. **TypeScript 型安全性** (`noUncheckedIndexedAccess` / `exactOptionalPropertyTypes` 下で破綻なし)

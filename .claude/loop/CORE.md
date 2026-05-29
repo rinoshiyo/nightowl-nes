@@ -67,6 +67,8 @@
 
 詳細:
 - **`code-review` は `--comment` を付けない**。 メインが findings を受け取り `bot-comment.sh` で投稿を制御するため (skill 自身に投稿させると名義制御できない)。 **`--fix` は付ける** (指摘を working tree に自動反映 = 無人 triage の前進力)
+- **メインは night ブランチに居る前提**: `code-review --fix` は **メインの working tree** を直接書き換えるため、 起動時の作法どおり `night/NNN` を checkout した状態で実行すること (`--fix` の修正先・inline の対象が PR ブランチになる)。 finder には「`git checkout`/`switch` 禁止」を指示するが、 メイン自身は night ブランチに居る (両者は矛盾しない)
+- **finder spawn は `run_in_background: true` 必須**: code-review skill が内部で Agent 起動する finder/verifier も、 メインが Agent を起動する全てと同様に background 必須 (foreground 起動は hook `check-agent-background.sh` で deny される)
 - **finder への指示** (skill が Agent spawn する各 finder に渡る観点): NES 固有のレビュー観点は `nes/CORE.md` 参照。 **共有ワークツリー保護** = 「`git checkout`/`switch` 禁止、 diff は `git diff main...<branch>` / `git show <branch>:path` で見ろ」 を必ず指示 (checkout するとメインのブランチが動く事故)
 - **severity はメインが triage 時に付与** (code-review の生 finding は severity 無しのフラット出力)。 そのうえで **何が起きるか** で 3 区分に振り分け、 **裁定を石井名義で PR 投稿** (どの区分でも必ず・全 PASS でも):
 
