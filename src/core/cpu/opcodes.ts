@@ -1016,3 +1016,21 @@ def(0x51, {
     return op.pageCrossed ? 1 : 0;
   },
 });
+def(0x71, {
+  name: "ADC",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr));
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+def(0xf1, {
+  name: "SBC",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
