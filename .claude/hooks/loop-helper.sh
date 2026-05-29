@@ -1,9 +1,10 @@
 #!/bin/bash
 # Driver for the autonomous /clear loop. Spawned detached by the Stop hook.
 #
-# Waits for the worker to go idle, resets its context with /clear, then feeds
-# the next goal. Being a separate OS process, it survives the /clear that wipes
-# the worker's conversation context.
+# Resets the worker's context with /clear at a task boundary, then feeds the
+# next goal. Being a separate OS process, it survives the /clear that wipes the
+# worker's conversation context. Idle is detected via a signal file the
+# SessionStart "clear" hook drops, not by scraping the worker's TUI.
 #
 # Args: $1 = next goal string to inject  /  $2 = worker tmux pane id (e.g. "%5")
 set -uo pipefail
@@ -16,54 +17,13 @@ PANE="${2:-}"
 
 log() { echo "[$(date +%T)] $*"; }
 
-# Footer markers shown while Claude is actively working. The footer does not
-# scroll, so these are reliable. ASCII-safe; intentionally NOT matching loose
-# "tokens" text, which can appear on an idle footer and wedge detection (#1).
-BUSY_RE='esc to interrupt|ctrl\+o|Compacting|Summarizing'
-
-# Static when two captures across a short gap are identical AND non-empty. An
-# empty/failed capture (dead or wrong pane) must NOT count as "static idle",
-# otherwise we could /clear a pane that is gone or actually busy (#2).
-screen_static() {
-  local a b
-  a=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
-  [ -n "$a" ] || return 1
-  sleep 2
-  b=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
-  [ -n "$b" ] && [ "$a" = "$b" ]
-}
-
-# Confirm idle when activity markers have been continuously absent AND either
-# the screen is static OR markers stayed absent for a sustained window (#4
-# fallback, so an idle screen with a ticking element can't wedge us forever).
-# An empty capture is treated as "cannot confirm" (resets the streak) so a dead
-# or wrong pane never triggers /clear (#2). Wall-clock deadline keeps the timeout
-# honest regardless of per-branch sleeps (#3). Biased toward false-busy (safe
-# wait) over false-idle (which would /clear mid-task). $1 = max seconds.
-wait_idle() {
-  local max="$1" snap
-  local deadline=$(( $(date +%s) + max ))
-  local quiet_since=0   # epoch markers first went absent this streak (0 = busy/unknown)
-  sleep 5   # let the just-sent action spin up first
-  while [ "$(date +%s)" -lt "$deadline" ]; do
-    snap=$(tmux capture-pane -t "$PANE" -p 2>/dev/null)
-    if [ -z "$snap" ] || printf '%s' "$snap" | grep -qiE "$BUSY_RE"; then
-      quiet_since=0   # busy, or capture failed -> cannot declare idle
-    else
-      [ "$quiet_since" -eq 0 ] && quiet_since=$(date +%s)
-      if screen_static || [ $(( $(date +%s) - quiet_since )) -ge 20 ]; then
-        return 0
-      fi
-    fi
-    sleep 3
-  done
-  return 1
-}
-
 # Robust tmux text injection is factored into scripts/loop-send.sh so tests can
 # exercise it directly (sourcing this whole driver would run the loop). The entry
 # point is `loop_send <pane> <body>`.
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/loop-send.sh"
+
+# Signal-based idle detection for the post-/clear wait (wait_cleared).
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/loop-wait-cleared.sh"
 
 NOTIFY="$(dirname "${BASH_SOURCE[0]}")/../../scripts/loop-notify.sh"
 notify() {
@@ -73,8 +33,11 @@ CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 log "chain start pane=$PANE next='${NEXT:0:50}'"
 
-# 1) Wait for the worker to finish the current task and go idle.
-wait_idle 600 || { log "timeout waiting for worker idle, abort"; notify --reason idle-timeout; exit 1; }
+# 1) No explicit "is the worker idle?" wait is needed here. The Stop hook only
+#    spawns this driver after an assistant turn has fully ended (Stop == idle),
+#    and the completion flag is written only once the goal is met, so the worker
+#    is already done by the time we run. Screen-scraping idle detection was
+#    removed in favor of this guarantee plus the signal-based post-/clear wait.
 
 # 2) Wait for the armed auto-merge to land on green CI BEFORE resetting, so the
 #    next task builds on a main that already includes this task (otherwise the
@@ -102,9 +65,23 @@ fi
 #    picker. Use a timestamp so successive nights are distinguishable; a fixed
 #    label made every past night show up identically and useless to pick from.
 #    Relies on the container TZ being JST (set in compose.yaml) for a local time.
+#
+#    Idle detection here is signal-based, not screen-based: the SessionStart
+#    "clear" hook drops a pane-scoped signal file once /clear has reset the
+#    worker. Remove any stale signal first so we only observe the fresh one,
+#    then wait for it. If it never arrives (hook misfired, ran without a pane,
+#    or a future Claude Code dropped the clear matcher), fail-stop and notify
+#    rather than guess: sending the next goal mid-reset would corrupt the chain.
+CLEARED_SIG="$CWD/.claude/state/loop-cleared.${PANE#%}.txt"
+rm -f "$CLEARED_SIG"
 log "sending /clear"
 loop_send "$PANE" "/clear loop-clear-$(date +%Y%m%d-%H%M)" || { log "send /clear failed, abort"; notify --reason send-failed --error "/clear send failed"; exit 1; }
-wait_idle 300 || { log "timeout waiting for idle after /clear, abort"; notify --reason idle-timeout --error "idle timeout after /clear"; exit 1; }
+if ! wait_cleared "$CLEARED_SIG" 300; then
+  log "no clear signal in 300s, abort"
+  notify --reason clear-signal-timeout --error "no /clear signal from SessionStart clear hook (hook misfired or ran without a pane?)"
+  exit 1
+fi
+log "clear signal received"
 
 # 4) Feed the next goal -> hands the baton to the next task.
 log "sending next goal"
