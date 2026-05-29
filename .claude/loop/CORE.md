@@ -32,7 +32,7 @@
 
 | 立場 | 名義 | 投稿経路 | 投稿するもの |
 |---|---|---|---|
-| **レビュアー** | bot `rinoshiyo-bot-reviewer[bot]` | **`scripts/bot-comment.sh`** (トークン適用 + fail-stop + author 検証) | レビュー結果 (severity 付き)。 **指摘ゼロでも「✅ レビュー実施・指摘なし」を必ず1件投稿** (証跡) |
+| **レビュアー** | bot `rinoshiyo-bot-reviewer[bot]` | **`scripts/bot-review-post.sh`** (フォーマット強制。内部で `bot-comment.sh` を呼ぶ) | レビュー結果 (severity 付き)。 **指摘ゼロでも「✅ レビュー実施・指摘なし」を必ず1件投稿** (証跡) |
 | **裁定者 (石井代理)** | **石井本人** (`GH_TOKEN` なし通常認証) | `gh pr comment` 直 | triage 裁定・対応の記録 |
 
 - **なぜ分けるか**: レビュアー (bot) の指摘を受けてオーナー (石井=メイン) が「merge してよいか」を裁定する現実のレビュー構図を再現するため。 名義が同じだと朝石井が「指摘か裁定か」を区別できず PR-as-SSOT が機能しない
