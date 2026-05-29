@@ -36,7 +36,7 @@
 | **裁定者 (石井代理)** | **石井本人** (`GH_TOKEN` なし通常認証) | `gh pr comment` 直 | triage 裁定・対応の記録 |
 
 - **なぜ分けるか**: レビュアー (bot) の指摘を受けてオーナー (石井=メイン) が「merge してよいか」を裁定する現実のレビュー構図を再現するため。 名義が同じだと朝石井が「指摘か裁定か」を区別できず PR-as-SSOT が機能しない
-- **bot 名義投稿は必ず `scripts/bot-comment.sh` 経由**。 生の `gh pr comment` / `gh api ... comments` を直接叩くと、 トークン適用漏れで石井名義に静かに fallback したり `gh pr comment` の `--jq` 非対応で投稿失敗する事故が起きる (ラッパーが構造的に防ぐ)。 `gh pr create` / `gh pr merge` / `gh pr ready` 等の write 操作には `GH_TOKEN` を付けない (bot は Contents read のみで失敗)。 鍵マウント未設定のマシンでは bot トークンが空になり、 ラッパーが fail-stop する (石井名義への fallback を許さない)
+- **bot 名義投稿は必ず `scripts/bot-comment.sh` 経由**。 生の `gh pr comment` / `gh api ... comments` を直接叩くと、 トークン適用漏れで石井名義に静かに fallback したり `gh pr comment` の `--jq` 非対応で投稿失敗する事故が起きる (ラッパーが構造的に防ぐ)。 `gh pr create` / `gh pr merge` / `gh pr ready` 等の write 操作には `GH_TOKEN` を付けない (bot は Contents read のみで失敗)。 鍵マウント未設定のマシンでは bot トークンが空になり、 ラッパーが fail-stop する (石井名義への fallback を許さない)。 **前提**: inline コメントの `head.sha` 取得は通常 gh 認証 (GH_TOKEN なし) で `pulls` を読めることに依存する (bot は Contents read のみで pulls 読取に権限不足)
 - **bot (レビュアー) コメントの声 = フレンドリー・励まし**: code-review の生出力をそのまま貼らず言い換える — ① まず良い点・労いに一言 (例「✨ 実装おつかれさまです！」) ② 各指摘は提案調 (「〜すると安心かも」) ③ 絵文字を程よく (✨🙏💪🤔) ④ **致命度は保ったまま角だけ取る** (STOP 級は柔らかくても「ここは直さないと merge できないかも」 と明確に)。 **Why: 石井は無駄を削いだ簡潔な物言いをするので、 bot の柔らかいレビューが「他人からレビューされている体感」を生む** — この違和感を仕組みで担保するのが狙い (memory `review-bot-identity` で確定)
 
 **重要 (レース回避)**: `gh pr merge --auto` は **全 PASS 確認後に初めて設定する**。 レビュー前に打つと CI 緑がレビューを追い抜き判定前に merge されうる。
@@ -144,6 +144,8 @@
 **マージ方式は merge commit (`--merge`) で固定**: squash でなく merge commit を使うのは `git log --graph` 上で各 night ブランチの合流が視覚的に追え、 各夜の作業コミットも履歴に残るため。 squash / rebase は使わない。
 
 **auto-merge を打つタイミング**: code-review レビューの triage が完了し STOP 判定ゼロを確認した後に限る。 レビュー前に打つと CI 緑がレビューを追い抜くレースが起きる。
+
+**auto-merge レース対策 (loop-helper.sh)**: arm が CI pass イベントを僅かに追い越すと GitHub の auto-merge トリガーが発火しないレース実在 (PR #47 前例)。 `loop-helper.sh` の merge 待ちループは **5 分 (`LOOP_FORCE_AFTER` × 30s) 経過後、 `mergeStateStatus: CLEAN` + `autoMergeRequest` 有効な PR を `gh pr merge --merge --delete-branch` で強制 merge** する。 CLEAN = CI 通過済みなので安全。 これがないと merge 待ちが 30 分 timeout → 連鎖停止で朝まで止まる。
 
 詰まった場合は PR を draft に戻す (`gh pr ready --undo`) か、 ask 経由で close するか、 stuck/ 隔離フロー (`loop/REFERENCE.md`) に乗せる。
 
