@@ -1466,7 +1466,7 @@ def(0xbf, { name: "*LAX", mode: absoluteY, cycles: 4, exec: execLax });
 // A と X の AND 結果をメモリに書き込む。フラグは変更しない。
 
 function execSax(cpu: Cpu, bus: Bus, op: Operand): number {
-  bus.write(op.addr, (cpu.a & cpu.x) & 0xff);
+  bus.write(op.addr, cpu.a & cpu.x);
   return 0;
 }
 
