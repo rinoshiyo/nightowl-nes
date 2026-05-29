@@ -23,7 +23,7 @@
 - nestest trace test (`TRACE_LINES`) が当該夜の実装範囲まで延伸して pass
 - DoD 各項目を満たす (夜 md に記載)
 
-## レビュー観点 (sub-agent レビューに渡す NES 固有の観点)
+## レビュー観点 (code-review の finder に渡す NES 固有の観点)
 
 `loop/CORE.md` の「夜 N PR の自動レビュー」で sub-agent に渡す観点:
 

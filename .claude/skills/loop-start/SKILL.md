@@ -59,7 +59,7 @@ judgment が重いため機械化しない。リポ基盤（package.json / tscon
 
 1. fresh session が CLAUDE.md + 再注入された `.claude/state/latest.md` を読む
 2. `nights/pending/` 最若の夜を `night/NNN-<topic>` ブランチで実装
-3. PR 作成 → sub-agent レビュー → triage（STOP/FIX/PASS）→ 全 PASS なら auto-merge arm
+3. PR 作成 → メインが `code-review --fix` を直呼びでレビュー → triage（STOP/FIX/PASS）→ 全 PASS なら auto-merge arm
 4. **各夜の終了処理**（CLAUDE.md 参照）を必ず実行:
    - handoff を PR に書く
    - `bash scripts/finish-night.sh "<次ゴール文 or STOP>"` を呼ぶ
