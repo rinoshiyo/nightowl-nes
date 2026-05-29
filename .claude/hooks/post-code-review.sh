@@ -25,8 +25,9 @@ if [[ -z "$PANE" ]]; then
   exit 0
 fi
 FLAG_FILE=".claude/state/loop-next.${PANE#%}.txt"
-# loop-start で起動されているかを attributionSkill で判定するのは困難なので、
-# tmux pane 内 = 自走ループ前提とする（手動実行時は tmux 外が多い）
+if [[ ! -f "$FLAG_FILE" ]]; then
+  exit 0
+fi
 
 # カウンター指示を inject
 cat <<'HOOK_EOF'
