@@ -145,6 +145,8 @@
 
 **auto-merge を打つタイミング**: code-review レビューの triage が完了し STOP 判定ゼロを確認した後に限る。 レビュー前に打つと CI 緑がレビューを追い抜くレースが起きる。
 
+**auto-merge レース対策 (loop-helper.sh)**: arm が CI pass イベントを僅かに追い越すと GitHub の auto-merge トリガーが発火しないレース実在 (PR #47 前例)。 `loop-helper.sh` の merge 待ちループは **5 分 (`LOOP_FORCE_AFTER` × 30s) 経過後、 `mergeStateStatus: CLEAN` + `autoMergeRequest` 有効な PR を `gh pr merge --merge --delete-branch` で強制 merge** する。 CLEAN = CI 通過済みなので安全。 これがないと merge 待ちが 30 分 timeout → 連鎖停止で朝まで止まる。
+
 詰まった場合は PR を draft に戻す (`gh pr ready --undo`) か、 ask 経由で close するか、 stuck/ 隔離フロー (`loop/REFERENCE.md`) に乗せる。
 
 ## /goal 評価のための出力ルール
