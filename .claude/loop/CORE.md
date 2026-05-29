@@ -51,8 +51,9 @@
 │             → findings + working tree 自動修正。--fix は「intended behavior 変更/
 │             スコープ外/false positive は skip」を内蔵)
 │  b. メイン: 各 finding を critical/high/medium/low に分類 (severity 付与)
-│  c. メイン: bot 名義 (bot-comment.sh) で投稿 — サマリ1件 (severity 件数) +
-│             各指摘を1点1インライン。指摘ゼロでも「✅ レビュー実施・指摘なし」
+│  c. メイン: **`scripts/bot-review-post.sh`** で投稿 (フォーマットを構造的に強制)。
+│             findings JSON を渡すと サマリ→issue comment / 各指摘→inline を自動振り分け。
+│             指摘ゼロでも「✅ レビュー実施・指摘なし」をサマリとして投稿
 │  d. メイン: triage を石井名義で投稿 (--fix で直したもの / skip 理由 / STOP/PASS)
 │  e. (修正あれば) 別 commit → push → ローカルで bun test + tsc + eslint
 └──┘ ← FIX 必須が残る限り 2 を繰り返す (往復上限 2・超過は STOP 格上げ)
@@ -66,7 +67,7 @@
 ```
 
 詳細:
-- **`code-review` は `--comment` を付けない**。 メインが findings を受け取り `bot-comment.sh` で投稿を制御するため (skill 自身に投稿させると名義制御できない)。 **`--fix` は付ける** (指摘を working tree に自動反映 = 無人 triage の前進力)
+- **`code-review` は `--comment` を付けない**。 メインが findings を受け取り `bot-review-post.sh` で投稿する (skill 自身に投稿させると名義制御できない)。 **`--fix` は付ける** (指摘を working tree に自動反映 = 無人 triage の前進力)。 `bot-review-post.sh` は内部で `bot-comment.sh` を呼ぶ (名義制御・fail-stop は bot-comment.sh が担保)
 - **メインは night ブランチに居る前提**: `code-review --fix` は **メインの working tree** を直接書き換えるため、 起動時の作法どおり `night/NNN` を checkout した状態で実行すること (`--fix` の修正先・inline の対象が PR ブランチになる)。 finder には「`git checkout`/`switch` 禁止」を指示するが、 メイン自身は night ブランチに居る (両者は矛盾しない)
 - **finder spawn は `run_in_background: true` 必須**: code-review skill が内部で Agent 起動する finder/verifier も、 メインが Agent を起動する全てと同様に background 必須 (foreground 起動は hook `check-agent-background.sh` で deny される)
 - **finder への指示** (skill が Agent spawn する各 finder に渡る観点): NES 固有のレビュー観点は `nes/CORE.md` 参照。 **共有ワークツリー保護** = 「`git checkout`/`switch` 禁止、 diff は `git diff main...<branch>` / `git show <branch>:path` で見ろ」 を必ず指示 (checkout するとメインのブランチが動く事故)
