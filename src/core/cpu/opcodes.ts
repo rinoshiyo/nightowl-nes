@@ -1443,3 +1443,34 @@ for (const op of [0x14, 0x34, 0x54, 0x74, 0xd4, 0xf4]) {
 for (const op of [0x1c, 0x3c, 0x5c, 0x7c, 0xdc, 0xfc]) {
   def(op, { name: "*NOP", mode: absoluteX, cycles: 4, exec: (_c, _b, o) => (o.pageCrossed ? 1 : 0) });
 }
+
+// ---- illegal LAX (LDA + LDX 同時) ----
+// メモリ値を A と X に同時ロードし Z/N フラグを更新する。
+
+function execLax(cpu: Cpu, bus: Bus, op: Operand): number {
+  const v = bus.read(op.addr);
+  cpu.a = v;
+  cpu.x = v;
+  setZeroNeg(cpu, v);
+  return op.pageCrossed ? 1 : 0;
+}
+
+def(0xa3, { name: "*LAX", mode: indexedIndirect, cycles: 6, exec: execLax });
+def(0xa7, { name: "*LAX", mode: zeroPage, cycles: 3, exec: execLax });
+def(0xaf, { name: "*LAX", mode: absolute, cycles: 4, exec: execLax });
+def(0xb3, { name: "*LAX", mode: indirectIndexed, cycles: 5, exec: execLax });
+def(0xb7, { name: "*LAX", mode: zeroPageY, cycles: 4, exec: execLax });
+def(0xbf, { name: "*LAX", mode: absoluteY, cycles: 4, exec: execLax });
+
+// ---- illegal SAX (A AND X → memory) ----
+// A と X の AND 結果をメモリに書き込む。フラグは変更しない。
+
+function execSax(cpu: Cpu, bus: Bus, op: Operand): number {
+  bus.write(op.addr, (cpu.a & cpu.x) & 0xff);
+  return 0;
+}
+
+def(0x83, { name: "*SAX", mode: indexedIndirect, cycles: 6, exec: execSax });
+def(0x87, { name: "*SAX", mode: zeroPage, cycles: 3, exec: execSax });
+def(0x8f, { name: "*SAX", mode: absolute, cycles: 4, exec: execSax });
+def(0x97, { name: "*SAX", mode: zeroPageY, cycles: 4, exec: execSax });
