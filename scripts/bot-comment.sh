@@ -35,6 +35,9 @@ if [ -z "$REPO" ]; then
   exit 1
 fi
 
+err=$(mktemp)
+trap 'rm -f "$err"' EXIT
+
 if [ "${1:-}" = "--inline" ]; then
   path_arg="${2:?--inline には <path> <line> <body> が必要}"
   line="${3:?--inline には <path> <line> <body> が必要}"
@@ -55,18 +58,14 @@ if [ "${1:-}" = "--inline" ]; then
   # 投稿: stderr を JSON に混ぜない (混ぜると gh の warning 1 行で後段の jq 抽出が壊れ、
   # 投稿成功でも login 空 → 名義検証が false-negative になる)。stdout=JSON のみ resp に取り、
   # stderr は一時ファイルへ退避して失敗時のみ出す。
-  err=$(mktemp)
   resp=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/pulls/$PR/comments" \
     -f body="$body" -f commit_id="$sha" -f path="$path_arg" -F line="$line" -f side=RIGHT 2>"$err") \
-    || { echo "ERROR: inline 投稿失敗 (API): $(cat "$err")" >&2; rm -f "$err"; exit 1; }
-  rm -f "$err"
+    || { echo "ERROR: inline 投稿失敗 (API): $(cat "$err")" >&2; exit 1; }
 else
   body="${1:?body required}"
-  err=$(mktemp)
   resp=$(GH_TOKEN="$TOKEN" gh api "repos/$REPO/issues/$PR/comments" \
     -f body="$body" 2>"$err") \
-    || { echo "ERROR: issue comment 投稿失敗 (API): $(cat "$err")" >&2; rm -f "$err"; exit 1; }
-  rm -f "$err"
+    || { echo "ERROR: issue comment 投稿失敗 (API): $(cat "$err")" >&2; exit 1; }
 fi
 
 # 投稿の HTTP 成否 (上の `||`) と名義検証を分離する。投稿成功レスポンスから login を
