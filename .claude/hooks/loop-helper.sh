@@ -49,8 +49,10 @@ if [ "${LOOP_WAIT_MERGE:-1}" = "1" ]; then
   mw=0
   while :; do
     pr_json=$(gh pr list -s open --json number,mergeStateStatus,autoMergeRequest,isDraft 2>/dev/null || echo '[]')
-    open=$(printf '%s' "$pr_json" | jq '[.[]|select((.isDraft|not))]|length')
-    [ "${open:-0}" = "0" ] && break
+    open=$(printf '%s' "$pr_json" | jq '[.[]|select((.isDraft|not))]|length' 2>/dev/null)
+    # jq 失敗時は「PR あり」として待機継続 (stale main で /clear に進むのを防ぐ)
+    [ -z "$open" ] && open=1
+    [ "$open" = "0" ] && break
     mw=$((mw + 1))
     if [ "$mw" -ge 60 ]; then   # 60 * 30s = 30 min cap; give up so the helper always exits
       log "timeout waiting for PR merge (30m), abort"
