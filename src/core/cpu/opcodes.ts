@@ -1043,3 +1043,12 @@ def(0xd1, {
     return op.pageCrossed ? 1 : 0;
   },
 });
+def(0x91, {
+  name: "STA",
+  mode: indirectIndexed,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    bus.write(op.addr, cpu.a);
+    return 0;
+  },
+});
