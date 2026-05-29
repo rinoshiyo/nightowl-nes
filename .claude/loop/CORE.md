@@ -52,7 +52,10 @@
 │             スコープ外/false positive は skip」を内蔵)
 │  b. メイン: 各 finding を critical/high/medium/low に分類 (severity 付与)
 │  c. メイン: **`scripts/bot-review-post.sh`** で投稿 (フォーマットを構造的に強制)。
-│             findings JSON を渡すと サマリ→issue comment / 各指摘→inline を自動振り分け。
+│             findings JSON (各 finding に `triage: "fix"|"pass"|"stop"` 必須) を渡すと
+│             サマリ→issue comment / 各指摘→inline を自動振り分け。
+│             **FIX/STOP あり → `.claude/state/review-status.json` に `has_fix:true`** を書き、
+│             `pre-tool-use.sh` が `gh pr merge` を deny する (R2 で収束するまで merge 不可)。
 │             指摘ゼロでも「✅ レビュー実施・指摘なし」をサマリとして投稿
 │  d. メイン: triage を石井名義で投稿 (--fix で直したもの / skip 理由 / STOP/PASS)
 │  e. (修正あれば) 別 commit → push → ローカルで bun test + tsc + eslint
