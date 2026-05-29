@@ -37,6 +37,18 @@ export function zeroPage(cpu: Cpu, bus: Bus): Operand {
   return { addr, pageCrossed: false };
 }
 
+export function zeroPageX(cpu: Cpu, bus: Bus): Operand {
+  const base = bus.read(cpu.pc);
+  cpu.pc = (cpu.pc + 1) & 0xffff;
+  return { addr: (base + cpu.x) & 0xff, pageCrossed: false };
+}
+
+export function zeroPageY(cpu: Cpu, bus: Bus): Operand {
+  const base = bus.read(cpu.pc);
+  cpu.pc = (cpu.pc + 1) & 0xffff;
+  return { addr: (base + cpu.y) & 0xff, pageCrossed: false };
+}
+
 export function absolute(cpu: Cpu, bus: Bus): Operand {
   const lo = bus.read(cpu.pc);
   const hi = bus.read((cpu.pc + 1) & 0xffff);
