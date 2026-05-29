@@ -40,14 +40,24 @@ fi
 # ==== レビュー FIX 未消化時の merge block ====
 # bot-review-post.sh が FIX/STOP ありの round で .claude/state/review-status.json に
 # has_fix=true を書く。R2 で収束するまで merge を deny する。
+# stale state (別 PR) は gate 不適用。corrupt state は fail-closed (deny)。
 if echo "$CMD" | grep -qE 'gh[[:space:]]+pr[[:space:]]+merge\b'; then
   REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
   REVIEW_STATE="${REPO_ROOT:-.}/.claude/state/review-status.json"
-  if [ -f "$REVIEW_STATE" ] && [ "$(jq -r '.has_fix // false' "$REVIEW_STATE" 2>/dev/null)" = "true" ]; then
-    review_pr=$(jq -r '.pr // "?"' "$REVIEW_STATE" 2>/dev/null)
-    jq -n --arg pr "$review_pr" \
-      '{decision:"deny", reason:("PR #" + $pr + " のレビューに FIX/STOP 未消化あり。R2 (code-review --fix) を実行してから merge してください")}' >&2
-    exit 2
+  if [ -f "$REVIEW_STATE" ]; then
+    review_has_fix=$(jq -r '.has_fix // empty' "$REVIEW_STATE" 2>/dev/null)
+    review_pr=$(jq -r '.pr // empty' "$REVIEW_STATE" 2>/dev/null)
+    merge_pr=$(echo "$CMD" | grep -oE 'merge[[:space:]]+([0-9]+)' | grep -oE '[0-9]+' || true)
+    if [ -n "$merge_pr" ] && [ -n "$review_pr" ] && [ "$merge_pr" != "$review_pr" ]; then
+      : # 別 PR の stale state → gate 不適用
+    elif [ "$review_has_fix" = "true" ]; then
+      jq -n --arg pr "${review_pr:-?}" \
+        '{decision:"deny", reason:("PR #" + $pr + " のレビューに FIX/STOP 未消化あり。R2 (code-review --fix) を実行してから merge してください")}' >&2
+      exit 2
+    elif [ -z "$review_has_fix" ]; then
+      jq -n '{decision:"deny", reason:"review-status.json が破損。bot-review-post.sh を再実行してください"}' >&2
+      exit 2
+    fi
   fi
 fi
 

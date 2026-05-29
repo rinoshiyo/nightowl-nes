@@ -83,7 +83,7 @@ STATE_DIR="$(cd "$SCRIPTS/.." && pwd)/.claude/state"
 mkdir -p "$STATE_DIR"
 fix_count=$(printf '%s' "$JSON" | jq '[.findings // [] | .[] | select(.triage == "fix" or .triage == "stop")] | length' 2>/dev/null || echo 0)
 has_fix=$( [ "${fix_count:-0}" -gt 0 ] && echo true || echo false )
-printf '{"pr":%s,"has_fix":%s}\n' "$PR" "$has_fix" > "$STATE_DIR/review-status.json"
+jq -n --argjson pr "$PR" --argjson fix "$has_fix" '{pr:$pr, has_fix:$fix}' > "$STATE_DIR/review-status.json"
 
 if [ "$has_fix" = "true" ]; then
   echo "[bot-review-post] ⚠ FIX/STOP $fix_count 件 — R2 で収束確認が必須 (merge blocked until next round)"
