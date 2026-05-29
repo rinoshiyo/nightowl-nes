@@ -79,8 +79,8 @@
    | ✅ PASS | 設計の好み / 可読性 / リファクタ提案 / 将来夜への申し送り | 連鎖続行。 申し送りは次の夜 md に転記 |
 
 - **FIX 修正は grep で一網打尽**: 1 箇所直したら同じパターンを `grep` で全文スキャンし同種を同じ commit で潰す (同根の取りこぼしが次 round で再浮上し往復上限を無駄にするのを防ぐ)
-- **投稿フォーマットは全 round 不変**: 各指摘は **inline で1点1コメント (severity ラベル 🔴high/🟠medium/🟢low + 該当行)**。 issue comment は **サマリ専用** (severity 別件数 + 総評のみ)。 **R2/R3 の往復でも同じフォーマットを厳守** — 往復で「issue サマリに指摘を箇条書きするだけ・inline 省略」は禁止 (PR-as-SSOT で指摘が該当行から辿れなくなる)
-- **bot サマリの件数 = triage の件数 = dedup 後の同一 finding 集合**: finder 結果を dedup して確定した finding 集合を、 bot サマリ (severity 別件数) と triage (FIX/PASS 別) の**両方が同じ件数で**参照する。 bot が挙げていない項目を triage で勝手に増やさない (doc 整合等も finder 指摘として bot サマリに含める)。 数がズレると朝石井が「bot は N 件と言ったのに triage は M 件?」と PR を追えなくなる
+- **投稿フォーマットは再 round でも不変**: 指摘の投稿フォーマットは上記フロー 2c の通り (各指摘を inline で1点1コメント + issue comment はサマリ専用)。 **再 round (往復) でも degrade させず維持** — 往復で「issue サマリに指摘を箇条書きするだけ・inline 省略」は禁止 (PR-as-SSOT で指摘が該当行から辿れなくなる)。 inline の severity ラベルは `🛑critical / 🔴high / 🟠medium / 🟢low` (severity は finding の4段階・line 53 と一致。 `critical` は triage で 🛑STOP 区分に直結する最重要度)
+- **bot サマリ件数 = triage 件数 = dedup 後の finding 総数 (単一の不変式)**: dedup 後の finding 総数が、 bot サマリの severity 別件数の合計とも、 triage の区分 (STOP/FIX/PASS) 別件数の合計とも一致する。 bot が挙げていない項目を triage で勝手に増やさない (doc 整合・自己矛盾は cross-file finder = Angle C が拾うので、 finder 指摘として bot サマリに含まれる)。 数がズレると朝石井が「bot は N 件と言ったのに triage は M 件?」と PR を追えなくなる。 ※「指摘ゼロでも証跡1件」と「triage 裁定コメント」は finding 件数とは別軸の投稿で、 件数一致の対象外 (finding 0 でも証跡・裁定は各1件投稿する)
 - **使用量**: code-review 1 回 = finder 7 個 + verifier を spawn する重い処理。 通常は「初回 --fix (修正) + 2 回目 --fix (findings 0/PASS で収束確認)」の **2 回**で済む。 新指摘が出れば往復追加 (上限内)
 
 ## 各夜の終了処理
