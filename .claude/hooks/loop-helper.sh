@@ -48,7 +48,7 @@ if [ "${LOOP_WAIT_MERGE:-1}" = "1" ]; then
   FORCE_AFTER=${LOOP_FORCE_AFTER:-10}  # 10 × 30s = 5min
   mw=0
   while :; do
-    pr_json=$(gh pr list -s open --json number,mergeStateStatus,autoMergeRequest,isDraft 2>/dev/null || echo '[]')
+    pr_json=$(gh pr list -s open --json number,mergeStateStatus,isDraft 2>/dev/null || echo '[]')
     open=$(printf '%s' "$pr_json" | jq '[.[]|select((.isDraft|not))]|length' 2>/dev/null)
     # jq 失敗時は「PR あり」として待機継続 (stale main で /clear に進むのを防ぐ)
     [ -z "$open" ] && open=1
@@ -59,16 +59,18 @@ if [ "${LOOP_WAIT_MERGE:-1}" = "1" ]; then
       notify --reason merge-timeout
       exit 1
     fi
-    # Auto-merge レース対策 (PR #47 前例): arm が CI pass イベントを追い越すと
-    # GitHub の auto-merge が発火しない。CLEAN = CI 通過済みなので強制 merge は安全。
+    # CLEAN な PR を直接 merge する (arm の成否に依存しない)。
+    # 2026-03-25 以降の GitHub 仕様変更で CI 未通過時の --auto arm が HTTP 422 で
+    # 拒否されるようになり、auto-merge が事実上無効化されている (Discussion #190610)。
+    # FORCE_AFTER の猶予は auto-merge が復活した場合の発火余地として残す。
     if [ "$mw" -ge "$FORCE_AFTER" ]; then
       while IFS= read -r pr; do
         [ -z "$pr" ] && continue
-        log "force-merging stuck PR #$pr (CLEAN + auto-merge armed, $((mw * 30))s elapsed)"
+        log "merging CLEAN PR #$pr ($((mw * 30))s elapsed)"
         merge_out=$(gh pr merge "$pr" --merge --delete-branch 2>&1) \
-          && log "force-merged PR #$pr" \
-          || log "force-merge PR #$pr failed: $merge_out"
-      done < <(printf '%s' "$pr_json" | jq -r '[.[]|select((.isDraft|not) and .mergeStateStatus=="CLEAN" and .autoMergeRequest!=null)]|.[].number')
+          && log "merged PR #$pr" \
+          || log "merge PR #$pr failed: $merge_out"
+      done < <(printf '%s' "$pr_json" | jq -r '.[]|select((.isDraft|not) and .mergeStateStatus=="CLEAN")|.number')
     fi
     sleep 30
   done
