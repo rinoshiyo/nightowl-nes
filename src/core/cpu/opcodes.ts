@@ -4,6 +4,7 @@ import {
   immediate,
   implied,
   indexedIndirect,
+  indirectIndexed,
   type Operand,
   relative,
   zeroPage,
@@ -969,5 +970,19 @@ def(0xcc, {
   exec: (cpu, bus, op) => {
     compare(cpu, cpu.y, bus.read(op.addr));
     return 0;
+  },
+});
+
+// ---- (indirect),Y アドレッシング (夜 014) ----
+// read 系は cycle 5 (+1 page cross)、write 系 (STA) は cycle 6 固定。
+// 演算ロジックは (indirect,X) 版と同一。
+def(0xb1, {
+  name: "LDA",
+  mode: indirectIndexed,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    cpu.a = bus.read(op.addr);
+    setZeroNeg(cpu, cpu.a);
+    return op.pageCrossed ? 1 : 0;
   },
 });
