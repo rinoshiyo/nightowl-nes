@@ -6,8 +6,8 @@
 
 ## 自走モデル
 
-- **1 夜 = 1 つの夜 md = 1 本の PR = 1 つの /clear リセット境界** (所要目安 1-1.5 時間、 DoD 8-12 項目)
-- **各夜は有限の /goal** (`or stop after N turns`、 N=50 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
+- **1 夜 = 1 つの夜 md = 1 本の PR = 1 つの /clear リセット境界** (所要目安 3-5 時間、 DoD 20-40 項目)
+- **各夜は有限の /goal** (`or stop after N turns`、 N=80 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
 - 連鎖停止条件: pending 枯渇 / 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達
 - 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
 - **連鎖の起動**: `loop-start` skill (description マッチで起動。 slash コマンドではない) か、 最初の夜ゴールを手で投入する。 以降は各夜末のフラグ書込で /clear 連鎖が自走する
@@ -101,7 +101,7 @@
    スクリプトが以下を一括実行: auto-merge arm / `.claude/state/latest.md` 更新 / 次フラグ書込 (pane スコープ) / `🎯 GOAL CONDITION MET` 出力
 3. turn を終える → helper が idle を見て `/clear` → 次ゴール投入
 
-次ゴール文の例 (単一行 必須): `次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後 latest.md 更新と次フラグ書込まで行え、or stop after 50 turns`
+次ゴール文の例 (単一行 必須): `次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後 latest.md 更新と次フラグ書込まで行え、or stop after 80 turns`
 
 ## 起動時の作法
 
