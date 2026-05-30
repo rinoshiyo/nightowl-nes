@@ -1503,3 +1503,21 @@ def(0xd3, { name: "*DCP", mode: indirectIndexed, cycles: 8, exec: execDcp });
 def(0xd7, { name: "*DCP", mode: zeroPageX, cycles: 6, exec: execDcp });
 def(0xdb, { name: "*DCP", mode: absoluteY, cycles: 7, exec: execDcp });
 def(0xdf, { name: "*DCP", mode: absoluteX, cycles: 7, exec: execDcp });
+
+// ---- illegal ISB (INC + SBC 合成) ----
+// メモリ値を INC し、結果で A から SBC する。C/Z/N/V フラグは SBC の結果で更新。
+
+function execIsb(cpu: Cpu, bus: Bus, op: Operand): number {
+  const val = (bus.read(op.addr) + 1) & 0xff;
+  bus.write(op.addr, val);
+  addToA(cpu, val ^ 0xff);
+  return 0;
+}
+
+def(0xe3, { name: "*ISB", mode: indexedIndirect, cycles: 8, exec: execIsb });
+def(0xe7, { name: "*ISB", mode: zeroPage, cycles: 5, exec: execIsb });
+def(0xef, { name: "*ISB", mode: absolute, cycles: 6, exec: execIsb });
+def(0xf3, { name: "*ISB", mode: indirectIndexed, cycles: 8, exec: execIsb });
+def(0xf7, { name: "*ISB", mode: zeroPageX, cycles: 6, exec: execIsb });
+def(0xfb, { name: "*ISB", mode: absoluteY, cycles: 7, exec: execIsb });
+def(0xff, { name: "*ISB", mode: absoluteX, cycles: 7, exec: execIsb });
