@@ -11,11 +11,11 @@ const PALETTE_SIZE = 0x20;
 const OAM_SIZE = 256;
 
 const DOTS_PER_LINE = 341;
-const VISIBLE_LINES = 240;
+export const VISIBLE_LINES = 240;
 const VBLANK_LINE = 241;
 const PRE_RENDER_LINE = 261;
 const TOTAL_LINES = 262;
-const SCREEN_W = 256;
+export const SCREEN_W = 256;
 
 export class Ppu {
   /** $2000 PPUCTRL */
