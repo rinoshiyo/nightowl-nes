@@ -173,7 +173,7 @@ fi
 
 # --- issue 作成 ---
 if [ -n "$TOKEN" ]; then
-  GH_TOKEN="$TOKEN" gh issue create --title "$TITLE" --body "$BODY" --label "loop-alert" 2>/dev/null
+  GH_TOKEN="$TOKEN" gh issue create --title "$TITLE" --body "$BODY" --label "loop-alert" --assignee rinoshiyo 2>/dev/null
 else
-  gh issue create --title "$TITLE" --body "$BODY" --label "loop-alert" 2>/dev/null
+  gh issue create --title "$TITLE" --body "$BODY" --label "loop-alert" --assignee rinoshiyo 2>/dev/null
 fi
