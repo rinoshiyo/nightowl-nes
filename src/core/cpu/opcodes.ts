@@ -1559,3 +1559,22 @@ def(0x33, { name: "*RLA", mode: indirectIndexed, cycles: 8, exec: execRla });
 def(0x37, { name: "*RLA", mode: zeroPageX, cycles: 6, exec: execRla });
 def(0x3b, { name: "*RLA", mode: absoluteY, cycles: 7, exec: execRla });
 def(0x3f, { name: "*RLA", mode: absoluteX, cycles: 7, exec: execRla });
+
+// ---- illegal SRE (LSR + EOR 合成) ----
+// メモリ値を LSR し、結果で A と EOR する。C フラグは LSR で設定、N/Z は EOR 結果で更新。
+
+function execSre(cpu: Cpu, bus: Bus, op: Operand): number {
+  const shifted = lsrValue(cpu, bus.read(op.addr));
+  bus.write(op.addr, shifted);
+  cpu.a = cpu.a ^ shifted;
+  setZeroNeg(cpu, cpu.a);
+  return 0;
+}
+
+def(0x43, { name: "*SRE", mode: indexedIndirect, cycles: 8, exec: execSre });
+def(0x47, { name: "*SRE", mode: zeroPage, cycles: 5, exec: execSre });
+def(0x4f, { name: "*SRE", mode: absolute, cycles: 6, exec: execSre });
+def(0x53, { name: "*SRE", mode: indirectIndexed, cycles: 8, exec: execSre });
+def(0x57, { name: "*SRE", mode: zeroPageX, cycles: 6, exec: execSre });
+def(0x5b, { name: "*SRE", mode: absoluteY, cycles: 7, exec: execSre });
+def(0x5f, { name: "*SRE", mode: absoluteX, cycles: 7, exec: execSre });
