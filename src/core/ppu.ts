@@ -8,6 +8,7 @@
  * 仕様参照: https://www.nesdev.org/wiki/PPU_registers
  */
 
+const CHR_RAM_SIZE = 0x2000;
 const VRAM_SIZE = 0x800;
 const PALETTE_SIZE = 0x20;
 const OAM_SIZE = 256;
@@ -35,6 +36,7 @@ export class Ppu {
   /** PPUDATA read バッファ (パレット以外は 1 read 遅延) */
   private readBuffer = 0;
 
+  readonly chrRam = new Uint8Array(CHR_RAM_SIZE);
   readonly vram = new Uint8Array(VRAM_SIZE);
   readonly palette = new Uint8Array(PALETTE_SIZE);
   readonly oam = new Uint8Array(OAM_SIZE);
@@ -57,9 +59,9 @@ export class Ppu {
     }
   }
 
-  /** $2000-$2007 の write (addr は 0-7 にマスク済みで渡される想定) */
+  /** $2000-$2007 の write (addr は 0-7 にマスク済み、value は 0-255 で渡される想定) */
   write(reg: number, value: number): void {
-    const v = value & 0xff;
+    const v = value;
     switch (reg) {
       case 0:
         this.ctrl = v;
@@ -105,6 +107,12 @@ export class Ppu {
       return this.palette[addr & 0x1f] ?? 0;
     }
 
+    if (addr < 0x2000) {
+      const buffered = this.readBuffer;
+      this.readBuffer = this.chrRam[addr & 0x1fff] ?? 0;
+      return buffered;
+    }
+
     const buffered = this.readBuffer;
     this.readBuffer = this.vram[this.mirrorNametable(addr)] ?? 0;
     return buffered;
@@ -120,6 +128,8 @@ export class Ppu {
       if ((palIdx & 0x03) === 0) {
         this.palette[palIdx ^ 0x10] = value;
       }
+    } else if (addr < 0x2000) {
+      this.chrRam[addr & 0x1fff] = value;
     } else {
       this.vram[this.mirrorNametable(addr)] = value;
     }
@@ -129,7 +139,7 @@ export class Ppu {
     this.vramAddr = (this.vramAddr + ((this.ctrl & 0x04) !== 0 ? 32 : 1)) & 0x3fff;
   }
 
-  /** ネームテーブルミラーリング (スタブ段階では水平ミラー固定) */
+  /** ネームテーブルミラーリング (スタブ段階では垂直ミラー相当: NT0=NT2, NT1=NT3) */
   private mirrorNametable(addr: number): number {
     return (addr - 0x2000) & (VRAM_SIZE - 1);
   }

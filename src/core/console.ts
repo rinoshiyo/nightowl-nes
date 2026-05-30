@@ -7,6 +7,7 @@
 
 import type { Cpu } from "./cpu/index.ts";
 import { createCpu } from "./cpu/index.ts";
+import { CpuFlags } from "./cpu/flags.ts";
 import { cpuStep } from "./cpu/step.ts";
 import type { Cart } from "./cart.ts";
 import { NesBus } from "./nes-bus.ts";
@@ -30,6 +31,7 @@ export class NesConsole {
     const hi = this.bus.read(0xfffd);
     this.cpu.pc = (hi << 8) | lo;
     this.cpu.sp = 0xfd;
+    this.cpu.p = (this.cpu.p | CpuFlags.I) & 0xff;
     this.cpu.cycles = 7;
   }
 
