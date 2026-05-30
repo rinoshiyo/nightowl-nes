@@ -1474,3 +1474,32 @@ def(0x83, { name: "*SAX", mode: indexedIndirect, cycles: 6, exec: execSax });
 def(0x87, { name: "*SAX", mode: zeroPage, cycles: 3, exec: execSax });
 def(0x8f, { name: "*SAX", mode: absolute, cycles: 4, exec: execSax });
 def(0x97, { name: "*SAX", mode: zeroPageY, cycles: 4, exec: execSax });
+
+// ---- illegal *SBC (正規 SBC immediate と同一) ----
+def(0xeb, {
+  name: "*SBC",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    addToA(cpu, bus.read(op.addr) ^ 0xff);
+    return 0;
+  },
+});
+
+// ---- illegal DCP (DEC + CMP 合成) ----
+// メモリ値を DEC し、結果を A と CMP する。V フラグは変更しない。
+
+function execDcp(cpu: Cpu, bus: Bus, op: Operand): number {
+  const val = (bus.read(op.addr) - 1) & 0xff;
+  bus.write(op.addr, val);
+  compare(cpu, cpu.a, val);
+  return 0;
+}
+
+def(0xc3, { name: "*DCP", mode: indexedIndirect, cycles: 8, exec: execDcp });
+def(0xc7, { name: "*DCP", mode: zeroPage, cycles: 5, exec: execDcp });
+def(0xcf, { name: "*DCP", mode: absolute, cycles: 6, exec: execDcp });
+def(0xd3, { name: "*DCP", mode: indirectIndexed, cycles: 8, exec: execDcp });
+def(0xd7, { name: "*DCP", mode: zeroPageX, cycles: 6, exec: execDcp });
+def(0xdb, { name: "*DCP", mode: absoluteY, cycles: 7, exec: execDcp });
+def(0xdf, { name: "*DCP", mode: absoluteX, cycles: 7, exec: execDcp });
