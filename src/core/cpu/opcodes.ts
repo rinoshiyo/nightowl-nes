@@ -1521,3 +1521,22 @@ def(0xf3, { name: "*ISB", mode: indirectIndexed, cycles: 8, exec: execIsb });
 def(0xf7, { name: "*ISB", mode: zeroPageX, cycles: 6, exec: execIsb });
 def(0xfb, { name: "*ISB", mode: absoluteY, cycles: 7, exec: execIsb });
 def(0xff, { name: "*ISB", mode: absoluteX, cycles: 7, exec: execIsb });
+
+// ---- illegal SLO (ASL + ORA 合成) ----
+// メモリ値を ASL し、結果で A と ORA する。C フラグは ASL で設定、N/Z は ORA 結果で更新。
+
+function execSlo(cpu: Cpu, bus: Bus, op: Operand): number {
+  const shifted = aslValue(cpu, bus.read(op.addr));
+  bus.write(op.addr, shifted);
+  cpu.a = cpu.a | shifted;
+  setZeroNeg(cpu, cpu.a);
+  return 0;
+}
+
+def(0x03, { name: "*SLO", mode: indexedIndirect, cycles: 8, exec: execSlo });
+def(0x07, { name: "*SLO", mode: zeroPage, cycles: 5, exec: execSlo });
+def(0x0f, { name: "*SLO", mode: absolute, cycles: 6, exec: execSlo });
+def(0x13, { name: "*SLO", mode: indirectIndexed, cycles: 8, exec: execSlo });
+def(0x17, { name: "*SLO", mode: zeroPageX, cycles: 6, exec: execSlo });
+def(0x1b, { name: "*SLO", mode: absoluteY, cycles: 7, exec: execSlo });
+def(0x1f, { name: "*SLO", mode: absoluteX, cycles: 7, exec: execSlo });
