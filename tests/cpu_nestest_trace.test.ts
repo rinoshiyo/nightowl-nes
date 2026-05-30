@@ -22,6 +22,7 @@ const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 // 夜 19: illegal LAX (6 opcode) + SAX (4 opcode) を実装し 5722 行まで到達。
 // 夜 20: illegal *SBC (EB) + DCP (7 opcode) を実装し 6334 行まで到達。
 // 夜 21: illegal ISB (7 opcode) を実装し 6864 行まで到達。
+// 夜 22: illegal SLO (7 opcode) を実装し 7397 行まで到達。
 // 夜 23: illegal RLA (7 opcode) を実装し 7940 行まで到達。
 // 7941 行目 = SRE テストブロックの入口。
 const TRACE_LINES = 7940;
