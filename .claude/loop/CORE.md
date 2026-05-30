@@ -51,13 +51,13 @@
 │             → findings + working tree 自動修正。--fix は「intended behavior 変更/
 │             スコープ外/false positive は skip」を内蔵)
 │  b. メイン: 各 finding を critical/high/medium/low に分類 (severity 付与)
-│  c. メイン: **`scripts/bot-review-post.sh`** で投稿 (フォーマットを構造的に強制)。
-│             findings JSON (各 finding に `triage: "fix"|"pass"|"stop"` 必須) を渡すと
-│             サマリ→issue comment / 各指摘→inline を自動振り分け。
-│             **FIX/STOP あり → `.claude/state/review-status.json` に `has_fix:true`** を書き、
-│             `pre-tool-use.sh` が `gh pr merge` を deny する (R2 で収束するまで merge 不可)。
+│  c. メイン: **`scripts/review-post.sh <PR#> <findings.json>`** を 1 回呼ぶ。
+│             内部で以下を atomic に実行 (LLM が個別ステップを落とすのを構造的に防ぐ):
+│             - `bot-review-post.sh` で bot 名義投稿 (サマリ→issue / 各指摘→inline)
+│             - triage 裁定コメントを石井名義で自動生成・投稿
+│             - `review-status.json` 書出 (FIX/STOP あり → `has_fix:true` → merge deny)
+│             findings JSON の各 finding には `triage` + `severity` + `triage_note` が必須。
 │             指摘ゼロでも「✅ レビュー実施・指摘なし」をサマリとして投稿
-│  d. メイン: triage を石井名義で投稿 (--fix で直したもの / skip 理由 / STOP/PASS)
 │  e. (修正あれば) 別 commit → push → ローカルで bun test + tsc + eslint
 └──┘ ← FIX 必須が残る限り 2 を繰り返す (往復上限 2・超過は STOP 格上げ)
        2 回目以降の round も --fix (前 round の修正が新指摘を浮上させうるため)。
