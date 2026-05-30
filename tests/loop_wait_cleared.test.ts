@@ -55,7 +55,8 @@ describe("wait_cleared", () => {
     const start = Date.now();
     expect(callWaitCleared(sig, 2)).toBe(1);
     // 約 2s 待って timeout する (早抜けしていないこと)。
-    expect(Date.now() - start).toBeGreaterThanOrEqual(1500);
+    // date +%s の秒境界タイミングにより 1s 台で返ることがあるため余裕を持たせる。
+    expect(Date.now() - start).toBeGreaterThanOrEqual(900);
   });
 
   it("後からシグナルが現れたら 0 を返す", () => {
