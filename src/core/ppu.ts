@@ -79,6 +79,10 @@ export class Ppu {
     this.dot = 0;
     this.scanline = 0;
     this.frameComplete = false;
+    this.bgNametable = 0;
+    this.bgAttribute = 0;
+    this.bgPatternLo = 0;
+    this.bgPatternHi = 0;
   }
 
   /** $2000-$2007 の read (addr は 0-7 にマスク済みで渡される想定) */
@@ -101,39 +105,38 @@ export class Ppu {
 
   /** $2000-$2007 の write (addr は 0-7 にマスク済み、value は 0-255 で渡される想定) */
   write(reg: number, value: number): void {
-    const v = value;
     switch (reg) {
       case 0:
-        this.ctrl = v;
+        this.ctrl = value;
         break;
       case 1:
-        this.mask = v;
+        this.mask = value;
         break;
       case 3:
-        this.oamAddr = v;
+        this.oamAddr = value;
         break;
       case 4:
-        this.oam[this.oamAddr] = v;
+        this.oam[this.oamAddr] = value;
         this.oamAddr = (this.oamAddr + 1) & 0xff;
         break;
       case 5:
         if (!this.writeToggle) {
-          this.scrollX = v;
+          this.scrollX = value;
         } else {
-          this.scrollY = v;
+          this.scrollY = value;
         }
         this.writeToggle = !this.writeToggle;
         break;
       case 6:
         if (!this.writeToggle) {
-          this.addrHi = v & 0x3f;
+          this.addrHi = value & 0x3f;
         } else {
-          this.vramAddr = ((this.addrHi << 8) | v) & 0x3fff;
+          this.vramAddr = ((this.addrHi << 8) | value) & 0x3fff;
         }
         this.writeToggle = !this.writeToggle;
         break;
       case 7:
-        this.writeVram(v);
+        this.writeVram(value);
         break;
     }
   }
@@ -171,7 +174,7 @@ export class Ppu {
     if ((x & 7) === 0) {
       this.fetchBgTile(x >> 3);
     }
-    this.renderBgPixel(x);
+    this.renderBgPixel(x, this.scanline * SCREEN_W);
   }
 
   /** 背景タイル 1 つ分の fetch (NT → AT → pattern lo → pattern hi) */
@@ -197,8 +200,8 @@ export class Ppu {
   }
 
   /** 背景ピクセルを framebuffer に出力 */
-  private renderBgPixel(x: number): void {
-    const fbIdx = this.scanline * SCREEN_W + x;
+  private renderBgPixel(x: number, fbBase: number): void {
+    const fbIdx = fbBase + x;
 
     if ((this.mask & 0x08) === 0) {
       this.framebuffer[fbIdx] = this.palette[0] ?? 0;
