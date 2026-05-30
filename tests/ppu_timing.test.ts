@@ -28,7 +28,7 @@ describe("PPU タイミングエンジン", () => {
     expect(ppu.dot).toBe(0);
   });
 
-  it("frameComplete は次の tick でリセットされる", () => {
+  it("frameComplete は呼び出し側がクリアするまで true を保持する", () => {
     const ppu = new Ppu();
     const totalDots = 262 * 341;
     for (let i = 0; i < totalDots; i++) {
@@ -36,6 +36,10 @@ describe("PPU タイミングエンジン", () => {
     }
     expect(ppu.frameComplete).toBe(true);
 
+    ppu.tick();
+    expect(ppu.frameComplete).toBe(true);
+
+    ppu.frameComplete = false;
     ppu.tick();
     expect(ppu.frameComplete).toBe(false);
   });

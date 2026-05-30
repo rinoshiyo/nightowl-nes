@@ -35,6 +35,8 @@ export class NesConsole {
     this.cpu.sp = 0xfd;
     this.cpu.p = (this.cpu.p | CpuFlags.I) & 0xff;
     this.cpu.cycles = 7;
+    this.cpu.nmiPending = false;
+    this.ppu.reset();
   }
 
   /** CPU 1 命令を実行し、消費 cycle × 3 回 PPU を tick。消費 CPU cycle 数を返す */

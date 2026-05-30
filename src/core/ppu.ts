@@ -64,6 +64,23 @@ export class Ppu {
   private bgPatternLo = 0;
   private bgPatternHi = 0;
 
+  /** PPU 状態をリセット */
+  reset(): void {
+    this.ctrl = 0;
+    this.mask = 0;
+    this.status = 0;
+    this.oamAddr = 0;
+    this.writeToggle = false;
+    this.scrollX = 0;
+    this.scrollY = 0;
+    this.addrHi = 0;
+    this.vramAddr = 0;
+    this.readBuffer = 0;
+    this.dot = 0;
+    this.scanline = 0;
+    this.frameComplete = false;
+  }
+
   /** $2000-$2007 の read (addr は 0-7 にマスク済みで渡される想定) */
   read(reg: number): number {
     switch (reg) {
@@ -123,8 +140,6 @@ export class Ppu {
 
   /** PPU を 1 ドット進める */
   tick(): void {
-    this.frameComplete = false;
-
     if (this.scanline < VISIBLE_LINES) {
       this.tickVisible();
     } else if (this.scanline === VBLANK_LINE && this.dot === 1) {
@@ -150,18 +165,13 @@ export class Ppu {
   /** 可視ライン (0-239) の描画処理 */
   private tickVisible(): void {
     const dot = this.dot;
+    if (dot < 1 || dot > SCREEN_W) return;
 
-    if (dot >= 1 && dot <= SCREEN_W) {
-      this.renderBgPixel(dot - 1);
+    const x = dot - 1;
+    if ((x & 7) === 0) {
+      this.fetchBgTile(x >> 3);
     }
-
-    if (dot >= 1 && dot <= SCREEN_W && ((dot - 1) & 7) === 0) {
-      this.fetchBgTile((dot - 1) >> 3);
-    }
-
-    if (dot >= 321 && dot <= 336 && ((dot - 321) & 7) === 0) {
-      this.fetchBgTile((dot - 321) >> 3);
-    }
+    this.renderBgPixel(x);
   }
 
   /** 背景タイル 1 つ分の fetch (NT → AT → pattern lo → pattern hi) */
@@ -188,9 +198,10 @@ export class Ppu {
 
   /** 背景ピクセルを framebuffer に出力 */
   private renderBgPixel(x: number): void {
-    const renderingEnabled = (this.mask & 0x08) !== 0;
-    if (!renderingEnabled) {
-      this.framebuffer[this.scanline * SCREEN_W + x] = this.palette[0] ?? 0;
+    const fbIdx = this.scanline * SCREEN_W + x;
+
+    if ((this.mask & 0x08) === 0) {
+      this.framebuffer[fbIdx] = this.palette[0] ?? 0;
       return;
     }
 
@@ -199,12 +210,8 @@ export class Ppu {
     const hi = (this.bgPatternHi >> bitPos) & 1;
     const colorIdx = (hi << 1) | lo;
 
-    if (colorIdx === 0) {
-      this.framebuffer[this.scanline * SCREEN_W + x] = this.palette[0] ?? 0;
-    } else {
-      const palAddr = (this.bgAttribute << 2) | colorIdx;
-      this.framebuffer[this.scanline * SCREEN_W + x] = this.palette[palAddr] ?? 0;
-    }
+    const palAddr = colorIdx === 0 ? 0 : (this.bgAttribute << 2) | colorIdx;
+    this.framebuffer[fbIdx] = this.palette[palAddr] ?? 0;
   }
 
   /** PPU アドレス空間の read (CHR + VRAM + パレット) */
