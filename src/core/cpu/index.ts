@@ -17,6 +17,8 @@ export interface Cpu {
   pc: number;
   p: number;
   cycles: number;
+  /** NMI 保留フラグ (PPU VBlank 開始時にセット) */
+  nmiPending: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export function createCpu(overrides?: Partial<Cpu>): Cpu {
     pc: 0,
     p: CpuFlags.I | CpuFlags.U,
     cycles: 0,
+    nmiPending: false,
     ...overrides,
   };
 }
