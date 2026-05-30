@@ -26,8 +26,8 @@ const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 // 夜 23: illegal RLA (7 opcode) を実装し 7940 行まで到達。
 // 夜 24: illegal SRE (7 opcode) を実装し 8454 行まで到達。
 // 夜 25: illegal RRA (7 opcode) を実装し 8974 行まで到達。
-// 8975 行目 = 次のテストブロック入口。
-const TRACE_LINES = 8974;
+// 夜 26: nestest 完走。8975-8991 行は完了ルーチン (結果チェック + APU ビープ)。
+const TRACE_LINES = 8991;
 
 /**
  * nestest 実行用の最小 Bus。
