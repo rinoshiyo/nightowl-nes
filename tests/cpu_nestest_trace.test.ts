@@ -23,8 +23,9 @@ const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 // 夜 20: illegal *SBC (EB) + DCP (7 opcode) を実装し 6334 行まで到達。
 // 夜 21: illegal ISB (7 opcode) を実装し 6864 行まで到達。
 // 夜 22: illegal SLO (7 opcode) を実装し 7397 行まで到達。
-// 7398 行目 = RLA テストブロックの入口。
-const TRACE_LINES = 7397;
+// 夜 23: illegal RLA (7 opcode) を実装し 7940 行まで到達。
+// 7941 行目 = SRE テストブロックの入口。
+const TRACE_LINES = 7940;
 
 /**
  * nestest 実行用の最小 Bus。

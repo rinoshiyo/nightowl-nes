@@ -1540,3 +1540,22 @@ def(0x13, { name: "*SLO", mode: indirectIndexed, cycles: 8, exec: execSlo });
 def(0x17, { name: "*SLO", mode: zeroPageX, cycles: 6, exec: execSlo });
 def(0x1b, { name: "*SLO", mode: absoluteY, cycles: 7, exec: execSlo });
 def(0x1f, { name: "*SLO", mode: absoluteX, cycles: 7, exec: execSlo });
+
+// ---- illegal RLA (ROL + AND 合成) ----
+// メモリ値を ROL し、結果で A と AND する。C フラグは ROL で設定、N/Z は AND 結果で更新。
+
+function execRla(cpu: Cpu, bus: Bus, op: Operand): number {
+  const rotated = rolValue(cpu, bus.read(op.addr));
+  bus.write(op.addr, rotated);
+  cpu.a = cpu.a & rotated;
+  setZeroNeg(cpu, cpu.a);
+  return 0;
+}
+
+def(0x23, { name: "*RLA", mode: indexedIndirect, cycles: 8, exec: execRla });
+def(0x27, { name: "*RLA", mode: zeroPage, cycles: 5, exec: execRla });
+def(0x2f, { name: "*RLA", mode: absolute, cycles: 6, exec: execRla });
+def(0x33, { name: "*RLA", mode: indirectIndexed, cycles: 8, exec: execRla });
+def(0x37, { name: "*RLA", mode: zeroPageX, cycles: 6, exec: execRla });
+def(0x3b, { name: "*RLA", mode: absoluteY, cycles: 7, exec: execRla });
+def(0x3f, { name: "*RLA", mode: absoluteX, cycles: 7, exec: execRla });
