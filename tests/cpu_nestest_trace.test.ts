@@ -21,8 +21,9 @@ const LOG_PATH = resolve(import.meta.dirname, "../roms/test/other/nestest.log");
 // 夜 18: illegal/undocumented NOP 全 23 opcode を実装し 5259 行まで到達。
 // 夜 19: illegal LAX (6 opcode) + SAX (4 opcode) を実装し 5722 行まで到達。
 // 夜 20: illegal *SBC (EB) + DCP (7 opcode) を実装し 6334 行まで到達。
-// 6335 行目 = ISC テストブロックの入口。
-const TRACE_LINES = 6334;
+// 夜 21: illegal ISB (7 opcode) を実装し 6864 行まで到達。
+// 6865 行目 = SLO テストブロックの入口。
+const TRACE_LINES = 6864;
 
 /**
  * nestest 実行用の最小 Bus。
