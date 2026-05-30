@@ -16,6 +16,7 @@
 set -euo pipefail
 
 NEXT="${1:?引数1: next goal or STOP が必須}"
+NEXT="${NEXT#/goal }"
 shift
 
 PR_NUM="" NIGHT="" NESTEST=""
@@ -73,8 +74,17 @@ mkdir -p .claude/state
 } > .claude/state/latest.md
 
 # --- 3. 次フラグ書込 (pane スコープ) ---
+# STOP センチネルはそのまま書く (stop-hook.sh が完全一致で判定する)。
+# それ以外は /goal プレフィックスを付けて書く。/goal により:
+#   - ターン上限 ("or stop after N turns") が Claude Code に強制される
+#   - ゴール未達なら自動で次ターンに進む (途中で止まらない)
+# これが無いとゴール文がプレーンテキストとして送られ、上記 2 つが効かない。
 if [ -n "$PANE" ]; then
-  printf '%s' "$NEXT" > ".claude/state/loop-next.${PANE#%}.txt"
+  if [ "$NEXT" = "STOP" ]; then
+    printf '%s' "$NEXT" > ".claude/state/loop-next.${PANE#%}.txt"
+  else
+    printf '/goal %s' "$NEXT" > ".claude/state/loop-next.${PANE#%}.txt"
+  fi
 fi
 
 # --- 4. GOAL 出力 ---
