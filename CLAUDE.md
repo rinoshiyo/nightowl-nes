@@ -9,7 +9,7 @@
 - **main への直 push は禁止** (hook で deny)。必ず `night/NNN-<topic>` ブランチ + PR フロー経由
 - **`git push --force` / `git push -f` は禁止** (hook で deny)
 - **既存 NES エミュレータ実装は参照禁止** — どんな言語・ライセンスでも見ない。コードスニペット引用も禁止。困ったら nesdev wiki に戻る (参照 OK/NG・deny list の詳細は `nes/CORE.md`)
-- **各夜末に pane フラグ `.claude/state/loop-next.${TMUX_PANE#%}.txt` を必ず書く** — 次ゴール文 (単一行) または `STOP`。これが /clear 連鎖のトリガーで、怠ると自走が止まる (詳細は `loop/CORE.md` の「各夜の終了処理」)
+- **各夜末に pane フラグ `.claude/state/loop-next.${TMUX_PANE#%}.txt` を必ず書く** — `finish-night.sh` が自動で `/goal <次ゴール文>` 形式 (STOP 時はプレーン `STOP`) を書く。これが /clear 連鎖のトリガーで、怠ると自走が止まる (詳細は `loop/CORE.md` の「各夜の終了処理」)
 - **`tests/__snapshots__/` の書き換えは人間レビュー必須** (hook で ask)
 - **30 分以上同じエラーで止まったら `nights/stuck/` に隔離** → PR を draft に戻す → セッション終了 (手順は `loop/REFERENCE.md`)
 - commit メッセージは Conventional Commits 形式

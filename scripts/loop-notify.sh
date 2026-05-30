@@ -59,7 +59,7 @@ RECOVERY_EOF
     SITUATION="loop-helper が /clear 後の完了シグナル (SessionStart clear hook が置く名札ファイル loop-cleared.<pane>.txt) を 5 分待っても受け取れず abort した。clear hook が発火しなかった (pane 不明・hook 仕様変更等) 可能性。"
     RECOVERY=$(cat <<'RECOVERY_EOF'
 1. `tmux attach` で worker pane の画面を確認
-2. worker が既に /clear 済みで idle なら、手動で次フラグを書く: `printf '<next-goal>' > .claude/state/loop-next.${TMUX_PANE#%}.txt`
+2. worker が既に /clear 済みで idle なら、手動で次フラグを書く: `printf '/goal <next-goal>' > .claude/state/loop-next.${TMUX_PANE#%}.txt`
 3. worker が固まっている場合は `/clear` して夜 md を再投入
 4. シグナルが届かない疑いがある場合は SessionStart clear hook (`.claude/hooks/loop-session-restore.sh`) が `.claude/state/loop-cleared.<pane>.txt` を置けているか、settings.json の clear matcher 配線を確認
 5. 復旧完了後、この issue をクローズ
