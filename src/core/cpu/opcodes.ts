@@ -1528,7 +1528,7 @@ def(0xff, { name: "*ISB", mode: absoluteX, cycles: 7, exec: execIsb });
 function execSlo(cpu: Cpu, bus: Bus, op: Operand): number {
   const shifted = aslValue(cpu, bus.read(op.addr));
   bus.write(op.addr, shifted);
-  cpu.a = (cpu.a | shifted) & 0xff;
+  cpu.a = cpu.a | shifted;
   setZeroNeg(cpu, cpu.a);
   return 0;
 }
