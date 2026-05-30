@@ -16,6 +16,7 @@
 set -euo pipefail
 
 NEXT="${1:?引数1: next goal or STOP が必須}"
+NEXT="${NEXT#/goal }"
 shift
 
 PR_NUM="" NIGHT="" NESTEST=""
