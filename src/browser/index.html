@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>nightowl-nes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: monospace;
+      color: #e0e0e0;
+    }
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      color: #8be9fd;
+    }
+    canvas {
+      border: 2px solid #44475a;
+      image-rendering: pixelated;
+      width: 512px;
+      height: 480px;
+    }
+    .controls {
+      margin-top: 1rem;
+    }
+    label {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: #44475a;
+      color: #f8f8f2;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    label:hover { background: #6272a4; }
+    input[type="file"] { display: none; }
+    #status {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: #6272a4;
+    }
+  </style>
+</head>
+<body>
+  <h1>nightowl-nes</h1>
+  <canvas id="screen"></canvas>
+  <div class="controls">
+    <label for="rom-input">ROM を選択 (.nes)</label>
+    <input type="file" id="rom-input" accept=".nes">
+  </div>
+  <div id="status">ROM を読み込んでください</div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
