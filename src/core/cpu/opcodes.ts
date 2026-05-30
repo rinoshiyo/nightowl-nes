@@ -1578,3 +1578,21 @@ def(0x53, { name: "*SRE", mode: indirectIndexed, cycles: 8, exec: execSre });
 def(0x57, { name: "*SRE", mode: zeroPageX, cycles: 6, exec: execSre });
 def(0x5b, { name: "*SRE", mode: absoluteY, cycles: 7, exec: execSre });
 def(0x5f, { name: "*SRE", mode: absoluteX, cycles: 7, exec: execSre });
+
+// ---- illegal RRA (ROR + ADC 合成) ----
+// メモリ値を ROR し、結果を A に ADC する。ROR で C が設定され、ADC がその C をキャリーインに使う。
+
+function execRra(cpu: Cpu, bus: Bus, op: Operand): number {
+  const rotated = rorValue(cpu, bus.read(op.addr));
+  bus.write(op.addr, rotated);
+  addToA(cpu, rotated);
+  return 0;
+}
+
+def(0x63, { name: "*RRA", mode: indexedIndirect, cycles: 8, exec: execRra });
+def(0x67, { name: "*RRA", mode: zeroPage, cycles: 5, exec: execRra });
+def(0x6f, { name: "*RRA", mode: absolute, cycles: 6, exec: execRra });
+def(0x73, { name: "*RRA", mode: indirectIndexed, cycles: 8, exec: execRra });
+def(0x77, { name: "*RRA", mode: zeroPageX, cycles: 6, exec: execRra });
+def(0x7b, { name: "*RRA", mode: absoluteY, cycles: 7, exec: execRra });
+def(0x7f, { name: "*RRA", mode: absoluteX, cycles: 7, exec: execRra });
