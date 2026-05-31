@@ -8,7 +8,7 @@
 
 - **1 夜 = 1 つの夜 md = 1 本の PR = 1 つの /clear リセット境界** (所要目安 3-5 時間、 DoD 20-40 項目)
 - **各夜は有限の /goal** (`or stop after N turns`、 N=80 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
-- 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達 (pending 枯渇は停止条件ではない — 終了処理で auto-seed する)
+- 連鎖停止条件: pending 枯渇 / 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達
 - 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
 - **連鎖の起動**: `loop-start` skill (description マッチで起動。 slash コマンドではない) か、 最初の夜ゴールを手で投入する。 以降は各夜末のフラグ書込で /clear 連鎖が自走する
 - **アンチパターン**: 「pending 全消化を 1 つの /goal で」 は使わない (夜ごとに /clear リセットするため)。 旧「1 セッションで N 夜をターン上限まで /goal 連鎖」 は context 肥大化で廃止済み
@@ -17,11 +17,10 @@
 
 以下を全て満たす間、 Claude は次の夜を自走する:
 
-1. 石井から `stop` / `止めて` / `セッション終了` 等の明示停止指示が来ていない
-2. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
-3. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
-
-`nights/pending/` が空でも停止しない — 終了処理の auto-seed ステップで次の夜を起こしてから連鎖する。
+1. `nights/pending/` に未処理の夜 md が 1 つ以上ある
+2. 石井から `stop` / `止めて` / `セッション終了` 等の明示停止指示が来ていない
+3. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
+4. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
 
 ## 夜 N PR の自動レビュー (メインが code-review skill を直呼び)
 
@@ -95,13 +94,12 @@
 この後 Stop hook → helper が `/clear` して次の夜へ連鎖する:
 
 1. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を該当夜の PR description かコメントに書く。 `tmp/handoff/` のローカル md は gitignore で push されず二重管理になるため使わない
-2. **pending 空なら auto-seed**: `nights/pending/` が空の場合、 **現ブランチ上で次の夜 md を seed** してから commit + push する。 seed 手順は `loop-start` skill の seed 分岐と同じ (nestest 次行の命令群から DoD を設計)。 **seed commit は現 night ブランチに載せる** — PR merge で main に到達するため、 次セッションが pending を見つけられる。 STOP は石井指示 / LOOP_MAX のときだけ
-3. **`scripts/finish-night.sh` を呼ぶ** (残りの機械的手順を atomic に実行):
+2. **`scripts/finish-night.sh` を呼ぶ** (残りの機械的手順を atomic に実行):
    ```bash
    bash scripts/finish-night.sh "<次ゴール文 or STOP>" [--night NNN] [--nestest LINE]
    ```
    スクリプトが以下を一括実行: auto-merge arm / `.claude/state/latest.md` 更新 / 次フラグ書込 (pane スコープ) / `🎯 GOAL CONDITION MET` 出力
-4. turn を終える → helper が idle を見て `/clear` → 次ゴール投入
+3. turn を終える → helper が idle を見て `/clear` → 次ゴール投入
 
 次ゴール文の例 (単一行 必須): `次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後 latest.md 更新と次フラグ書込まで行え、or stop after 80 turns`
 
