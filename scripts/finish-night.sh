@@ -15,8 +15,9 @@
 # PR が状態の SSOT。latest.md は生成しない。
 set -euo pipefail
 
-# /goal テキスト (固定文言)
-GOAL_TEXT="次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後次フラグ書込まで行え、or stop after 80 turns"
+# /goal テキスト (固定文言、turns 数は環境変数で上書き可)
+LOOP_TURNS="${LOOP_TURNS:-80}"
+GOAL_TEXT="次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後次フラグ書込まで行え、or stop after ${LOOP_TURNS} turns"
 
 # 引数パース
 STOP=false

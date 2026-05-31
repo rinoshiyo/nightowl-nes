@@ -45,7 +45,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 ### フロー (findings 0 / 全 PASS の round に達するまで・往復上限 2)
 
 ```
-1. gh pr create (auto-merge まだ打たない)
+1. gh pr ready (draft → open。auto-merge まだ打たない)
    ↓
 ┌→ 2. レビュー round:
 │  a. メイン: code-review --fix を直呼び (finder 7 angle + verifier を Agent spawn
