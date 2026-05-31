@@ -1,5 +1,6 @@
 services:
   dev:
+    init: true
     hostname: nightowl-nes
     build:
       # build context をリポ root にしておくことで Dockerfile から
