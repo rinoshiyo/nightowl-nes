@@ -39,17 +39,25 @@ export class NesConsole {
     this.cpu.p = (this.cpu.p | CpuFlags.I) & 0xff;
     this.cpu.cycles = 7;
     this.cpu.nmiPending = false;
+    this.bus.dmaCycles = 0;
     this.ppu.reset();
   }
 
   /** CPU 1 命令を実行し、消費 cycle × 3 回 PPU を tick。消費 CPU cycle 数を返す */
   step(): number {
     const cycles = cpuStep(this.cpu, this.bus);
-    const ppuTicks = cycles * PPU_TICKS_PER_CPU_CYCLE;
+    let totalCycles = cycles;
+
+    if (this.bus.dmaCycles > 0) {
+      totalCycles += this.bus.dmaCycles;
+      this.bus.dmaCycles = 0;
+    }
+
+    const ppuTicks = totalCycles * PPU_TICKS_PER_CPU_CYCLE;
     for (let i = 0; i < ppuTicks; i++) {
       this.ppu.tick();
     }
-    return cycles;
+    return totalCycles;
   }
 
   /** 1 フレーム分実行 (frameComplete になるまで step を繰り返す) */

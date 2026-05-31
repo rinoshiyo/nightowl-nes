@@ -16,6 +16,9 @@ export class NesBus implements Bus {
   private readonly ram = new Uint8Array(RAM_SIZE);
   private readonly apuIo = new Uint8Array(0x18);
 
+  /** OAM DMA 転送で消費する CPU サイクル (0 = DMA なし) */
+  dmaCycles = 0;
+
   constructor(
     private readonly ppu: Ppu,
     private readonly cart: Cart,
@@ -58,6 +61,10 @@ export class NesBus implements Bus {
       this.ppu.write(addr & 0x7, v);
       return;
     }
+    if (addr === 0x4014) {
+      this.executeDma(v);
+      return;
+    }
     if (addr === 0x4016) {
       this.controller1.write(v);
       return;
@@ -66,5 +73,14 @@ export class NesBus implements Bus {
       this.apuIo[addr - 0x4000] = v;
       return;
     }
+  }
+
+  /** $4014 OAM DMA: CPU ページから 256 バイトを PPU OAM に転送 */
+  private executeDma(page: number): void {
+    const base = (page & 0xff) << 8;
+    for (let i = 0; i < 256; i++) {
+      this.ppu.oam[(this.ppu.oamAddr + i) & 0xff] = this.read(base + i);
+    }
+    this.dmaCycles = 513;
   }
 }
