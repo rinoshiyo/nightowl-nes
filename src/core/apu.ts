@@ -6,6 +6,7 @@
  * 仕様参照: https://www.nesdev.org/wiki/APU
  */
 
+import { DmcChannel } from "./apu-dmc.ts";
 import { NoiseChannel } from "./apu-noise.ts";
 import { PulseChannel } from "./apu-pulse.ts";
 import { TriangleChannel } from "./apu-triangle.ts";
@@ -24,6 +25,7 @@ export class Apu {
   readonly pulse2 = new PulseChannel(2);
   readonly triangle = new TriangleChannel();
   readonly noise = new NoiseChannel();
+  readonly dmc = new DmcChannel();
 
   /** フレームカウンタモード (0 = 4-step, 1 = 5-step) */
   private frameMode = 0;
@@ -56,8 +58,9 @@ export class Apu {
       if (this.pulse2.lengthCounter > 0) status |= 0x02;
       if (this.triangle.lengthCounter > 0) status |= 0x04;
       if (this.noise.lengthCounter > 0) status |= 0x08;
-      // bit4: DMC (将来実装)
+      if (this.dmc.bytesRemaining > 0) status |= 0x10;
       if (this.frameIrqFlag) status |= 0x40;
+      if (this.dmc.irqFlag) status |= 0x80;
       this.frameIrqFlag = false;
       return status;
     }
@@ -116,7 +119,19 @@ export class Apu {
         this.noise.writeLengthLoad(value);
         break;
 
-      // $4010-$4013: DMC (将来実装)
+      // DMC: $4010-$4013
+      case 0x4010:
+        this.dmc.writeControl(value);
+        break;
+      case 0x4011:
+        this.dmc.writeDirectLoad(value);
+        break;
+      case 0x4012:
+        this.dmc.writeAddress(value);
+        break;
+      case 0x4013:
+        this.dmc.writeLength(value);
+        break;
 
       case 0x4015:
         this.writeStatus(value);
@@ -141,7 +156,8 @@ export class Apu {
     this.noise.enabled = (value & 0x08) !== 0;
     if (!this.noise.enabled) this.noise.lengthCounter = 0;
 
-    // bit4: DMC (将来実装)
+    this.dmc.setEnabled((value & 0x10) !== 0);
+    this.dmc.irqFlag = false;
   }
 
   private writeFrameCounter(value: number): void {
@@ -164,8 +180,9 @@ export class Apu {
 
   /** CPU 1 cycle 分を進める */
   tick(): void {
-    // トライアングルタイマーは毎 CPU cycle で tick
+    // トライアングルタイマーと DMC タイマーは毎 CPU cycle で tick
     this.triangle.tickTimer();
+    this.dmc.tickTimer();
 
     // パルスタイマーは 2 CPU cycle (= 1 APU cycle) ごとに tick
     this.cpuCycleOdd = !this.cpuCycleOdd;
@@ -270,6 +287,7 @@ export class Apu {
     const p2 = this.pulse2.output();
     const tri = this.triangle.output();
     const noi = this.noise.output();
+    const dmc = this.dmc.output();
 
     // nesdev wiki 近似式 (pulse と tnd を分離)
     let pulseOut = 0;
@@ -279,7 +297,7 @@ export class Apu {
 
     // tnd_out = 159.79 / (1 / (tri/8227 + noise/12241 + dmc/22638) + 100)
     let tndOut = 0;
-    const tndSum = tri / 8227 + noi / 12241; // 将来: + dmc / 22638
+    const tndSum = tri / 8227 + noi / 12241 + dmc / 22638;
     if (tndSum !== 0) {
       tndOut = 159.79 / (1 / tndSum + 100);
     }
