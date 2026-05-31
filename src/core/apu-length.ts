@@ -5,7 +5,6 @@
  * 仕様参照: https://www.nesdev.org/wiki/APU_Length_Counter
  */
 
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 export const LENGTH_TABLE: readonly number[] = [
   10, 254, 20, 2, 40, 4, 80, 6,
   160, 8, 60, 10, 14, 12, 26, 14,

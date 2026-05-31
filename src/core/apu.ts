@@ -8,6 +8,8 @@
 
 import { PulseChannel } from "./apu-pulse.ts";
 
+const CPU_CLOCK = 1789773;
+
 /**
  * フレームカウンタの step タイミング (CPU cycle × 2 で管理、半 cycle 対応)。
  * 仕様参照: https://www.nesdev.org/wiki/APU_Frame_Counter
@@ -33,9 +35,15 @@ export class Apu {
   /** CPU cycle カウント (パルスタイマーの 2 分周用) */
   private cpuCycleOdd = false;
 
-  /** APU 出力サンプル蓄積 (ダウンサンプリング用) */
-  private sampleAccum = 0;
-  private sampleCount = 0;
+  /** ダウンサンプリング用 */
+  private sampleRate = 44100;
+  private samplePeriod = CPU_CLOCK / 44100;
+  private sampleCounter = 0;
+
+  /** サンプルバッファ (リングバッファ) */
+  private readonly sampleBuffer = new Float32Array(4096);
+  private bufferWritePos = 0;
+  private bufferReadPos = 0;
 
   read(addr: number): number {
     if (addr === 0x4015) {
@@ -133,9 +141,13 @@ export class Apu {
 
     this.tickFrameCounter();
 
-    // ダウンサンプリング用にサンプル蓄積
-    this.sampleAccum += this.mixOutput();
-    this.sampleCount++;
+    // ダウンサンプリング: samplePeriod CPU tick ごとに 1 サンプルをバッファに書く
+    this.sampleCounter++;
+    if (this.sampleCounter >= this.samplePeriod) {
+      this.sampleCounter -= this.samplePeriod;
+      this.sampleBuffer[this.bufferWritePos] = this.mixOutput();
+      this.bufferWritePos = (this.bufferWritePos + 1) & 0xfff;
+    }
   }
 
   private tickFrameCounter(): void {
@@ -220,12 +232,21 @@ export class Apu {
     return 95.88 / (8128 / (p1 + p2) + 100);
   }
 
-  /** ダウンサンプリングされた出力を取得しバッファをリセット */
-  takeSample(): number {
-    if (this.sampleCount === 0) return 0;
-    const avg = this.sampleAccum / this.sampleCount;
-    this.sampleAccum = 0;
-    this.sampleCount = 0;
-    return avg;
+  /** オーディオサンプルレートを設定 */
+  setSampleRate(rate: number): void {
+    this.sampleRate = rate;
+    this.samplePeriod = CPU_CLOCK / rate;
+  }
+
+  /** バッファからサンプルを読み出して output 配列を埋める。読み出し分だけ進む */
+  readSamples(output: Float32Array): number {
+    let written = 0;
+    for (let i = 0; i < output.length; i++) {
+      if (this.bufferReadPos === this.bufferWritePos) break;
+      output[i] = this.sampleBuffer[this.bufferReadPos]!;
+      this.bufferReadPos = (this.bufferReadPos + 1) & 0xfff;
+      written++;
+    }
+    return written;
   }
 }

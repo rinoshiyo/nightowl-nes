@@ -1,6 +1,7 @@
 import { parseINes } from "../core/cart.ts";
 import { NesConsole } from "../core/console.ts";
 import { Button } from "../core/controller.ts";
+import { NesAudio } from "./audio.ts";
 import { Renderer } from "./renderer.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
@@ -14,6 +15,7 @@ const romInput = getEl<HTMLInputElement>("rom-input");
 const status = getEl<HTMLDivElement>("status");
 
 const renderer = new Renderer(canvas);
+const audio = new NesAudio();
 let nes: NesConsole | null = null;
 let running = false;
 
@@ -30,6 +32,7 @@ romInput.addEventListener("change", () => {
       const buf = new Uint8Array(reader.result as ArrayBuffer);
       const cart = parseINes(buf);
       nes = new NesConsole(cart);
+      audio.start(nes.apu);
       status.textContent = `${file.name} (PRG: ${cart.header.prgRomSize / 1024}KB, CHR: ${cart.header.chrRomSize / 1024}KB, Mapper: ${cart.header.mapper})`;
       if (!running) {
         running = true;
