@@ -6,6 +6,7 @@ import type { Cpu } from "./cpu/index.ts";
 import { createCpu } from "./cpu/index.ts";
 import { CpuFlags } from "./cpu/flags.ts";
 import { cpuStep } from "./cpu/step.ts";
+import { Apu } from "./apu.ts";
 import type { Cart } from "./cart.ts";
 import { Controller } from "./controller.ts";
 import type { Mapper } from "./mappers/index.ts";
@@ -19,6 +20,7 @@ export class NesConsole {
   readonly cpu: Cpu;
   readonly ppu: Ppu;
   readonly bus: NesBus;
+  readonly apu: Apu;
   readonly mapper: Mapper;
   readonly controller1: Controller;
 
@@ -27,8 +29,9 @@ export class NesConsole {
     this.ppu = new Ppu();
     this.ppu.mirroring = cart.header.mirroring;
     this.ppu.mapper = this.mapper;
+    this.apu = new Apu();
     this.controller1 = new Controller();
-    this.bus = new NesBus(this.ppu, this.mapper, this.controller1);
+    this.bus = new NesBus(this.ppu, this.mapper, this.controller1, this.apu);
     this.cpu = createCpu();
     this.ppu.onNmi = () => {
       this.cpu.nmiPending = true;
@@ -62,6 +65,9 @@ export class NesConsole {
     const ppuTicks = totalCycles * PPU_TICKS_PER_CPU_CYCLE;
     for (let i = 0; i < ppuTicks; i++) {
       this.ppu.tick();
+    }
+    for (let i = 0; i < totalCycles; i++) {
+      this.apu.tick();
     }
     return totalCycles;
   }
