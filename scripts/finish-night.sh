@@ -43,12 +43,14 @@ if [ -z "$NIGHT" ] && [ -n "$PR_NUM" ]; then
 fi
 
 # --- pending 枯渇チェック ---
-# 次ゴールが STOP でない場合、pending が空なら STOP に上書きする。
-# pending が空のまま「次の pending を実装」ゴールが設定されると充足不能になる。
+# 次ゴールが STOP でない場合、pending が空なら loop-start に委譲する。
+# loop-start skill が状態診断し seed → autorun を一貫して担当する。
+# /goal 付きだと充足不能ゴールになるが、プレーン "loop-start" なら
+# skill トリガーとして解釈され seed 分岐に入る。
 if [ "$NEXT" != "STOP" ]; then
   if [ ! -d nights/pending ] || [ "$(find nights/pending -name '*.md' | wc -l)" -eq 0 ]; then
-    echo "[finish-night] ⚠ pending 枯渇: 次ゴールを STOP に上書き" >&2
-    NEXT="STOP"
+    echo "[finish-night] ℹ pending 枯渇: loop-start skill に委譲" >&2
+    NEXT="loop-start"
   fi
 fi
 
@@ -84,13 +86,14 @@ mkdir -p .claude/state
 } > .claude/state/latest.md
 
 # --- 3. 次フラグ書込 (pane スコープ) ---
-# STOP センチネルはそのまま書く (stop-hook.sh が完全一致で判定する)。
+# STOP / loop-start はプレーンテキストで書く:
+#   - STOP: stop-hook.sh が完全一致で判定し連鎖終了
+#   - loop-start: skill トリガーとして解釈され、状態診断→seed/autorun を担当
 # それ以外は /goal プレフィックスを付けて書く。/goal により:
 #   - ターン上限 ("or stop after N turns") が Claude Code に強制される
 #   - ゴール未達なら自動で次ターンに進む (途中で止まらない)
-# これが無いとゴール文がプレーンテキストとして送られ、上記 2 つが効かない。
 if [ -n "$PANE" ]; then
-  if [ "$NEXT" = "STOP" ]; then
+  if [ "$NEXT" = "STOP" ] || [ "$NEXT" = "loop-start" ]; then
     printf '%s' "$NEXT" > ".claude/state/loop-next.${PANE#%}.txt"
   else
     printf '/goal %s' "$NEXT" > ".claude/state/loop-next.${PANE#%}.txt"
