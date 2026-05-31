@@ -222,6 +222,77 @@ describe("PPU Y スクロール", () => {
   });
 });
 
+describe("PPU X+Y 複合スクロール", () => {
+  it("scrollX=128, scrollY=16 で正しいタイルが描画される", () => {
+    const ppu = new Ppu();
+    ppu.ctrl = 0;
+    ppu.mask = 0x08;
+    ppu.mirroring = "vertical";
+    ppu.scrollX = 128;
+    ppu.scrollY = 16;
+
+    const tileCol = 16;
+    const tileRow = 2;
+    const tileIdx = 5;
+    ppu.vram[tileRow * 32 + tileCol] = tileIdx;
+    ppu.chrRam[tileIdx * 16] = 0xFF;
+    ppu.chrRam[tileIdx * 16 + 8] = 0x00;
+    ppu.palette[0] = 0x0F;
+    ppu.palette[1] = 0x19;
+
+    renderScanline0(ppu);
+
+    for (let x = 0; x < 8; x++) {
+      expect(ppu.framebuffer[x]).toBe(0x19);
+    }
+  });
+
+  it("scrollX=255 で画面右端が正しく隣 NT から描画される", () => {
+    const ppu = new Ppu();
+    ppu.ctrl = 0;
+    ppu.mask = 0x08;
+    ppu.mirroring = "vertical";
+    ppu.scrollX = 255;
+    ppu.scrollY = 0;
+
+    ppu.chrRam[0] = 0xFF;
+    ppu.chrRam[8] = 0xFF;
+
+    ppu.vram[31] = 0;
+    ppu.vram[0x400] = 0;
+    ppu.palette[0] = 0x0F;
+    ppu.palette[3] = 0x2A;
+
+    renderScanline0(ppu);
+
+    expect(ppu.framebuffer[0]).toBe(0x2A);
+
+    expect(ppu.framebuffer[1]).toBe(0x2A);
+  });
+
+  it("scrollY=232 + scanline=7 でタイル行29→0への wrap が起きる", () => {
+    const ppu = new Ppu();
+    ppu.ctrl = 0;
+    ppu.mask = 0x08;
+    ppu.mirroring = "horizontal";
+    ppu.scrollX = 0;
+    ppu.scrollY = 232;
+
+    const tileIdx = 3;
+    ppu.vram[29 * 32] = tileIdx;
+    ppu.chrRam[tileIdx * 16] = 0xFF;
+    ppu.chrRam[tileIdx * 16 + 8] = 0x00;
+    ppu.palette[0] = 0x0F;
+    ppu.palette[1] = 0x31;
+
+    renderScanline0(ppu);
+
+    for (let x = 0; x < 8; x++) {
+      expect(ppu.framebuffer[x]).toBe(0x31);
+    }
+  });
+});
+
 describe("PPU PPUCTRL ベース NT 選択", () => {
   it("PPUCTRL bit0-1 = 1 で NT $2400 がベースになる", () => {
     const ppu = new Ppu();
