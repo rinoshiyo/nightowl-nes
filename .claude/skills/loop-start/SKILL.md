@@ -71,5 +71,5 @@ judgment が重いため機械化しない。リポ基盤（package.json / tscon
    - 「次どうする？」「他にある？」等の質問は自走を止める違反行為
 5. turn を終える → Stop hook が helper を spawn → `/clear` → latest.md 再注入 → 次ゴール投入
 
-暴走ブレーキは `NIGHTOWL_LOOP_MAX`（既定 20）。`nights/pending/` が尽きたら `finish-night.sh` が
-フラグを `loop-start` に書き換え、 fresh session でこのスキルの `seed` 分岐が自動起動する。
+暴走ブレーキは `NIGHTOWL_LOOP_MAX`（既定 20）。`nights/pending/` が尽きても `finish-night.sh` は
+通常通り `/goal` を書く。fresh session の起動時の作法 (CORE.md) で pending 空を検知し seed してから実装する。
