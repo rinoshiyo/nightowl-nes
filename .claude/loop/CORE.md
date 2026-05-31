@@ -21,7 +21,7 @@
 2. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
 3. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
 
-pending が空でも連鎖は止まらない。`finish-night.sh` の pending 枯渇チェックがフラグを `loop-start` に書き換え、 fresh session の `loop-start` skill が seed → autorun する。
+pending が空でも連鎖は止まらない (上記「連鎖停止条件」参照)。
 
 ## 夜 N PR の自動レビュー (メインが code-review skill を直呼び)
 

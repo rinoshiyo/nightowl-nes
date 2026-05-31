@@ -9,6 +9,7 @@
 # Flag file: .claude/state/loop-next.<pane>.txt  (pane = this tmux pane, "%" stripped)
 #   - contents = next goal string -> chain to the next task with that goal
 #   - contents = "STOP"           -> no further tasks; end the chain
+#   - contents = "loop-start"     -> skill trigger for seed+autorun (pending exhaustion時)
 #
 # Pane-scoping prevents a Stop hook in another session/pane (e.g. an operator
 # window sharing this repo) from grabbing the flag and resetting the wrong
