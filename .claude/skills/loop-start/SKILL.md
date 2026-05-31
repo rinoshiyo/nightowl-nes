@@ -61,15 +61,14 @@ judgment が重いため機械化しない。リポ基盤（package.json / tscon
 
 ## autorun の 1 夜 = 1 サイクル（詳細）
 
-1. fresh session が CLAUDE.md + 再注入された `.claude/state/latest.md` を読む
-2. `nights/pending/` 最若の夜を `night/NNN-<topic>` ブランチで実装
-3. PR 作成 → メインが `code-review --fix` を直呼びでレビュー → triage（STOP/FIX/PASS）→ 全 PASS なら auto-merge arm
+1. fresh session が CLAUDE.md + PR 情報 (SessionStart hook が GitHub から inject) を読む
+2. 起動時の作法 (CORE.md) に従い、open PR があれば resume / なければ pending を読み draft PR を立てて実装開始
+3. メインが `code-review --fix` を直呼びでレビュー → triage（STOP/FIX/PASS）→ 全 PASS なら auto-merge arm
 4. **triage 全 PASS 後、ユーザーに確認を求めず即座に終了処理を実行する**（CLAUDE.md 参照）:
    - handoff を PR に書く
-   - `bash scripts/finish-night.sh "<次ゴール文 or STOP>"` を呼ぶ
-     （auto-merge arm / latest.md 更新 / フラグ書込 / GOAL 出力を一括実行）
+   - `bash scripts/finish-night.sh [--night NNN]` を呼ぶ（auto-merge arm / フラグ書込 / GOAL 出力）
    - 「次どうする？」「他にある？」等の質問は自走を止める違反行為
-5. turn を終える → Stop hook が helper を spawn → `/clear` → latest.md 再注入 → 次ゴール投入
+5. turn を終える → Stop hook が helper を spawn → `/clear` → PR 情報再注入 → 次ゴール投入
 
 暴走ブレーキは `NIGHTOWL_LOOP_MAX`（既定 20）。`nights/pending/` が尽きても `finish-night.sh` は
-通常通り `/goal` を書く。fresh session の起動時の作法 (CORE.md) で pending 空を検知し seed してから実装する。
+`/goal` (固定文言) を書く。fresh session の起動時の作法 (CORE.md) で pending 空を検知し seed してから実装する。
