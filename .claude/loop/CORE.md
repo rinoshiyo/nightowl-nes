@@ -8,9 +8,9 @@
 
 - **1 夜 = 1 つの夜 md = 1 本の PR = 1 つの /clear リセット境界** (所要目安 3-5 時間、 DoD 20-40 項目)
 - **各夜は有限の /goal** (`or stop after N turns`、 N=80 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
-- 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達。 pending 枯渇では停止しない — `finish-night.sh` は pending の有無に関わらず `/goal` を書くので、 fresh session が起動時の作法で pending 空を検知し seed してから実装する
+- 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達。 pending 枯渇では停止しない — `finish-night.sh` は常に `/goal` を書き、 fresh session が起動時の作法 (step 2) で pending 空を検知し seed する
 - 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
-- **連鎖の起動**: `loop-start` skill (description マッチで起動。 slash コマンドではない) か、 最初の夜ゴールを手で投入する。 以降は各夜末のフラグ書込で /clear 連鎖が自走する
+- **連鎖の起動**: `loop-start` skill (手動起動用。 description マッチで起動) か、 最初の夜ゴールを手で投入する。 以降は各夜末のフラグ書込で /clear 連鎖が自走する
 - **アンチパターン**: 「pending 全消化を 1 つの /goal で」 は使わない (夜ごとに /clear リセットするため)。 旧「1 セッションで N 夜をターン上限まで /goal 連鎖」 は context 肥大化で廃止済み
 
 ## 連鎖継続条件
@@ -108,7 +108,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 
 0. **`gh pr list --state open --json number,title,isDraft,mergeStateStatus` で未完了 PR を確認**。 open PR があれば PR コメント (SSOT) を読み中断作業か判定。 **判定基準**: draft = レビュー隔離中 (再開対象) / 非 draft の open は中身を見る — **CI 実行中 (`BLOCKED`) なら「正常な in-flight」** (loop-helper が merge 待ち中。中断扱いして再開しない) / **CLEAN のまま open なら** loop-helper が止まった可能性で最優先再開
 1. `.claude/state/latest.md` が存在すれば Read (SessionStart hook が inject していなければ)
-2. `nights/pending/` の最若番号の md を Read。**pending が空なら seed する**: `nights/done/` の最新番号から次番号を決め、nestest の次起点 (または直近 done の「次の夜の前提条件」) を元に夜 md を設計・作成し main に commit してから続行
+2. `nights/pending/` の最若番号の md を Read。**pending が空なら `loop-start` skill の seed 手順に従い夜 md を作成してから続行**
 3. 「## ゴール」セクションの /goal 条件を確認
 4. `git checkout main && git pull` で main を最新化 → PR フローに沿って `night/NNN-<topic>` ブランチを切ってから実装着手
 5. ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
