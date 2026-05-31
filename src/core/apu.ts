@@ -7,6 +7,7 @@
  */
 
 import { PulseChannel } from "./apu-pulse.ts";
+import { TriangleChannel } from "./apu-triangle.ts";
 
 const CPU_CLOCK = 1789773;
 
@@ -20,6 +21,7 @@ const FRAME_5STEP = [7457, 14913, 22371, 29829, 37281, 37282] as const;
 export class Apu {
   readonly pulse1 = new PulseChannel(1);
   readonly pulse2 = new PulseChannel(2);
+  readonly triangle = new TriangleChannel();
 
   /** フレームカウンタモード (0 = 4-step, 1 = 5-step) */
   private frameMode = 0;
@@ -50,7 +52,8 @@ export class Apu {
       let status = 0;
       if (this.pulse1.lengthCounter > 0) status |= 0x01;
       if (this.pulse2.lengthCounter > 0) status |= 0x02;
-      // bit4-6: triangle / noise / DMC (将来実装)
+      if (this.triangle.lengthCounter > 0) status |= 0x04;
+      // bit3-4: noise / DMC (将来実装)
       if (this.frameIrqFlag) status |= 0x40;
       this.frameIrqFlag = false;
       return status;
@@ -88,7 +91,17 @@ export class Apu {
         this.pulse2.writeTimerHigh(value);
         break;
 
-      // $4008-$400B: Triangle (将来実装)
+      // Triangle: $4008, $400A, $400B ($4009 は未使用)
+      case 0x4008:
+        this.triangle.writeLinearCounter(value);
+        break;
+      case 0x400A:
+        this.triangle.writeTimerLow(value);
+        break;
+      case 0x400B:
+        this.triangle.writeTimerHigh(value);
+        break;
+
       // $400C-$400F: Noise (将来実装)
       // $4010-$4013: DMC (将来実装)
 
@@ -109,7 +122,10 @@ export class Apu {
     this.pulse2.enabled = (value & 0x02) !== 0;
     if (!this.pulse2.enabled) this.pulse2.lengthCounter = 0;
 
-    // bit2-4: triangle / noise / DMC (将来実装)
+    this.triangle.enabled = (value & 0x04) !== 0;
+    if (!this.triangle.enabled) this.triangle.lengthCounter = 0;
+
+    // bit3-4: noise / DMC (将来実装)
   }
 
   private writeFrameCounter(value: number): void {
@@ -132,6 +148,9 @@ export class Apu {
 
   /** CPU 1 cycle 分を進める */
   tick(): void {
+    // トライアングルタイマーは毎 CPU cycle で tick
+    this.triangle.tickTimer();
+
     // パルスタイマーは 2 CPU cycle (= 1 APU cycle) ごとに tick
     this.cpuCycleOdd = !this.cpuCycleOdd;
     if (this.cpuCycleOdd) {
@@ -215,11 +234,13 @@ export class Apu {
   private clockQuarterFrame(): void {
     this.pulse1.envelope.tick();
     this.pulse2.envelope.tick();
+    this.triangle.tickLinearCounter();
   }
 
   private clockHalfFrame(): void {
     this.pulse1.tickLength();
     this.pulse2.tickLength();
+    this.triangle.tickLength();
     this.pulse1.tickSweep();
     this.pulse2.tickSweep();
   }
@@ -228,11 +249,22 @@ export class Apu {
   private mixOutput(): number {
     const p1 = this.pulse1.output();
     const p2 = this.pulse2.output();
+    const tri = this.triangle.output();
 
-    if (p1 === 0 && p2 === 0) return 0;
+    // nesdev wiki 近似式 (pulse と tnd を分離)
+    let pulseOut = 0;
+    if (p1 !== 0 || p2 !== 0) {
+      pulseOut = 95.88 / (8128 / (p1 + p2) + 100);
+    }
 
-    // nesdev wiki 近似式
-    return 95.88 / (8128 / (p1 + p2) + 100);
+    // tnd_out = 159.79 / (1 / (tri/8227 + noise/12241 + dmc/22638) + 100)
+    let tndOut = 0;
+    const tndSum = tri / 8227; // 将来: + noise / 12241 + dmc / 22638
+    if (tndSum !== 0) {
+      tndOut = 159.79 / (1 / tndSum + 100);
+    }
+
+    return pulseOut + tndOut;
   }
 
   /** オーディオサンプルレートを設定 */
