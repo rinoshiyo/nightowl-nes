@@ -392,6 +392,7 @@ describe("OAM DMA", () => {
     const { NesBus } = await import("../src/core/nes-bus.ts");
     const { Ppu } = await import("../src/core/ppu.ts");
     const { Controller } = await import("../src/core/controller.ts");
+    const { createMapper } = await import("../src/core/mappers/index.ts");
 
     const ppu = new Ppu();
     const cart = {
@@ -409,7 +410,7 @@ describe("OAM DMA", () => {
       trainer: null,
     };
     const controller = new Controller();
-    const bus = new NesBus(ppu, cart, controller);
+    const bus = new NesBus(ppu, createMapper(cart), controller);
 
     for (let i = 0; i < 256; i++) {
       bus.write(0x0200 + i, i);
@@ -426,6 +427,7 @@ describe("OAM DMA", () => {
     const { NesBus } = await import("../src/core/nes-bus.ts");
     const { Ppu } = await import("../src/core/ppu.ts");
     const { Controller } = await import("../src/core/controller.ts");
+    const { createMapper } = await import("../src/core/mappers/index.ts");
 
     const ppu = new Ppu();
     const cart = {
@@ -443,7 +445,7 @@ describe("OAM DMA", () => {
       trainer: null,
     };
     const controller = new Controller();
-    const bus = new NesBus(ppu, cart, controller);
+    const bus = new NesBus(ppu, createMapper(cart), controller);
 
     bus.write(0x4014, 0x02);
 
