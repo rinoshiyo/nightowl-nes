@@ -2,6 +2,7 @@
  * PPU スプライト描画テスト。
  *
  * OAM DMA / スプライト評価 / 8×8 描画 / flip / priority / sprite 0 hit / overflow。
+ * OAM Y バイトは「表示開始スキャンライン - 1」なので、Y=0 はスキャンライン 1 に表示される。
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -46,6 +47,7 @@ function writeTile(
 
 describe("PPU スプライト描画", () => {
   let ppu: Ppu;
+  const ROW1 = SCREEN_W;
 
   beforeEach(() => {
     ppu = new Ppu();
@@ -62,11 +64,11 @@ describe("PPU スプライト描画", () => {
       ppu.palette[0x11] = 0x30;
       writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
 
-      tickTo(ppu, 0, SCREEN_W + 1);
+      tickTo(ppu, 2, 0);
 
       let spritePixels = 0;
       for (let x = 0; x < SCREEN_W; x++) {
-        if ((ppu.framebuffer[x] ?? 0) !== 0x0f) spritePixels++;
+        if ((ppu.framebuffer[ROW1 + x] ?? 0) !== 0x0f) spritePixels++;
       }
       expect(spritePixels).toBeGreaterThan(0);
     });
@@ -77,7 +79,7 @@ describe("PPU スプライト描画", () => {
       }
       writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
       expect(ppu.status & 0x20).toBe(0x20);
     });
 
@@ -86,8 +88,18 @@ describe("PPU スプライト描画", () => {
         setSprite(ppu, i, 0, 1, 0, i * 10);
       }
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
       expect(ppu.status & 0x20).toBe(0);
+    });
+
+    it("Y=0 のスプライトはスキャンライン 0 に表示されない (Y+1 オフセット)", () => {
+      setSprite(ppu, 0, 0, 1, 0, 0);
+      ppu.palette[0x11] = 0x30;
+      writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      tickTo(ppu, 1, 0);
+
+      expect(ppu.framebuffer[0]).toBe(0x0f);
     });
   });
 
@@ -103,10 +115,10 @@ describe("PPU スプライト描画", () => {
         new Uint8Array(8),
       );
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x30);
-      expect(ppu.framebuffer[1]).toBe(0x0f);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
+      expect(ppu.framebuffer[ROW1 + 1]).toBe(0x0f);
     });
 
     it("PPUCTRL bit3 でスプライトパターンテーブルベースが切り替わる", () => {
@@ -121,9 +133,9 @@ describe("PPU スプライト描画", () => {
         new Uint8Array(8),
       );
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x30);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
     });
 
     it("透明ピクセル (カラーインデックス 0) は描画しない", () => {
@@ -137,10 +149,10 @@ describe("PPU スプライト描画", () => {
         new Uint8Array(8),
       );
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x30);
-      expect(ppu.framebuffer[1]).toBe(0x0f);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
+      expect(ppu.framebuffer[ROW1 + 1]).toBe(0x0f);
     });
 
     it("パレット番号が attribute bit0-1 で選択される", () => {
@@ -154,9 +166,9 @@ describe("PPU スプライト描画", () => {
         new Uint8Array(8),
       );
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x25);
+      expect(ppu.framebuffer[ROW1]).toBe(0x25);
     });
   });
 
@@ -172,10 +184,10 @@ describe("PPU スプライト描画", () => {
         new Uint8Array(8),
       );
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x0f);
-      expect(ppu.framebuffer[7]).toBe(0x30);
+      expect(ppu.framebuffer[ROW1]).toBe(0x0f);
+      expect(ppu.framebuffer[ROW1 + 7]).toBe(0x30);
     });
 
     it("Y flip (attribute bit7) で垂直反転する", () => {
@@ -189,11 +201,11 @@ describe("PPU スプライト描画", () => {
         new Uint8Array(8),
       );
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x30);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
       for (let i = 1; i < 8; i++) {
-        expect(ppu.framebuffer[i]).toBe(0x30);
+        expect(ppu.framebuffer[ROW1 + i]).toBe(0x30);
       }
     });
   });
@@ -215,9 +227,9 @@ describe("PPU スプライト描画", () => {
       writeTile(ppu, 1, 0x1000, new Uint8Array(8).fill(0xff), new Uint8Array(8));
       ppu.ctrl = 0x10;
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x30);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
     });
 
     it("priority=1 (背面) で背景が不透明ならスプライトは見えない", () => {
@@ -236,9 +248,9 @@ describe("PPU スプライト描画", () => {
         new Uint8Array(8),
       );
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x15);
+      expect(ppu.framebuffer[ROW1]).toBe(0x15);
     });
 
     it("priority=1 (背面) で背景が透明ならスプライトが見える", () => {
@@ -252,9 +264,9 @@ describe("PPU スプライト描画", () => {
         new Uint8Array(8),
       );
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x30);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
     });
 
     it("OAM インデックスが小さいスプライトが優先される", () => {
@@ -265,9 +277,9 @@ describe("PPU スプライト描画", () => {
       writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
       writeTile(ppu, 2, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8).fill(0xff));
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x30);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
     });
   });
 
@@ -282,7 +294,7 @@ describe("PPU スプライト描画", () => {
       ppu.palette[0x11] = 0x30;
       writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
       expect(ppu.status & 0x40).toBe(0x40);
     });
@@ -292,7 +304,7 @@ describe("PPU スプライト描画", () => {
       ppu.palette[0x11] = 0x30;
       writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
       expect(ppu.status & 0x40).toBe(0);
     });
@@ -310,7 +322,7 @@ describe("PPU スプライト描画", () => {
       ppu.palette[0x11] = 0x30;
       writeTile(ppu, 1, 0, new Uint8Array([0x01, 0, 0, 0, 0, 0, 0, 0]), new Uint8Array(8));
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
       expect(ppu.status & 0x40).toBe(0);
     });
@@ -321,7 +333,7 @@ describe("PPU スプライト描画", () => {
       ppu.palette[0x11] = 0x30;
       writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
       expect(ppu.status & 0x40).toBe(0);
     });
@@ -337,7 +349,7 @@ describe("PPU スプライト描画", () => {
       ppu.palette[0x11] = 0x30;
       writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
       expect(ppu.status & 0x40).toBe(0);
     });
@@ -368,9 +380,9 @@ describe("PPU スプライト描画", () => {
       ppu.palette[0x11] = 0x30;
       writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
 
-      tickTo(ppu, 1, 0);
+      tickTo(ppu, 2, 0);
 
-      expect(ppu.framebuffer[0]).toBe(0x0f);
+      expect(ppu.framebuffer[ROW1]).toBe(0x0f);
     });
   });
 });
@@ -383,11 +395,18 @@ describe("OAM DMA", () => {
 
     const ppu = new Ppu();
     const cart = {
+      header: {
+        prgRomSize: 0x8000,
+        chrRomSize: 0x2000,
+        mapper: 0,
+        mirroring: "vertical" as const,
+        hasBattery: false,
+        hasTrainer: false,
+        fourScreen: false,
+      },
       prgRom: new Uint8Array(0x8000),
       chrRom: new Uint8Array(0x2000),
-      mapper: 0,
-      mirroring: 0 as const,
-      hasBatteryRam: false,
+      trainer: null,
     };
     const controller = new Controller();
     const bus = new NesBus(ppu, cart, controller);
@@ -410,11 +429,18 @@ describe("OAM DMA", () => {
 
     const ppu = new Ppu();
     const cart = {
+      header: {
+        prgRomSize: 0x8000,
+        chrRomSize: 0x2000,
+        mapper: 0,
+        mirroring: "vertical" as const,
+        hasBattery: false,
+        hasTrainer: false,
+        fourScreen: false,
+      },
       prgRom: new Uint8Array(0x8000),
       chrRom: new Uint8Array(0x2000),
-      mapper: 0,
-      mirroring: 0 as const,
-      hasBatteryRam: false,
+      trainer: null,
     };
     const controller = new Controller();
     const bus = new NesBus(ppu, cart, controller);

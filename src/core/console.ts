@@ -39,6 +39,7 @@ export class NesConsole {
     this.cpu.p = (this.cpu.p | CpuFlags.I) & 0xff;
     this.cpu.cycles = 7;
     this.cpu.nmiPending = false;
+    this.bus.dmaCycles = 0;
     this.ppu.reset();
   }
 

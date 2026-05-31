@@ -64,8 +64,14 @@ export class Ppu {
   private bgPatternLo = 0;
   private bgPatternHi = 0;
 
+  /** 背景カラーインデックス (0=透明) — sprite 0 hit / priority 判定用 */
+  private bgColorIdx = 0;
+
   /** secondary OAM (スキャンラインごとの最大 8 スプライト × 4 バイト) */
   private readonly secOam = new Uint8Array(32);
+  /** スプライトパターンキャッシュ (evaluateSprites で fetch 済み) */
+  private readonly sprPatternLo = new Uint8Array(8);
+  private readonly sprPatternHi = new Uint8Array(8);
   /** 現スキャンラインの有効スプライト数 */
   private spriteCount = 0;
   /** sprite 0 が secondary OAM に含まれるか */
@@ -90,7 +96,7 @@ export class Ppu {
     this.bgAttribute = 0;
     this.bgPatternLo = 0;
     this.bgPatternHi = 0;
-    this.secOam.fill(0xff);
+    this.bgColorIdx = 0;
     this.spriteCount = 0;
     this.sprite0InLine = false;
   }
@@ -191,7 +197,7 @@ export class Ppu {
     }
 
     const fbIdx = this.scanline * SCREEN_W + x;
-    this.renderBgPixel(x, this.scanline * SCREEN_W);
+    this.renderBgPixel(x, fbIdx);
     this.renderSpritePixel(x, fbIdx);
   }
 
@@ -218,11 +224,10 @@ export class Ppu {
   }
 
   /** 背景ピクセルを framebuffer に出力 */
-  private renderBgPixel(x: number, fbBase: number): void {
-    const fbIdx = fbBase + x;
-
+  private renderBgPixel(x: number, fbIdx: number): void {
     if ((this.mask & 0x08) === 0) {
       this.framebuffer[fbIdx] = this.palette[0] ?? 0;
+      this.bgColorIdx = 0;
       return;
     }
 
@@ -230,6 +235,7 @@ export class Ppu {
     const lo = (this.bgPatternLo >> bitPos) & 1;
     const hi = (this.bgPatternHi >> bitPos) & 1;
     const colorIdx = (hi << 1) | lo;
+    this.bgColorIdx = colorIdx;
 
     const palAddr = colorIdx === 0 ? 0 : (this.bgAttribute << 2) | colorIdx;
     this.framebuffer[fbIdx] = this.palette[palAddr] ?? 0;
@@ -238,22 +244,31 @@ export class Ppu {
   /** スキャンラインごとのスプライト評価 (OAM から最大 8 スプライトを secondary OAM に選出) */
   private evaluateSprites(): void {
     const spriteHeight = 8;
+    const ptBase = (this.ctrl & 0x08) !== 0 ? 0x1000 : 0;
     this.spriteCount = 0;
     this.sprite0InLine = false;
-    this.secOam.fill(0xff);
 
     for (let i = 0; i < 64; i++) {
       const y = this.oam[i * 4] ?? 0;
-      const row = this.scanline - y;
+      const row = this.scanline - y - 1;
       if (row < 0 || row >= spriteHeight) continue;
 
       if (this.spriteCount < 8) {
         if (i === 0) this.sprite0InLine = true;
-        const base = this.spriteCount * 4;
+        const idx = this.spriteCount;
+        const base = idx * 4;
+        const tileIdx = this.oam[i * 4 + 1] ?? 0;
+        const attr = this.oam[i * 4 + 2] ?? 0;
         this.secOam[base] = y;
-        this.secOam[base + 1] = this.oam[i * 4 + 1] ?? 0;
-        this.secOam[base + 2] = this.oam[i * 4 + 2] ?? 0;
+        this.secOam[base + 1] = tileIdx;
+        this.secOam[base + 2] = attr;
         this.secOam[base + 3] = this.oam[i * 4 + 3] ?? 0;
+
+        const fineY = (attr & 0x80) !== 0 ? 7 - row : row;
+        const patAddr = ptBase + tileIdx * 16 + fineY;
+        this.sprPatternLo[idx] = this.ppuRead(patAddr);
+        this.sprPatternHi[idx] = this.ppuRead(patAddr + 8);
+
         this.spriteCount++;
       } else {
         this.status |= 0x20;
@@ -266,35 +281,27 @@ export class Ppu {
   private renderSpritePixel(x: number, fbIdx: number): void {
     if ((this.mask & 0x10) === 0) return;
 
-    const ptBase = (this.ctrl & 0x08) !== 0 ? 0x1000 : 0;
+    const bgOpaque = this.bgColorIdx !== 0;
 
     for (let i = this.spriteCount - 1; i >= 0; i--) {
       const base = i * 4;
-      const sprY = this.secOam[base] ?? 0;
-      const tileIdx = this.secOam[base + 1] ?? 0;
       const attr = this.secOam[base + 2] ?? 0;
       const sprX = this.secOam[base + 3] ?? 0;
 
       const col = x - sprX;
       if (col < 0 || col >= 8) continue;
 
-      const row = this.scanline - sprY;
-      const fineY = (attr & 0x80) !== 0 ? 7 - row : row;
       const fineX = (attr & 0x40) !== 0 ? col : 7 - col;
-
-      const patAddr = ptBase + tileIdx * 16 + fineY;
-      const lo = (this.ppuRead(patAddr) >> fineX) & 1;
-      const hi = (this.ppuRead(patAddr + 8) >> fineX) & 1;
+      const lo = ((this.sprPatternLo[i] ?? 0) >> fineX) & 1;
+      const hi = ((this.sprPatternHi[i] ?? 0) >> fineX) & 1;
       const colorIdx = (hi << 1) | lo;
 
       if (colorIdx === 0) continue;
 
       const palAddr = 0x10 + ((attr & 0x03) << 2) + colorIdx;
-      const bgColor = this.framebuffer[fbIdx] ?? 0;
-      const bgOpaque = bgColor !== (this.palette[0] ?? 0);
 
       if (this.sprite0InLine && i === 0 && bgOpaque && x < 255) {
-        if ((this.mask & 0x08) !== 0 && (this.mask & 0x10) !== 0) {
+        if ((this.mask & 0x08) !== 0) {
           this.status |= 0x40;
         }
       }
