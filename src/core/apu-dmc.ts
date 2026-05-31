@@ -30,8 +30,8 @@ export class DmcChannel {
 
   /** シフトレジスタ (8-bit) */
   private shiftRegister = 0;
-  /** ビット残りカウンタ */
-  private bitsRemaining = 0;
+  /** ビット残りカウンタ (初期値 1: 最初の clockOutput で新サイクル開始を正しく発火させる) */
+  private bitsRemaining = 1;
   /** サイレンスフラグ */
   private silenceFlag = true;
 
@@ -50,9 +50,6 @@ export class DmcChannel {
   private irqEnabled = false;
   /** IRQ フラグ */
   irqFlag = false;
-  /** チャンネル有効フラグ ($4015 bit4) */
-  enabled = false;
-
   /** $4010: フラグ + レート */
   writeControl(value: number): void {
     this.irqEnabled = (value & 0x80) !== 0;
@@ -80,7 +77,6 @@ export class DmcChannel {
 
   /** $4015 書込による enable/disable */
   setEnabled(on: boolean): void {
-    this.enabled = on;
     if (!on) {
       this.bytesRemaining = 0;
     } else {
@@ -134,20 +130,8 @@ export class DmcChannel {
     this.clockOutput();
   }
 
-  /** 出力ユニットの 1 クロック */
+  /** 出力ユニットの 1 クロック (nesdev wiki 準拠の順序) */
   private clockOutput(): void {
-    // 新しい出力サイクル開始判定 (bits 消化完了時)
-    if (this.bitsRemaining === 0) {
-      this.bitsRemaining = 8;
-      if (this.sampleBufferEmpty) {
-        this.silenceFlag = true;
-      } else {
-        this.silenceFlag = false;
-        this.shiftRegister = this.sampleBuffer;
-        this.sampleBufferEmpty = true;
-      }
-    }
-
     if (!this.silenceFlag) {
       if ((this.shiftRegister & 1) !== 0) {
         if (this.outputLevel <= 125) {
@@ -162,6 +146,17 @@ export class DmcChannel {
 
     this.shiftRegister >>= 1;
     this.bitsRemaining--;
+
+    if (this.bitsRemaining === 0) {
+      this.bitsRemaining = 8;
+      if (this.sampleBufferEmpty) {
+        this.silenceFlag = true;
+      } else {
+        this.silenceFlag = false;
+        this.shiftRegister = this.sampleBuffer;
+        this.sampleBufferEmpty = true;
+      }
+    }
   }
 
   /** 出力 (0-127) */
