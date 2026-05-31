@@ -42,6 +42,16 @@ if [ -z "$NIGHT" ] && [ -n "$PR_NUM" ]; then
   NIGHT="$(gh pr view "$PR_NUM" --json title -q .title 2>/dev/null | sed -n 's/.*night \([0-9]\{1,\}\).*/\1/p' || echo "")"
 fi
 
+# --- pending 枯渇チェック ---
+# 次ゴールが STOP でない場合、pending が空なら STOP に上書きする。
+# pending が空のまま「次の pending を実装」ゴールが設定されると充足不能になる。
+if [ "$NEXT" != "STOP" ]; then
+  if [ ! -d nights/pending ] || [ "$(find nights/pending -name '*.md' | wc -l)" -eq 0 ]; then
+    echo "[finish-night] ⚠ pending 枯渇: 次ゴールを STOP に上書き" >&2
+    NEXT="STOP"
+  fi
+fi
+
 # --- TMUX_PANE チェック ---
 PANE="${TMUX_PANE:-}"
 if [ -z "$PANE" ]; then
