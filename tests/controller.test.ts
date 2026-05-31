@@ -68,12 +68,12 @@ describe("Controller", () => {
     expect(ctrl.read()).toBe(0);
   });
 
-  it("9 回目以降の read は 0 を返す (シフトレジスタ消費後)", () => {
+  it("9 回目以降の read は 1 を返す (4021 シリアル入力 = Vcc)", () => {
     const ctrl = new Controller();
     ctrl.setButtons(0xff);
     const bits = latchAndRead(ctrl, 12);
     expect(bits.slice(0, 8)).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
-    expect(bits.slice(8)).toEqual([0, 0, 0, 0]);
+    expect(bits.slice(8)).toEqual([1, 1, 1, 1]);
   });
 
   it("latch なしの連続 read はシフトレジスタを進める", () => {

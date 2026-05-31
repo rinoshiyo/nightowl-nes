@@ -40,7 +40,7 @@ export class Controller {
       return this.buttons & 1;
     }
     const bit = (this.shift & 1);
-    this.shift >>>= 1;
+    this.shift = (this.shift >>> 1) | 0x80;
     return bit;
   }
 }

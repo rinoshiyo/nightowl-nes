@@ -47,20 +47,18 @@ romInput.addEventListener("change", () => {
 });
 
 const KEY_MAP: ReadonlyMap<string, Button> = new Map([
-  ["ArrowUp", Button.Up],
-  ["ArrowDown", Button.Down],
-  ["ArrowLeft", Button.Left],
-  ["ArrowRight", Button.Right],
+  ["arrowup", Button.Up],
+  ["arrowdown", Button.Down],
+  ["arrowleft", Button.Left],
+  ["arrowright", Button.Right],
   ["z", Button.A],
-  ["Z", Button.A],
   ["x", Button.B],
-  ["X", Button.B],
-  ["Enter", Button.Start],
-  ["Shift", Button.Select],
+  ["enter", Button.Start],
+  ["shift", Button.Select],
 ]);
 
 document.addEventListener("keydown", (e) => {
-  const btn = KEY_MAP.get(e.key);
+  const btn = KEY_MAP.get(e.key.toLowerCase());
   if (btn !== undefined && nes) {
     e.preventDefault();
     nes.controller1.press(btn);
@@ -68,7 +66,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("keyup", (e) => {
-  const btn = KEY_MAP.get(e.key);
+  const btn = KEY_MAP.get(e.key.toLowerCase());
   if (btn !== undefined && nes) {
     e.preventDefault();
     nes.controller1.release(btn);
