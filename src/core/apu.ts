@@ -11,7 +11,7 @@ import { PulseChannel } from "./apu-pulse.ts";
 const CPU_CLOCK = 1789773;
 
 /**
- * フレームカウンタの step タイミング (CPU cycle × 2 で管理、半 cycle 対応)。
+ * フレームカウンタの step タイミング (CPU cycle 単位、+1 delay 込み)。
  * 仕様参照: https://www.nesdev.org/wiki/APU_Frame_Counter
  */
 const FRAME_4STEP = [7457, 14913, 22371, 29829, 29830] as const;
@@ -23,7 +23,7 @@ export class Apu {
 
   /** フレームカウンタモード (0 = 4-step, 1 = 5-step) */
   private frameMode = 0;
-  /** フレームカウンタの CPU cycle × 2 カウント */
+  /** フレームカウンタの CPU cycle カウント */
   private frameCycle = 0;
   /** フレームカウンタの現在の step インデックス */
   private frameStep = 0;
@@ -35,12 +35,12 @@ export class Apu {
   /** CPU cycle カウント (パルスタイマーの 2 分周用) */
   private cpuCycleOdd = false;
 
-  /** ダウンサンプリング用 */
-  private sampleRate = 44100;
-  private samplePeriod = CPU_CLOCK / 44100;
-  private sampleCounter = 0;
+  /** ダウンサンプリング用 (integer Bresenham 方式: ドリフトフリー) */
+  private sampleRateAccum = 0;
+  private sampleRateThreshold = CPU_CLOCK;
+  private sampleRateStep = 44100;
 
-  /** サンプルバッファ (リングバッファ) */
+  /** サンプルバッファ (リングバッファ、最大 4095 エントリ使用) */
   private readonly sampleBuffer = new Float32Array(4096);
   private bufferWritePos = 0;
   private bufferReadPos = 0;
@@ -141,12 +141,15 @@ export class Apu {
 
     this.tickFrameCounter();
 
-    // ダウンサンプリング: samplePeriod CPU tick ごとに 1 サンプルをバッファに書く
-    this.sampleCounter++;
-    if (this.sampleCounter >= this.samplePeriod) {
-      this.sampleCounter -= this.samplePeriod;
-      this.sampleBuffer[this.bufferWritePos] = this.mixOutput();
-      this.bufferWritePos = (this.bufferWritePos + 1) & 0xfff;
+    // ダウンサンプリング (integer Bresenham): sampleRateStep を蓄積し閾値超えで 1 サンプル出力
+    this.sampleRateAccum += this.sampleRateStep;
+    if (this.sampleRateAccum >= this.sampleRateThreshold) {
+      this.sampleRateAccum -= this.sampleRateThreshold;
+      const nextWrite = (this.bufferWritePos + 1) & 0xfff;
+      if (nextWrite !== this.bufferReadPos) {
+        this.sampleBuffer[this.bufferWritePos] = this.mixOutput();
+        this.bufferWritePos = nextWrite;
+      }
     }
   }
 
@@ -234,8 +237,7 @@ export class Apu {
 
   /** オーディオサンプルレートを設定 */
   setSampleRate(rate: number): void {
-    this.sampleRate = rate;
-    this.samplePeriod = CPU_CLOCK / rate;
+    this.sampleRateStep = rate;
   }
 
   /** バッファからサンプルを読み出して output 配列を埋める。読み出し分だけ進む */
