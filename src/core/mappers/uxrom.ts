@@ -18,29 +18,26 @@ const CHR_RAM_SIZE = 0x2000;
 export class MapperUxrom implements Mapper {
   private readonly prgRom: Uint8Array;
   private readonly chrRam = new Uint8Array(CHR_RAM_SIZE);
-  private readonly bankCount: number;
   private readonly bankMask: number;
-  private bankSelect = 0;
+  private switchBankOffset = 0;
   private readonly lastBankOffset: number;
 
   constructor(cart: Cart) {
     this.prgRom = cart.prgRom;
-    this.bankCount = Math.max(1, cart.prgRom.length / PRG_BANK_SIZE);
-    this.bankMask = this.bankCount - 1;
-    this.lastBankOffset = (this.bankCount - 1) * PRG_BANK_SIZE;
+    const bankCount = Math.max(1, cart.prgRom.length / PRG_BANK_SIZE);
+    this.bankMask = bankCount - 1;
+    this.lastBankOffset = (bankCount - 1) * PRG_BANK_SIZE;
   }
 
   readPrg(addr: number): number {
-    const offset = addr & 0x7fff;
-    if (offset < PRG_BANK_SIZE) {
-      const bankOffset = (this.bankSelect & this.bankMask) * PRG_BANK_SIZE;
-      return this.prgRom[bankOffset + offset] ?? 0;
+    if (addr < 0xc000) {
+      return this.prgRom[this.switchBankOffset + (addr & 0x3fff)] ?? 0;
     }
-    return this.prgRom[this.lastBankOffset + (offset - PRG_BANK_SIZE)] ?? 0;
+    return this.prgRom[this.lastBankOffset + (addr & 0x3fff)] ?? 0;
   }
 
   writePrg(_addr: number, value: number): void {
-    this.bankSelect = value & this.bankMask;
+    this.switchBankOffset = (value & this.bankMask) * PRG_BANK_SIZE;
   }
 
   readChr(addr: number): number {

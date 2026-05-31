@@ -14,11 +14,13 @@ const CHR_RAM_SIZE = 0x2000;
 
 export class MapperNrom implements Mapper {
   private readonly prgRom: Uint8Array;
+  private readonly prgMask: number;
   private readonly chrData: Uint8Array;
   private readonly chrIsRam: boolean;
 
   constructor(cart: Cart) {
     this.prgRom = cart.prgRom;
+    this.prgMask = cart.prgRom.length - 1;
     if (cart.header.chrRomSize > 0) {
       this.chrData = cart.chrRom;
       this.chrIsRam = false;
@@ -29,7 +31,7 @@ export class MapperNrom implements Mapper {
   }
 
   readPrg(addr: number): number {
-    return this.prgRom[(addr - 0x8000) % this.prgRom.length] ?? 0;
+    return this.prgRom[(addr - 0x8000) & this.prgMask] ?? 0;
   }
 
   writePrg(_addr: number, _value: number): void {
