@@ -6,6 +6,7 @@
  * 仕様参照: https://www.nesdev.org/wiki/APU
  */
 
+import { NoiseChannel } from "./apu-noise.ts";
 import { PulseChannel } from "./apu-pulse.ts";
 import { TriangleChannel } from "./apu-triangle.ts";
 
@@ -22,6 +23,7 @@ export class Apu {
   readonly pulse1 = new PulseChannel(1);
   readonly pulse2 = new PulseChannel(2);
   readonly triangle = new TriangleChannel();
+  readonly noise = new NoiseChannel();
 
   /** フレームカウンタモード (0 = 4-step, 1 = 5-step) */
   private frameMode = 0;
@@ -53,7 +55,8 @@ export class Apu {
       if (this.pulse1.lengthCounter > 0) status |= 0x01;
       if (this.pulse2.lengthCounter > 0) status |= 0x02;
       if (this.triangle.lengthCounter > 0) status |= 0x04;
-      // bit3-4: noise / DMC (将来実装)
+      if (this.noise.lengthCounter > 0) status |= 0x08;
+      // bit4: DMC (将来実装)
       if (this.frameIrqFlag) status |= 0x40;
       this.frameIrqFlag = false;
       return status;
@@ -102,7 +105,17 @@ export class Apu {
         this.triangle.writeTimerHigh(value);
         break;
 
-      // $400C-$400F: Noise (将来実装)
+      // Noise: $400C, $400E, $400F ($400D は未使用)
+      case 0x400C:
+        this.noise.writeControl(value);
+        break;
+      case 0x400E:
+        this.noise.writePeriod(value);
+        break;
+      case 0x400F:
+        this.noise.writeLengthLoad(value);
+        break;
+
       // $4010-$4013: DMC (将来実装)
 
       case 0x4015:
@@ -125,7 +138,10 @@ export class Apu {
     this.triangle.enabled = (value & 0x04) !== 0;
     if (!this.triangle.enabled) this.triangle.lengthCounter = 0;
 
-    // bit3-4: noise / DMC (将来実装)
+    this.noise.enabled = (value & 0x08) !== 0;
+    if (!this.noise.enabled) this.noise.lengthCounter = 0;
+
+    // bit4: DMC (将来実装)
   }
 
   private writeFrameCounter(value: number): void {
@@ -156,6 +172,7 @@ export class Apu {
     if (this.cpuCycleOdd) {
       this.pulse1.tickTimer();
       this.pulse2.tickTimer();
+      this.noise.tickTimer();
     }
 
     this.tickFrameCounter();
@@ -235,12 +252,14 @@ export class Apu {
     this.pulse1.envelope.tick();
     this.pulse2.envelope.tick();
     this.triangle.tickLinearCounter();
+    this.noise.envelope.tick();
   }
 
   private clockHalfFrame(): void {
     this.pulse1.tickLength();
     this.pulse2.tickLength();
     this.triangle.tickLength();
+    this.noise.tickLength();
     this.pulse1.tickSweep();
     this.pulse2.tickSweep();
   }
@@ -250,6 +269,7 @@ export class Apu {
     const p1 = this.pulse1.output();
     const p2 = this.pulse2.output();
     const tri = this.triangle.output();
+    const noi = this.noise.output();
 
     // nesdev wiki 近似式 (pulse と tnd を分離)
     let pulseOut = 0;
@@ -259,7 +279,7 @@ export class Apu {
 
     // tnd_out = 159.79 / (1 / (tri/8227 + noise/12241 + dmc/22638) + 100)
     let tndOut = 0;
-    const tndSum = tri / 8227; // 将来: + noise / 12241 + dmc / 22638
+    const tndSum = tri / 8227 + noi / 12241; // 将来: + dmc / 22638
     if (tndSum !== 0) {
       tndOut = 159.79 / (1 / tndSum + 100);
     }
