@@ -7,6 +7,7 @@
 
 import type { Bus } from "./bus.ts";
 import type { Cart } from "./cart.ts";
+import type { Controller } from "./controller.ts";
 import type { Ppu } from "./ppu.ts";
 
 const RAM_SIZE = 0x800;
@@ -18,6 +19,7 @@ export class NesBus implements Bus {
   constructor(
     private readonly ppu: Ppu,
     private readonly cart: Cart,
+    private readonly controller1: Controller,
   ) {}
 
   read(addr: number): number {
@@ -28,6 +30,9 @@ export class NesBus implements Bus {
     }
     if (addr < 0x4000) {
       return this.ppu.read(addr & 0x7);
+    }
+    if (addr === 0x4016) {
+      return this.controller1.read();
     }
     if (addr < 0x4018) {
       return this.apuIo[addr - 0x4000] ?? 0;
@@ -51,6 +56,10 @@ export class NesBus implements Bus {
     }
     if (addr < 0x4000) {
       this.ppu.write(addr & 0x7, v);
+      return;
+    }
+    if (addr === 0x4016) {
+      this.controller1.write(v);
       return;
     }
     if (addr < 0x4018) {

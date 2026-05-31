@@ -1,5 +1,6 @@
 import { parseINes } from "../core/cart.ts";
 import { NesConsole } from "../core/console.ts";
+import { Button } from "../core/controller.ts";
 import { Renderer } from "./renderer.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
@@ -43,6 +44,33 @@ romInput.addEventListener("change", () => {
     status.textContent = "エラー: ファイルの読み込みに失敗しました";
   };
   reader.readAsArrayBuffer(file);
+});
+
+const KEY_MAP: ReadonlyMap<string, Button> = new Map([
+  ["arrowup", Button.Up],
+  ["arrowdown", Button.Down],
+  ["arrowleft", Button.Left],
+  ["arrowright", Button.Right],
+  ["z", Button.A],
+  ["x", Button.B],
+  ["enter", Button.Start],
+  ["shift", Button.Select],
+]);
+
+document.addEventListener("keydown", (e) => {
+  const btn = KEY_MAP.get(e.key.toLowerCase());
+  if (btn !== undefined && nes) {
+    e.preventDefault();
+    nes.controller1.press(btn);
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  const btn = KEY_MAP.get(e.key.toLowerCase());
+  if (btn !== undefined && nes) {
+    e.preventDefault();
+    nes.controller1.release(btn);
+  }
 });
 
 function gameLoop(timestamp: number): void {
