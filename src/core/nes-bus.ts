@@ -5,6 +5,7 @@
  * 仕様参照: https://www.nesdev.org/wiki/CPU_memory_map
  */
 
+import type { Apu } from "./apu.ts";
 import type { Bus } from "./bus.ts";
 import type { Controller } from "./controller.ts";
 import type { Mapper } from "./mappers/index.ts";
@@ -14,7 +15,6 @@ const RAM_SIZE = 0x800;
 
 export class NesBus implements Bus {
   private readonly ram = new Uint8Array(RAM_SIZE);
-  private readonly apuIo = new Uint8Array(0x18);
 
   /** OAM DMA 転送で消費する CPU サイクル (0 = DMA なし) */
   dmaCycles = 0;
@@ -23,6 +23,7 @@ export class NesBus implements Bus {
     private readonly ppu: Ppu,
     private readonly mapper: Mapper,
     private readonly controller1: Controller,
+    private readonly apu: Apu,
   ) {}
 
   read(addr: number): number {
@@ -34,11 +35,11 @@ export class NesBus implements Bus {
     if (addr < 0x4000) {
       return this.ppu.read(addr & 0x7);
     }
+    if (addr === 0x4015) {
+      return this.apu.read(addr);
+    }
     if (addr === 0x4016) {
       return this.controller1.read();
-    }
-    if (addr < 0x4018) {
-      return this.apuIo[addr - 0x4000] ?? 0;
     }
     if (addr < 0x4020) {
       return 0;
@@ -70,7 +71,7 @@ export class NesBus implements Bus {
       return;
     }
     if (addr < 0x4018) {
-      this.apuIo[addr - 0x4000] = v;
+      this.apu.write(addr, v);
       return;
     }
     if (addr >= 0x8000) {
