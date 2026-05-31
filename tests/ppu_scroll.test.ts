@@ -65,6 +65,48 @@ describe("PPU ネームテーブルミラーリング", () => {
   });
 });
 
+describe("PPU ミラーリング write 経由検証", () => {
+  it("垂直ミラー: PPUDATA で $2000 に書いた値が $2800 から読める", () => {
+    const ppu = new Ppu();
+    ppu.mirroring = "vertical";
+
+    ppu.write(6, 0x20);
+    ppu.write(6, 0x00);
+    ppu.write(7, 0x42);
+
+    expect(ppu.ppuRead(0x2000)).toBe(0x42);
+    expect(ppu.ppuRead(0x2800)).toBe(0x42);
+  });
+
+  it("水平ミラー: PPUDATA で $2400 に書いた値が $2000 から読める", () => {
+    const ppu = new Ppu();
+    ppu.mirroring = "horizontal";
+
+    ppu.write(6, 0x24);
+    ppu.write(6, 0x10);
+    ppu.write(7, 0x55);
+
+    expect(ppu.ppuRead(0x2010)).toBe(0x55);
+    expect(ppu.ppuRead(0x2410)).toBe(0x55);
+  });
+
+  it("水平ミラー: $2800 への write が $2000 に影響しない", () => {
+    const ppu = new Ppu();
+    ppu.mirroring = "horizontal";
+
+    ppu.write(6, 0x20);
+    ppu.write(6, 0x00);
+    ppu.write(7, 0xAA);
+
+    ppu.write(6, 0x28);
+    ppu.write(6, 0x00);
+    ppu.write(7, 0xBB);
+
+    expect(ppu.ppuRead(0x2000)).toBe(0xAA);
+    expect(ppu.ppuRead(0x2800)).toBe(0xBB);
+  });
+});
+
 describe("PPU X スクロール", () => {
   function setupScrollTest(ppu: Ppu): void {
     ppu.ctrl = 0;
