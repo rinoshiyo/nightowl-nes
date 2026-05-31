@@ -301,9 +301,7 @@ export class Ppu {
       const palAddr = 0x10 + ((attr & 0x03) << 2) + colorIdx;
 
       if (this.sprite0InLine && i === 0 && bgOpaque && x < 255) {
-        if ((this.mask & 0x08) !== 0) {
-          this.status |= 0x40;
-        }
+        this.status |= 0x40;
       }
 
       const behindBg = (attr & 0x20) !== 0;
