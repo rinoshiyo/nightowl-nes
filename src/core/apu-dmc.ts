@@ -136,6 +136,18 @@ export class DmcChannel {
 
   /** 出力ユニットの 1 クロック */
   private clockOutput(): void {
+    // 新しい出力サイクル開始判定 (bits 消化完了時)
+    if (this.bitsRemaining === 0) {
+      this.bitsRemaining = 8;
+      if (this.sampleBufferEmpty) {
+        this.silenceFlag = true;
+      } else {
+        this.silenceFlag = false;
+        this.shiftRegister = this.sampleBuffer;
+        this.sampleBufferEmpty = true;
+      }
+    }
+
     if (!this.silenceFlag) {
       if ((this.shiftRegister & 1) !== 0) {
         if (this.outputLevel <= 125) {
@@ -150,17 +162,6 @@ export class DmcChannel {
 
     this.shiftRegister >>= 1;
     this.bitsRemaining--;
-
-    if (this.bitsRemaining === 0) {
-      this.bitsRemaining = 8;
-      if (this.sampleBufferEmpty) {
-        this.silenceFlag = true;
-      } else {
-        this.silenceFlag = false;
-        this.shiftRegister = this.sampleBuffer;
-        this.sampleBufferEmpty = true;
-      }
-    }
   }
 
   /** 出力 (0-127) */
