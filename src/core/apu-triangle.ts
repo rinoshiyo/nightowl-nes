@@ -9,7 +9,7 @@
 import { LENGTH_TABLE } from "./apu-length.ts";
 
 /** 三角波シーケンステーブル (32 ステップ: 15→0, 0→15) */
-const TRIANGLE_SEQUENCE: readonly number[] = [
+const TRIANGLE_SEQUENCE = [
   15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 ] as const;
@@ -70,10 +70,8 @@ export class TriangleChannel {
     }
   }
 
-  /** チャンネル出力 (0-15) */
+  /** チャンネル出力 (0-15)。カウンタはシーケンサの clock をゲートするだけで出力はゲートしない */
   output(): number {
-    if (this.lengthCounter === 0) return 0;
-    if (this.linearCounter === 0) return 0;
     return TRIANGLE_SEQUENCE[this.sequencerPos] ?? 0;
   }
 

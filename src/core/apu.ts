@@ -95,10 +95,10 @@ export class Apu {
       case 0x4008:
         this.triangle.writeLinearCounter(value);
         break;
-      case 0x400a:
+      case 0x400A:
         this.triangle.writeTimerLow(value);
         break;
-      case 0x400b:
+      case 0x400B:
         this.triangle.writeTimerHigh(value);
         break;
 
@@ -258,10 +258,10 @@ export class Apu {
     }
 
     // tnd_out = 159.79 / (1 / (tri/8227 + noise/12241 + dmc/22638) + 100)
-    // noise/dmc は将来実装 (現在 0)
     let tndOut = 0;
-    if (tri !== 0) {
-      tndOut = 159.79 / (8227 / tri + 100);
+    const tndSum = tri / 8227; // 将来: + noise / 12241 + dmc / 22638
+    if (tndSum !== 0) {
+      tndOut = 159.79 / (1 / tndSum + 100);
     }
 
     return pulseOut + tndOut;

@@ -169,23 +169,29 @@ describe("TriangleChannel", () => {
   });
 
   describe("出力", () => {
-    it("長さカウンタ 0 で出力 0", () => {
-      ch.lengthCounter = 0;
-      ch.linearCounter = 5;
-      expect(ch.output()).toBe(0);
-    });
-
-    it("リニアカウンタ 0 で出力 0", () => {
-      ch.lengthCounter = 5;
-      ch.linearCounter = 0;
-      expect(ch.output()).toBe(0);
-    });
-
-    it("両方非ゼロでシーケンサ値を返す", () => {
-      ch.lengthCounter = 1;
-      ch.linearCounter = 1;
+    it("カウンタに関係なくシーケンサの現在値を返す (NES 仕様: カウンタは clock をゲートするだけ)", () => {
       ch.sequencerPos = 0;
       expect(ch.output()).toBe(15);
+
+      ch.sequencerPos = 8;
+      expect(ch.output()).toBe(7);
+
+      ch.sequencerPos = 16;
+      expect(ch.output()).toBe(0);
+    });
+
+    it("長さカウンタ 0 でもシーケンサの凍結値を返す", () => {
+      ch.lengthCounter = 0;
+      ch.linearCounter = 5;
+      ch.sequencerPos = 5;
+      expect(ch.output()).toBe(10);
+    });
+
+    it("リニアカウンタ 0 でもシーケンサの凍結値を返す", () => {
+      ch.lengthCounter = 5;
+      ch.linearCounter = 0;
+      ch.sequencerPos = 20;
+      expect(ch.output()).toBe(4);
     });
   });
 
@@ -284,16 +290,41 @@ describe("APU triangle 統合", () => {
   });
 
   describe("ミキサー", () => {
-    it("pulse のみ (triangle=0) の出力が以前と変わらない", () => {
+    it("pulse のみ (triangle=0) でサンプルが出力される", () => {
       apu.write(0x4015, 0x03); // pulse1 + pulse2 enable
       apu.write(0x4000, 0xbf); // pulse1: duty=2(50%), constant volume=15
       apu.write(0x4002, 0x00); // timer low
       apu.write(0x4003, 0x08); // timer high + length
 
-      // pulse1 出力が 15 の状態でミキサー出力を確認
-      // pulse_out = 95.88 / (8128/15 + 100) ≈ 0.1498
-      // tnd_out = 0 (triangle=0)
-      // 直接 mixOutput は private だが readSamples 経由で確認可能
+      // CPU tick を十分回してサンプルを生成
+      for (let i = 0; i < 2000; i++) apu.tick();
+
+      const buf = new Float32Array(64);
+      const written = apu.readSamples(buf);
+      expect(written).toBeGreaterThan(0);
+
+      // triangle=0 なので tnd_out=0、pulse のみの出力
+      const nonZero = buf.slice(0, written).some(s => s > 0);
+      expect(nonZero).toBe(true);
+    });
+
+    it("triangle 有効時に tnd_out が加算される", () => {
+      apu.write(0x4015, 0x04); // triangle enable
+      apu.write(0x4008, 0xff); // control=true, reload=127
+      apu.write(0x400a, 0x10); // timer low
+      apu.write(0x400b, 0x08); // timer high + length load
+
+      // リニアカウンタを reload するため quarter frame を発火
+      apu.write(0x4017, 0x80); // 5-step モード (即 quarter+half)
+
+      for (let i = 0; i < 2000; i++) apu.tick();
+
+      const buf = new Float32Array(64);
+      const written = apu.readSamples(buf);
+      expect(written).toBeGreaterThan(0);
+
+      const nonZero = buf.slice(0, written).some(s => s > 0);
+      expect(nonZero).toBe(true);
     });
   });
 });
