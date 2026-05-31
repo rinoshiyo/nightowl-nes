@@ -64,6 +64,13 @@ export class Ppu {
   private bgPatternLo = 0;
   private bgPatternHi = 0;
 
+  /** secondary OAM (スキャンラインごとの最大 8 スプライト × 4 バイト) */
+  private readonly secOam = new Uint8Array(32);
+  /** 現スキャンラインの有効スプライト数 */
+  private spriteCount = 0;
+  /** sprite 0 が secondary OAM に含まれるか */
+  private sprite0InLine = false;
+
   /** PPU 状態をリセット */
   reset(): void {
     this.ctrl = 0;
@@ -83,6 +90,9 @@ export class Ppu {
     this.bgAttribute = 0;
     this.bgPatternLo = 0;
     this.bgPatternHi = 0;
+    this.secOam.fill(0xff);
+    this.spriteCount = 0;
+    this.sprite0InLine = false;
   }
 
   /** $2000-$2007 の read (addr は 0-7 にマスク済みで渡される想定) */
@@ -168,13 +178,21 @@ export class Ppu {
   /** 可視ライン (0-239) の描画処理 */
   private tickVisible(): void {
     const dot = this.dot;
+
+    if (dot === 1) {
+      this.evaluateSprites();
+    }
+
     if (dot < 1 || dot > SCREEN_W) return;
 
     const x = dot - 1;
     if ((x & 7) === 0) {
       this.fetchBgTile(x >> 3);
     }
+
+    const fbIdx = this.scanline * SCREEN_W + x;
     this.renderBgPixel(x, this.scanline * SCREEN_W);
+    this.renderSpritePixel(x, fbIdx);
   }
 
   /** 背景タイル 1 つ分の fetch (NT → AT → pattern lo → pattern hi) */
@@ -215,6 +233,77 @@ export class Ppu {
 
     const palAddr = colorIdx === 0 ? 0 : (this.bgAttribute << 2) | colorIdx;
     this.framebuffer[fbIdx] = this.palette[palAddr] ?? 0;
+  }
+
+  /** スキャンラインごとのスプライト評価 (OAM から最大 8 スプライトを secondary OAM に選出) */
+  private evaluateSprites(): void {
+    const spriteHeight = 8;
+    this.spriteCount = 0;
+    this.sprite0InLine = false;
+    this.secOam.fill(0xff);
+
+    for (let i = 0; i < 64; i++) {
+      const y = this.oam[i * 4] ?? 0;
+      const row = this.scanline - y;
+      if (row < 0 || row >= spriteHeight) continue;
+
+      if (this.spriteCount < 8) {
+        if (i === 0) this.sprite0InLine = true;
+        const base = this.spriteCount * 4;
+        this.secOam[base] = y;
+        this.secOam[base + 1] = this.oam[i * 4 + 1] ?? 0;
+        this.secOam[base + 2] = this.oam[i * 4 + 2] ?? 0;
+        this.secOam[base + 3] = this.oam[i * 4 + 3] ?? 0;
+        this.spriteCount++;
+      } else {
+        this.status |= 0x20;
+        break;
+      }
+    }
+  }
+
+  /** スプライトピクセルを framebuffer に合成 */
+  private renderSpritePixel(x: number, fbIdx: number): void {
+    if ((this.mask & 0x10) === 0) return;
+
+    const ptBase = (this.ctrl & 0x08) !== 0 ? 0x1000 : 0;
+
+    for (let i = this.spriteCount - 1; i >= 0; i--) {
+      const base = i * 4;
+      const sprY = this.secOam[base] ?? 0;
+      const tileIdx = this.secOam[base + 1] ?? 0;
+      const attr = this.secOam[base + 2] ?? 0;
+      const sprX = this.secOam[base + 3] ?? 0;
+
+      const col = x - sprX;
+      if (col < 0 || col >= 8) continue;
+
+      const row = this.scanline - sprY;
+      const fineY = (attr & 0x80) !== 0 ? 7 - row : row;
+      const fineX = (attr & 0x40) !== 0 ? col : 7 - col;
+
+      const patAddr = ptBase + tileIdx * 16 + fineY;
+      const lo = (this.ppuRead(patAddr) >> fineX) & 1;
+      const hi = (this.ppuRead(patAddr + 8) >> fineX) & 1;
+      const colorIdx = (hi << 1) | lo;
+
+      if (colorIdx === 0) continue;
+
+      const palAddr = 0x10 + ((attr & 0x03) << 2) + colorIdx;
+      const bgColor = this.framebuffer[fbIdx] ?? 0;
+      const bgOpaque = bgColor !== (this.palette[0] ?? 0);
+
+      if (this.sprite0InLine && i === 0 && bgOpaque && x < 255) {
+        if ((this.mask & 0x08) !== 0 && (this.mask & 0x10) !== 0) {
+          this.status |= 0x40;
+        }
+      }
+
+      const behindBg = (attr & 0x20) !== 0;
+      if (!behindBg || !bgOpaque) {
+        this.framebuffer[fbIdx] = this.palette[palAddr] ?? 0;
+      }
+    }
   }
 
   /** PPU アドレス空間の read (CHR + VRAM + パレット) */
