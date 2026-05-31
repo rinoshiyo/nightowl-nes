@@ -5,6 +5,8 @@
  * 仕様参照: https://www.nesdev.org/wiki/PPU_rendering
  */
 
+import type { Mirroring } from "./cart.ts";
+
 const CHR_RAM_SIZE = 0x2000;
 const VRAM_SIZE = 0x800;
 const PALETTE_SIZE = 0x20;
@@ -18,6 +20,9 @@ const TOTAL_LINES = 262;
 export const SCREEN_W = 256;
 
 export class Ppu {
+  /** ネームテーブルミラーリングモード (カートから設定) */
+  mirroring: Mirroring = "vertical";
+
   /** $2000 PPUCTRL */
   ctrl = 0;
   /** $2001 PPUMASK */
@@ -63,6 +68,7 @@ export class Ppu {
   private bgAttribute = 0;
   private bgPatternLo = 0;
   private bgPatternHi = 0;
+  private bgPatternFineY = -1;
 
   /** 背景カラーインデックス (0=透明) — sprite 0 hit / priority 判定用 */
   private bgColorIdx = 0;
@@ -96,6 +102,11 @@ export class Ppu {
     this.bgAttribute = 0;
     this.bgPatternLo = 0;
     this.bgPatternHi = 0;
+    this.bgPatternFineY = -1;
+    this.bgFetchedCol = -1;
+    this.slTileRow = 0;
+    this.slFineY = 0;
+    this.slNtSelectY = 0;
     this.bgColorIdx = 0;
     this.spriteCount = 0;
     this.sprite0InLine = false;
@@ -181,49 +192,51 @@ export class Ppu {
     }
   }
 
+  /** 現在フェッチ済みの背景タイル列 (globalX >> 3 の値。再フェッチ判定用) */
+  private bgFetchedCol = -1;
+
+  /** スキャンラインごとの Y スクロール派生値 (scanline 内で不変) */
+  private slTileRow = 0;
+  private slFineY = 0;
+  private slNtSelectY = 0;
+
   /** 可視ライン (0-239) の描画処理 */
   private tickVisible(): void {
     const dot = this.dot;
 
     if (dot === 1) {
       this.evaluateSprites();
+      this.bgFetchedCol = -1;
+      this.computeScanlineScrollY();
     }
 
     if (dot < 1 || dot > SCREEN_W) return;
 
     const x = dot - 1;
-    if ((x & 7) === 0) {
-      this.fetchBgTile(x >> 3);
-    }
-
     const fbIdx = this.scanline * SCREEN_W + x;
     this.renderBgPixel(x, fbIdx);
     this.renderSpritePixel(x, fbIdx);
   }
 
-  /** 背景タイル 1 つ分の fetch (NT → AT → pattern lo → pattern hi) */
-  private fetchBgTile(tileX: number): void {
-    const scanline = this.scanline;
-    const coarseX = tileX & 0x1f;
-    const coarseY = (scanline >> 3) & 0x1f;
-    const fineY = scanline & 7;
-
-    const ntBase = 0x2000 + ((this.ctrl & 0x03) << 10);
-    const ntAddr = ntBase + coarseY * 32 + coarseX;
-    this.bgNametable = this.ppuRead(ntAddr);
-
-    const atAddr = ntBase + 0x03c0 + ((coarseY >> 2) << 3) + (coarseX >> 2);
-    const atByte = this.ppuRead(atAddr);
-    const atShift = ((coarseY & 2) << 1) | (coarseX & 2);
-    this.bgAttribute = (atByte >> atShift) & 0x03;
-
-    const ptBase = (this.ctrl & 0x10) !== 0 ? 0x1000 : 0;
-    const ptAddr = ptBase + this.bgNametable * 16 + fineY;
-    this.bgPatternLo = this.ppuRead(ptAddr);
-    this.bgPatternHi = this.ppuRead(ptAddr + 8);
+  /** スキャンラインごとに Y スクロール派生値を事前計算 */
+  private computeScanlineScrollY(): void {
+    const globalY = this.scrollY + this.scanline;
+    let tileRow = globalY >> 3;
+    let ntSelectY = 0;
+    if (tileRow >= 30) {
+      tileRow -= 30;
+      ntSelectY = 1;
+    }
+    if (tileRow >= 30) {
+      tileRow -= 30;
+      ntSelectY = 0;
+    }
+    this.slTileRow = tileRow;
+    this.slFineY = globalY & 7;
+    this.slNtSelectY = ntSelectY;
   }
 
-  /** 背景ピクセルを framebuffer に出力 */
+  /** 背景ピクセルを framebuffer に出力 (スクロール適用) */
   private renderBgPixel(x: number, fbIdx: number): void {
     if ((this.mask & 0x08) === 0) {
       this.framebuffer[fbIdx] = this.palette[0] ?? 0;
@@ -231,7 +244,19 @@ export class Ppu {
       return;
     }
 
-    const bitPos = 7 - (x & 7);
+    const globalX = (this.scrollX + x) & 0x1ff;
+    const tileCol = (globalX >> 3) & 0x1f;
+    const fineX = globalX & 7;
+    const ntSelectX = (globalX >> 8) & 1;
+
+    const col = (ntSelectX << 5) | tileCol;
+    if (col !== this.bgFetchedCol || this.slFineY !== this.bgPatternFineY) {
+      this.bgFetchedCol = col;
+      this.bgPatternFineY = this.slFineY;
+      this.fetchBgTile(tileCol, this.slTileRow, this.slFineY, ntSelectX, this.slNtSelectY);
+    }
+
+    const bitPos = 7 - fineX;
     const lo = (this.bgPatternLo >> bitPos) & 1;
     const hi = (this.bgPatternHi >> bitPos) & 1;
     const colorIdx = (hi << 1) | lo;
@@ -239,6 +264,26 @@ export class Ppu {
 
     const palAddr = colorIdx === 0 ? 0 : (this.bgAttribute << 2) | colorIdx;
     this.framebuffer[fbIdx] = this.palette[palAddr] ?? 0;
+  }
+
+  /** 背景タイル fetch (スクロール対応: タイル座標 + NT 選択を受け取る) */
+  private fetchBgTile(tileCol: number, tileRow: number, fineY: number, ntSelectX: number, ntSelectY: number): void {
+    const baseNt = this.ctrl & 0x03;
+    const ntIndex = baseNt ^ ntSelectX ^ (ntSelectY << 1);
+    const ntBase = 0x2000 + (ntIndex << 10);
+
+    const ntAddr = ntBase + tileRow * 32 + tileCol;
+    this.bgNametable = this.ppuRead(ntAddr);
+
+    const atAddr = ntBase + 0x03c0 + ((tileRow >> 2) << 3) + (tileCol >> 2);
+    const atByte = this.ppuRead(atAddr);
+    const atShift = ((tileRow & 2) << 1) | (tileCol & 2);
+    this.bgAttribute = (atByte >> atShift) & 0x03;
+
+    const ptBase = (this.ctrl & 0x10) !== 0 ? 0x1000 : 0;
+    const ptAddr = ptBase + this.bgNametable * 16 + fineY;
+    this.bgPatternLo = this.ppuRead(ptAddr);
+    this.bgPatternHi = this.ppuRead(ptAddr + 8);
   }
 
   /** スキャンラインごとのスプライト評価 (OAM から最大 8 スプライトを secondary OAM に選出) */
@@ -364,8 +409,12 @@ export class Ppu {
     this.vramAddr = (this.vramAddr + ((this.ctrl & 0x04) !== 0 ? 32 : 1)) & 0x3fff;
   }
 
-  /** ネームテーブルミラーリング (垂直ミラー: NT0=NT2, NT1=NT3) */
+  /** ネームテーブルミラーリング (VRAM 2KB 内オフセットを返す) */
   private mirrorNametable(addr: number): number {
-    return (addr - 0x2000) & (VRAM_SIZE - 1);
+    const relative = (addr - 0x2000) & 0xfff;
+    if (this.mirroring === "vertical") {
+      return relative & 0x7ff;
+    }
+    return ((relative & 0x800) >> 1) | (relative & 0x3ff);
   }
 }

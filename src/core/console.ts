@@ -21,6 +21,7 @@ export class NesConsole {
 
   constructor(cart: Cart) {
     this.ppu = new Ppu();
+    this.ppu.mirroring = cart.header.mirroring;
     this.controller1 = new Controller();
     this.bus = new NesBus(this.ppu, cart, this.controller1);
     this.cpu = createCpu();
