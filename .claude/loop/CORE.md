@@ -104,10 +104,10 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 
 ## 起動時の作法
 
-0. **open PR を確認** (`gh pr list --state open --json number,title,isDraft,mergeStateStatus`)。open PR があれば PR description / コメント (SSOT) を読み中断作業か判定。**判定基準**: draft = レビュー隔離中 (再開対象) / 非 draft の open は中身を見る — CI 実行中 (`BLOCKED`) なら「正常な in-flight」(loop-helper が merge 待ち中。中断扱いして再開しない) / CLEAN のまま open なら loop-helper が止まった可能性で最優先再開。**open PR があれば step 5 から再開**
+0. **open PR を確認** (`gh pr list --state open --json number,title,isDraft,mergeStateStatus,headRefName`)。open PR があれば PR description / コメント (SSOT) を読み中断作業か判定。**判定基準**: draft = レビュー隔離中 (再開対象) / 非 draft の open は中身を見る — CI 実行中 (`BLOCKED`) なら「正常な in-flight」(loop-helper が merge 待ち中。中断扱いして再開しない) / CLEAN のまま open なら loop-helper が止まった可能性で最優先再開。**open PR があれば `git checkout <headRefName>` してから step 5 で再開**
 1. `git checkout main && git pull` で main を最新化
 2. `nights/pending/` の最若番号の md を Read。**pending が空なら `loop-start` skill の seed 手順に従い夜 md を作成してから続行**
-3. `night/NNN-<topic>` ブランチを切る → **draft PR を即座に立てる** (`gh pr create --draft`)。以降の状態は PR が SSOT
+3. `night/NNN-<topic>` ブランチを切る → 最初の commit を push してから **draft PR を立てる** (`gh pr create --draft`)。以降の状態は PR が SSOT
 4. 「## ゴール」セクションの /goal 条件を確認
 5. 実装。ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
 6. /goal 評価のため pass / fail を必ず transcript に出力

@@ -16,6 +16,16 @@ if [ "$SOURCE" = "compact" ] && [ -n "$CWD" ]; then
         additionalContext: ("コンパクト後の state を PR (SSOT) から復元:\n\n" + $content)
       }
     }'
+  else
+    NEXT_NIGHT=$(ls "$CWD/nights/pending/" 2>/dev/null | sort -V | head -1)
+    FALLBACK="コンパクト後: open PR なし。起動時の作法 step 0 から再開。"
+    [ -n "$NEXT_NIGHT" ] && FALLBACK="$FALLBACK 次の夜 md: nights/pending/$NEXT_NIGHT"
+    jq -n --arg content "$FALLBACK" '{
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: $content
+      }
+    }'
   fi
   exit 0
 fi

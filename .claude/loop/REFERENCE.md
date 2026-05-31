@@ -24,7 +24,7 @@
 
 ## /clear 自走ループ駆動 (実装済み)
 
-夜境界の context リセットは `/compact` ではなく **`/clear`** で行う。 handoff を PR + state ファイルに外出し済み (PR-as-SSOT) なので要約を残す意味がなく、 完全リセットの方が context 汚染ゼロ。 公式ガイダンスも「新タスク=/clear / 同一会話継続=/compact」 で 1 夜=新タスクに合致。
+夜境界の context リセットは `/compact` ではなく **`/clear`** で行う。 handoff を PR に外出し済み (PR-as-SSOT) なので要約を残す意味がなく、 完全リセットの方が context 汚染ゼロ。 公式ガイダンスも「新タスク=/clear / 同一会話継続=/compact」 で 1 夜=新タスクに合致。
 
 駆動機構は `.claude/hooks/` に実装済み。 **外部シェル常駐は不要** — フック自身が自己連鎖する:
 

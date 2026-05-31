@@ -32,7 +32,7 @@
 
 1. `git checkout main && git pull`
 2. `git checkout -b night/NNN-<topic>`
-3. `git push -u origin night/NNN-<topic>` → `gh pr create --draft --base main --title "夜 NNN: <題目>"` (PR が SSOT)
+3. 最初の commit 後に `git push -u origin night/NNN-<topic>` → `gh pr create --draft --base main --title "夜 NNN: <題目>"` (PR が SSOT)
 4. G1 に対応する src/* / tests/* を作成 → `bun test` + `bunx tsc --noEmit` + `bunx eslint` で都度確認
 5. G1 を commit (`feat(<scope>): <題目>`)
 6. G2 / G3 / ... を同様に

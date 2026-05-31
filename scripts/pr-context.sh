@@ -16,12 +16,16 @@ if [ "$COUNT" = "0" ]; then
 fi
 
 # 最初の open PR を使う (通常 1 本)
-read -r NUMBER TITLE DRAFT STATUS BRANCH <<< "$(printf '%s' "$PR_JSON" | jq -r '.[0] | [.number, .title, (.isDraft|tostring), .mergeStateStatus, .headRefName] | @tsv')"
+NUMBER=$(printf '%s' "$PR_JSON" | jq -r '.[0].number')
+TITLE=$(printf '%s' "$PR_JSON" | jq -r '.[0].title')
+DRAFT=$(printf '%s' "$PR_JSON" | jq -r '.[0].isDraft')
+STATUS=$(printf '%s' "$PR_JSON" | jq -r '.[0].mergeStateStatus')
+BRANCH=$(printf '%s' "$PR_JSON" | jq -r '.[0].headRefName')
 BODY=$(printf '%s' "$PR_JSON" | jq -r '.[0].body // ""' | head -80)
 
 # bot 名義の最新レビューコメントを抽出
 LAST_REVIEW=$(printf '%s' "$PR_JSON" | jq -r '
-  [.[0].comments[]? | select(.author.login == "rinoshiyo-bot-reviewer[bot]")] | last // empty | .body // ""
+  [.[0].comments[]? | select(.author.login | test("rinoshiyo-bot-reviewer"))] | last // empty | .body // ""
 ' 2>/dev/null | head -30 || echo "")
 
 cat <<EOF
