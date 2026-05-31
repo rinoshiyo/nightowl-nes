@@ -8,7 +8,7 @@
 
 - **1 夜 = 1 つの夜 md = 1 本の PR = 1 つの /clear リセット境界** (所要目安 3-5 時間、 DoD 20-40 項目)
 - **各夜は有限の /goal** (`or stop after N turns`、 N=80 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
-- 連鎖停止条件: pending 枯渇 / 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達
+- 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達。 pending 枯渇では停止しない — `finish-night.sh` が自動で `loop-start` skill に委譲し、 fresh session で seed → autorun する
 - 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
 - **連鎖の起動**: `loop-start` skill (description マッチで起動。 slash コマンドではない) か、 最初の夜ゴールを手で投入する。 以降は各夜末のフラグ書込で /clear 連鎖が自走する
 - **アンチパターン**: 「pending 全消化を 1 つの /goal で」 は使わない (夜ごとに /clear リセットするため)。 旧「1 セッションで N 夜をターン上限まで /goal 連鎖」 は context 肥大化で廃止済み
@@ -17,10 +17,11 @@
 
 以下を全て満たす間、 Claude は次の夜を自走する:
 
-1. `nights/pending/` に未処理の夜 md が 1 つ以上ある
-2. 石井から `stop` / `止めて` / `セッション終了` 等の明示停止指示が来ていない
-3. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
-4. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
+1. 石井から `stop` / `止めて` / `セッション終了` 等の明示停止指示が来ていない
+2. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
+3. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
+
+pending が空でも連鎖は止まらない。`finish-night.sh` の pending 枯渇チェックがフラグを `loop-start` に書き換え、 fresh session の `loop-start` skill が seed → autorun する。
 
 ## 夜 N PR の自動レビュー (メインが code-review skill を直呼び)
 
