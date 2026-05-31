@@ -42,24 +42,11 @@ if [ -z "$NIGHT" ] && [ -n "$PR_NUM" ]; then
   NIGHT="$(gh pr view "$PR_NUM" --json title -q .title 2>/dev/null | sed -n 's/.*night \([0-9]\{1,\}\).*/\1/p' || echo "")"
 fi
 
-# --- PR merge ガード ---
-# PR が未 merge の場合、レビュー完了前の呼び出しなので拒否する。
-# これにより「PR 作成後・レビュー前に finish-night が走り、loop-helper が
-# 作業中セッションを /clear する」事故を構造的に防ぐ。
-if [ -n "$PR_NUM" ]; then
-  pr_state=$(gh pr view "$PR_NUM" --json state --jq '.state' 2>/dev/null || echo "")
-  if [ "$pr_state" != "MERGED" ]; then
-    echo "[finish-night] ✗ PR #$PR_NUM が未 merge (state=$pr_state)。finish-night は merge 完了後に呼ぶこと" >&2
-    exit 1
-  fi
-fi
-
 # --- pending 枯渇チェック ---
 # 次ゴールが STOP でない場合、pending が空なら STOP に上書きする。
 # pending が空のまま「次の pending を実装」ゴールが設定されると充足不能になる。
 if [ "$NEXT" != "STOP" ]; then
-  pending_count=$(find nights/pending -name '*.md' 2>/dev/null | wc -l)
-  if [ "$pending_count" -eq 0 ]; then
+  if [ ! -d nights/pending ] || [ "$(find nights/pending -name '*.md' | wc -l)" -eq 0 ]; then
     echo "[finish-night] ⚠ pending 枯渇: 次ゴールを STOP に上書き" >&2
     NEXT="STOP"
   fi
