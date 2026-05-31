@@ -7,6 +7,7 @@ import { createCpu } from "./cpu/index.ts";
 import { CpuFlags } from "./cpu/flags.ts";
 import { cpuStep } from "./cpu/step.ts";
 import type { Cart } from "./cart.ts";
+import { Controller } from "./controller.ts";
 import { NesBus } from "./nes-bus.ts";
 import { Ppu } from "./ppu.ts";
 
@@ -16,10 +17,12 @@ export class NesConsole {
   readonly cpu: Cpu;
   readonly ppu: Ppu;
   readonly bus: NesBus;
+  readonly controller1: Controller;
 
   constructor(cart: Cart) {
     this.ppu = new Ppu();
-    this.bus = new NesBus(this.ppu, cart);
+    this.controller1 = new Controller();
+    this.bus = new NesBus(this.ppu, cart, this.controller1);
     this.cpu = createCpu();
     this.ppu.onNmi = () => {
       this.cpu.nmiPending = true;
