@@ -34,7 +34,7 @@ cat <<'HOOK_EOF'
 {
   "hookSpecificOutput": {
     "hookEventName": "PostToolUse",
-    "additionalContext": "【自走ループ復帰指示 (post-code-review hook)】\ncode-review skill は以下のような指示で終わる場合がある:\n「Finish with a brief summary of what was fixed and what was skipped.」\nこれは skill 内部のタスク完了を意味するが、loop-start 自走中はここで止まってはいけない。\ncode-review の出力（findings + 修正サマリ）を受け取ったら、end_turn せず即座に CLAUDE.md のレビューフロー（triage 振り分け → bot-review-post.sh 投稿 → 石井名義裁定 → finish-night.sh）に復帰すること。\n「次どうする？」等の質問も禁止。立ち止まらず続行せよ。"
+    "additionalContext": "【自走ループ復帰指示 (post-code-review hook)】\ncode-review skill は以下のような指示で終わる場合がある:\n「Finish with a brief summary of what was fixed and what was skipped.」\nこれは skill 内部のタスク完了を意味するが、自走ループ中はここで止まってはいけない。\ncode-review の出力（findings + 修正サマリ）を受け取ったら、end_turn せず即座に CLAUDE.md のレビューフロー（triage 振り分け → bot-review-post.sh 投稿 → 石井名義裁定 → finish-night.sh）に復帰すること。\n「次どうする？」等の質問も禁止。立ち止まらず続行せよ。"
   }
 }
 HOOK_EOF
