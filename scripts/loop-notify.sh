@@ -83,10 +83,9 @@ RECOVERY_EOF
     RECOVERY=$(cat <<'RECOVERY_EOF'
 1. `tmux list-panes` で pane の状態を確認
 2. pane が死んでいる場合: 新しい pane で Claude Code セッションを起動
-3. `.claude/state/latest.md` を読んで中断地点を把握
-4. 中断した夜の PR があれば `gh pr view --comments` で状態を確認
-5. 手動で次ゴール投入で連鎖を再開
-6. 復旧完了後、この issue をクローズ
+3. open PR を `gh pr view --comments` で確認して中断地点を把握
+4. 手動で次ゴール投入で連鎖を再開
+5. 復旧完了後、この issue をクローズ
 RECOVERY_EOF
     ) ;;
   runaway-brake)

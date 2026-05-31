@@ -32,13 +32,13 @@
 
 1. `git checkout main && git pull`
 2. `git checkout -b night/NNN-<topic>`
-3. G1 に対応する src/* / tests/* を作成 → `npx vitest run` + `npx tsc --noEmit` + `npx eslint` で都度確認
-4. G1 を commit (`feat(<scope>): <題目>`)
-5. G2 / G3 / ... を同様に
-6. `bun test` 全 pass / `bunx tsc --noEmit` 警告ゼロ / `bunx eslint src tests` 警告ゼロ
-7. `git mv nights/pending/NNN-<topic>.md nights/done/NNN-<topic>.md` を同じブランチで commit
-8. `git push -u origin night/NNN-<topic>`
-9. `gh pr create --base main --title "夜 NNN: <題目>" --body-file tmp/pr-body.md`
+3. 最初の commit 後に `git push -u origin night/NNN-<topic>` → `gh pr create --draft --base main --title "夜 NNN: <題目>"` (PR が SSOT)
+4. G1 に対応する src/* / tests/* を作成 → `bun test` + `bunx tsc --noEmit` + `bunx eslint` で都度確認
+5. G1 を commit (`feat(<scope>): <題目>`)
+6. G2 / G3 / ... を同様に
+7. `bun test` 全 pass / `bunx tsc --noEmit` 警告ゼロ / `bunx eslint src tests` 警告ゼロ
+8. `git mv nights/pending/NNN-<topic>.md nights/done/NNN-<topic>.md` を同じブランチで commit
+9. `gh pr ready` で draft 解除 (auto-merge はまだ打たない)
 10. `gh pr merge --auto --merge --delete-branch`
 11. CI 緑 → main 自動反映を `gh pr view <PR#> --json state,mergedAt` で確認
 

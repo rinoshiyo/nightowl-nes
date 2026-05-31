@@ -45,7 +45,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 ### フロー (findings 0 / 全 PASS の round に達するまで・往復上限 2)
 
 ```
-1. gh pr create (auto-merge まだ打たない)
+1. gh pr ready (draft → open。auto-merge まだ打たない)
    ↓
 ┌→ 2. レビュー round:
 │  a. メイン: code-review --fix を直呼び (finder 7 angle + verifier を Agent spawn
@@ -97,24 +97,22 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 1. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を該当夜の PR description かコメントに書く。 `tmp/handoff/` のローカル md は gitignore で push されず二重管理になるため使わない
 2. **`scripts/finish-night.sh` を呼ぶ** (残りの機械的手順を atomic に実行):
    ```bash
-   bash scripts/finish-night.sh "<次ゴール文 or STOP>" [--night NNN] [--nestest LINE]
+   bash scripts/finish-night.sh [--night NNN]
    ```
-   スクリプトが以下を一括実行: auto-merge arm / `.claude/state/latest.md` 更新 / 次フラグ書込 (pane スコープ) / `🎯 GOAL CONDITION MET` 出力
+   スクリプトが以下を一括実行: auto-merge arm / 次フラグ書込 (pane スコープ、/goal 固定文言) / `🎯 GOAL CONDITION MET` 出力。連鎖停止時は `bash scripts/finish-night.sh STOP`
 3. turn を終える → helper が idle を見て `/clear` → 次ゴール投入
-
-次ゴール文の例 (単一行 必須): `次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後 latest.md 更新と次フラグ書込まで行え、or stop after 80 turns`
 
 ## 起動時の作法
 
-0. **`gh pr list --state open --json number,title,isDraft,mergeStateStatus` で未完了 PR を確認**。 open PR があれば PR コメント (SSOT) を読み中断作業か判定。 **判定基準**: draft = レビュー隔離中 (再開対象) / 非 draft の open は中身を見る — **CI 実行中 (`BLOCKED`) なら「正常な in-flight」** (loop-helper が merge 待ち中。中断扱いして再開しない) / **CLEAN のまま open なら** loop-helper が止まった可能性で最優先再開
-1. `.claude/state/latest.md` が存在すれば Read (SessionStart hook が inject していなければ)
+0. **open PR を確認** (`gh pr list --state open --json number,title,isDraft,mergeStateStatus,headRefName`)。open PR があれば PR description / コメント (SSOT) を読み中断作業か判定。**判定基準**: draft = レビュー隔離中 (再開対象) / 非 draft の open は中身を見る — CI 実行中 (`BLOCKED`) なら「正常な in-flight」(loop-helper が merge 待ち中。中断扱いして再開しない) / CLEAN のまま open なら loop-helper が止まった可能性で最優先再開。**open PR があれば `git checkout <headRefName>` してから step 5 で再開**
+1. `git checkout main && git pull` で main を最新化
 2. `nights/pending/` の最若番号の md を Read。**pending が空なら `loop-start` skill の seed 手順に従い夜 md を作成してから続行**
-3. 「## ゴール」セクションの /goal 条件を確認
-4. `git checkout main && git pull` で main を最新化 → PR フローに沿って `night/NNN-<topic>` ブランチを切ってから実装着手
-5. ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
+3. `night/NNN-<topic>` ブランチを切る → 最初の commit を push してから **draft PR を立てる** (`gh pr create --draft`)。以降の状態は PR が SSOT
+4. 「## ゴール」セクションの /goal 条件を確認
+5. 実装。ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
 6. /goal 評価のため pass / fail を必ず transcript に出力
 7. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
-8. `gh pr create` で PR を立てる (この時点では auto-merge を打たない)
+8. `gh pr ready` で draft を解除 (この時点では auto-merge を打たない)
 9. メインが `code-review --fix` を直呼びでレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --merge --delete-branch`
 10. CI 緑 → auto-merge 反映を見届けてセッション完了報告
 

@@ -1,25 +1,36 @@
 #!/bin/bash
 # SessionStart: matcher で分岐
-#   compact: .claude/state/latest.md を additionalContext として注入
+#   compact: open PR の情報を additionalContext として注入 (PR が SSOT)
 #   startup: 軽い初期化確認のみ
 set -euo pipefail
 input=$(cat)
 SOURCE=$(echo "$input" | jq -r '.source // "unknown"')
 CWD=$(echo "$input" | jq -r '.cwd // empty')
 
-if [ "$SOURCE" = "compact" ] && [ -n "$CWD" ] && [ -f "$CWD/.claude/state/latest.md" ]; then
-  CONTENT=$(cat "$CWD/.claude/state/latest.md")
-  jq -n --arg content "$CONTENT" '{
-    hookSpecificOutput: {
-      hookEventName: "SessionStart",
-      additionalContext: ("コンパクト直前の state を以下に注入:\n\n" + $content)
-    }
-  }'
+if [ "$SOURCE" = "compact" ] && [ -n "$CWD" ]; then
+  CONTEXT=$("$CWD/scripts/pr-context.sh" "$CWD" 2>/dev/null || echo "")
+  if [ -n "$CONTEXT" ]; then
+    jq -n --arg content "$CONTEXT" '{
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: ("コンパクト後の state を PR (SSOT) から復元:\n\n" + $content)
+      }
+    }'
+  else
+    NEXT_NIGHT=$(ls "$CWD/nights/pending/" 2>/dev/null | sort -V | head -1)
+    FALLBACK="コンパクト後: open PR なし。起動時の作法 step 0 から再開。"
+    [ -n "$NEXT_NIGHT" ] && FALLBACK="$FALLBACK 次の夜 md: nights/pending/$NEXT_NIGHT"
+    jq -n --arg content "$FALLBACK" '{
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: $content
+      }
+    }'
+  fi
   exit 0
 fi
 
 if [ "$SOURCE" = "startup" ] && [ -n "$CWD" ]; then
-  # 軽い初期化確認のみ（前回状態復元は /goal 主軸では不要）
   NEXT_NIGHT=$(ls "$CWD/nights/pending/" 2>/dev/null | sort -V | head -1)
   if [ -n "$NEXT_NIGHT" ]; then
     jq -n --arg next "$NEXT_NIGHT" '{
