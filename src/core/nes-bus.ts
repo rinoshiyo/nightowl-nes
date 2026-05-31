@@ -6,8 +6,8 @@
  */
 
 import type { Bus } from "./bus.ts";
-import type { Cart } from "./cart.ts";
 import type { Controller } from "./controller.ts";
+import type { Mapper } from "./mappers/index.ts";
 import type { Ppu } from "./ppu.ts";
 
 const RAM_SIZE = 0x800;
@@ -21,7 +21,7 @@ export class NesBus implements Bus {
 
   constructor(
     private readonly ppu: Ppu,
-    private readonly cart: Cart,
+    private readonly mapper: Mapper,
     private readonly controller1: Controller,
   ) {}
 
@@ -44,7 +44,7 @@ export class NesBus implements Bus {
       return 0;
     }
     if (addr >= 0x8000) {
-      return this.cart.prgRom[(addr - 0x8000) % this.cart.prgRom.length] ?? 0;
+      return this.mapper.readPrg(addr);
     }
     return 0;
   }
@@ -72,6 +72,9 @@ export class NesBus implements Bus {
     if (addr < 0x4018) {
       this.apuIo[addr - 0x4000] = v;
       return;
+    }
+    if (addr >= 0x8000) {
+      this.mapper.writePrg(addr, v);
     }
   }
 

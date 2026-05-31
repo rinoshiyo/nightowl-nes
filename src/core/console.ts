@@ -8,6 +8,8 @@ import { CpuFlags } from "./cpu/flags.ts";
 import { cpuStep } from "./cpu/step.ts";
 import type { Cart } from "./cart.ts";
 import { Controller } from "./controller.ts";
+import type { Mapper } from "./mappers/index.ts";
+import { createMapper } from "./mappers/index.ts";
 import { NesBus } from "./nes-bus.ts";
 import { Ppu } from "./ppu.ts";
 
@@ -17,13 +19,16 @@ export class NesConsole {
   readonly cpu: Cpu;
   readonly ppu: Ppu;
   readonly bus: NesBus;
+  readonly mapper: Mapper;
   readonly controller1: Controller;
 
   constructor(cart: Cart) {
+    this.mapper = createMapper(cart);
     this.ppu = new Ppu();
     this.ppu.mirroring = cart.header.mirroring;
+    this.ppu.mapper = this.mapper;
     this.controller1 = new Controller();
-    this.bus = new NesBus(this.ppu, cart, this.controller1);
+    this.bus = new NesBus(this.ppu, this.mapper, this.controller1);
     this.cpu = createCpu();
     this.ppu.onNmi = () => {
       this.cpu.nmiPending = true;

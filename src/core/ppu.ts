@@ -6,6 +6,7 @@
  */
 
 import type { Mirroring } from "./cart.ts";
+import type { Mapper } from "./mappers/index.ts";
 
 const CHR_RAM_SIZE = 0x2000;
 const VRAM_SIZE = 0x800;
@@ -22,6 +23,8 @@ export const SCREEN_W = 256;
 export class Ppu {
   /** ネームテーブルミラーリングモード (カートから設定) */
   mirroring: Mirroring = "vertical";
+  /** CHR ROM/RAM アクセスを委譲する Mapper (null 時は内部 chrRam を使用) */
+  mapper: Mapper | null = null;
 
   /** $2000 PPUCTRL */
   ctrl = 0;
@@ -360,6 +363,7 @@ export class Ppu {
   ppuRead(addr: number): number {
     addr &= 0x3fff;
     if (addr < 0x2000) {
+      if (this.mapper) return this.mapper.readChr(addr);
       return this.chrRam[addr] ?? 0;
     }
     if (addr < 0x3f00) {
@@ -379,7 +383,9 @@ export class Ppu {
 
     if (addr < 0x2000) {
       const buffered = this.readBuffer;
-      this.readBuffer = this.chrRam[addr & 0x1fff] ?? 0;
+      this.readBuffer = this.mapper
+        ? this.mapper.readChr(addr)
+        : (this.chrRam[addr & 0x1fff] ?? 0);
       return buffered;
     }
 
@@ -399,7 +405,11 @@ export class Ppu {
         this.palette[palIdx ^ 0x10] = value;
       }
     } else if (addr < 0x2000) {
-      this.chrRam[addr & 0x1fff] = value;
+      if (this.mapper) {
+        this.mapper.writeChr(addr, value);
+      } else {
+        this.chrRam[addr & 0x1fff] = value;
+      }
     } else {
       this.vram[this.mirrorNametable(addr)] = value;
     }
