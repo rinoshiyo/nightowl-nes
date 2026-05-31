@@ -104,6 +104,9 @@ export class Ppu {
     this.bgPatternHi = 0;
     this.bgPatternFineY = -1;
     this.bgFetchedCol = -1;
+    this.slTileRow = 0;
+    this.slFineY = 0;
+    this.slNtSelectY = 0;
     this.bgColorIdx = 0;
     this.spriteCount = 0;
     this.sprite0InLine = false;
@@ -192,6 +195,11 @@ export class Ppu {
   /** 現在フェッチ済みの背景タイル列 (globalX >> 3 の値。再フェッチ判定用) */
   private bgFetchedCol = -1;
 
+  /** スキャンラインごとの Y スクロール派生値 (scanline 内で不変) */
+  private slTileRow = 0;
+  private slFineY = 0;
+  private slNtSelectY = 0;
+
   /** 可視ライン (0-239) の描画処理 */
   private tickVisible(): void {
     const dot = this.dot;
@@ -199,6 +207,7 @@ export class Ppu {
     if (dot === 1) {
       this.evaluateSprites();
       this.bgFetchedCol = -1;
+      this.computeScanlineScrollY();
     }
 
     if (dot < 1 || dot > SCREEN_W) return;
@@ -207,6 +216,24 @@ export class Ppu {
     const fbIdx = this.scanline * SCREEN_W + x;
     this.renderBgPixel(x, fbIdx);
     this.renderSpritePixel(x, fbIdx);
+  }
+
+  /** スキャンラインごとに Y スクロール派生値を事前計算 */
+  private computeScanlineScrollY(): void {
+    const globalY = this.scrollY + this.scanline;
+    let tileRow = globalY >> 3;
+    let ntSelectY = 0;
+    if (tileRow >= 30) {
+      tileRow -= 30;
+      ntSelectY = 1;
+    }
+    if (tileRow >= 30) {
+      tileRow -= 30;
+      ntSelectY = 0;
+    }
+    this.slTileRow = tileRow;
+    this.slFineY = globalY & 7;
+    this.slNtSelectY = ntSelectY;
   }
 
   /** 背景ピクセルを framebuffer に出力 (スクロール適用) */
@@ -218,29 +245,15 @@ export class Ppu {
     }
 
     const globalX = (this.scrollX + x) & 0x1ff;
-    const globalY = this.scrollY + this.scanline;
-
     const tileCol = (globalX >> 3) & 0x1f;
     const fineX = globalX & 7;
     const ntSelectX = (globalX >> 8) & 1;
 
-    let tileRow = (globalY >> 3);
-    let ntSelectY = 0;
-    if (tileRow >= 30) {
-      tileRow -= 30;
-      ntSelectY = 1;
-    }
-    if (tileRow >= 30) {
-      tileRow -= 30;
-      ntSelectY = 0;
-    }
-    const fineY = globalY & 7;
-
     const col = (ntSelectX << 5) | tileCol;
-    if (col !== this.bgFetchedCol || fineY !== (this.bgPatternFineY ?? -1)) {
+    if (col !== this.bgFetchedCol || this.slFineY !== this.bgPatternFineY) {
       this.bgFetchedCol = col;
-      this.bgPatternFineY = fineY;
-      this.fetchBgTile(tileCol, tileRow, fineY, ntSelectX, ntSelectY);
+      this.bgPatternFineY = this.slFineY;
+      this.fetchBgTile(tileCol, this.slTileRow, this.slFineY, ntSelectX, this.slNtSelectY);
     }
 
     const bitPos = 7 - fineX;

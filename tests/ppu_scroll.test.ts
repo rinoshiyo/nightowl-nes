@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Ppu, SCREEN_W } from "../src/core/ppu.ts";
+import { Ppu } from "../src/core/ppu.ts";
 
 /**
  * 1 スキャンライン (scanline 0) を描画するヘルパー。
