@@ -35,7 +35,7 @@
 3. `git checkout -b night/NNN-<topic>`
 4. G1 に対応する src/* / tests/* を作成 → `bun test` + `bunx tsc --noEmit` + `bunx eslint` で都度確認
 5. G1 を commit (`feat(<scope>): <題目>`)
-6. 最初の commit 後に `git push -u origin night/NNN-<topic>` → `gh pr create --draft --base main --title "夜 NNN: <題目>" --body "Closes #NNN"`
+6. 最初の commit 後に `git push -u origin night/NNN-<topic>` → `gh pr create --draft --base main --title "夜 NNN: <題目>" --body "Closes #<Issue番号>"`
 7. G2 / G3 / ... を同様に
 8. `bun test` 全 pass / `bunx tsc --noEmit` 警告ゼロ / `bunx eslint src tests` 警告ゼロ
 9. `git mv nights/pending/NNN-<topic>.md nights/done/NNN-<topic>.md` を同じブランチで commit

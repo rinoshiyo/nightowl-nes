@@ -1,6 +1,6 @@
 #!/bin/bash
 # SessionStart: matcher で分岐
-#   compact: open PR の情報を additionalContext として注入 (PR が SSOT)
+#   compact: open Issue/PR の情報を additionalContext として注入 (GitHub Flow)
 #   startup: 軽い初期化確認のみ
 set -euo pipefail
 input=$(cat)
@@ -13,12 +13,12 @@ if [ "$SOURCE" = "compact" ] && [ -n "$CWD" ]; then
     jq -n --arg content "$CONTEXT" '{
       hookSpecificOutput: {
         hookEventName: "SessionStart",
-        additionalContext: ("コンパクト後の state を PR (SSOT) から復元:\n\n" + $content)
+        additionalContext: ("コンパクト後の state を GitHub (Issue=scope / PR=delivery) から復元:\n\n" + $content)
       }
     }'
   else
     NEXT_NIGHT=$(ls "$CWD/nights/pending/" 2>/dev/null | sort -V | head -1)
-    FALLBACK="コンパクト後: open PR なし。起動時の作法 step 0 から再開。"
+    FALLBACK="コンパクト後: open PR/Issue なし。起動時の作法 step 0 から再開。"
     [ -n "$NEXT_NIGHT" ] && FALLBACK="$FALLBACK 次の夜 md: nights/pending/$NEXT_NIGHT"
     jq -n --arg content "$FALLBACK" '{
       hookSpecificOutput: {

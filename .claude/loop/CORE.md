@@ -106,13 +106,16 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 
 ## 起動時の作法
 
-0. **open Issue / PR を確認**。`gh issue list -s open -l night` で open Issue、`gh pr list --state open` で open PR を確認。**判定基準**: open PR あり → PR description / コメントを読み中断作業か判定 (draft = レビュー隔離中 / BLOCKED = 正常 in-flight / CLEAN open = 最優先再開)。open Issue あり + PR なし → scope は決まっている、実装途中で中断した状態 (step 5 から再開)。**open PR があれば `git checkout <headRefName>` してから step 7 で再開**
+0. **open Issue / PR を確認**。`gh issue list -s open -l night` で open Issue、`gh pr list --state open` で open PR を確認。**判定基準**:
+   - **open PR あり** → PR description / コメントを読み中断作業か判定。`git checkout <headRefName>` してから **中断箇所に応じた step で再開** (実装途中 → step 7 / レビュー中断・draft 戻し → step 10)。/goal は step 4 で設定してから再開
+   - **open Issue あり + PR なし** → scope は決まっている。**step 4 (/goal 設定) から再開** (step 5 でブランチを切って実装)
+   - **どちらもなし** → step 1 から通常開始
 1. `git checkout main && git pull` で main を最新化
 2. `nights/pending/` の最若番号の md を Read (open Issue がなく pending もなければ `loop-start` skill の seed 手順で夜 md を作成)
 3. **Issue 作成** (`gh issue create --title "夜 NNN: <topic>" --label night --body "<DoD チェックリスト>"`)。open Issue が既にあればスキップ。Issue が scope の SSOT
 4. **/goal 設定**。夜 md「## ゴール」セクションの条件で /goal を設定する。**loop-start の出口条件 = /goal が active であること。/goal なしで実装に入ることは許されない**
 5. `night/NNN-<topic>` ブランチを切る → 実装開始
-6. 最初の commit → push → **draft PR** (`gh pr create --draft --body "Closes #NNN"`)。以降の delivery 状態は PR が SSOT
+6. 最初の commit → push → **draft PR** (`gh pr create --draft --body "Closes #<Issue番号>"`)。以降の delivery 状態は PR が SSOT
 7. 実装続行。ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
 8. /goal 評価のため pass / fail を必ず transcript に出力
 9. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit

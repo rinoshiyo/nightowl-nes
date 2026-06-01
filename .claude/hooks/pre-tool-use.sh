@@ -68,9 +68,13 @@ if echo "$CMD" | grep -qE 'gh[[:space:]]+pr[[:space:]]+merge\b' && ! echo "$CMD"
   exit 0
 fi
 
-# ==== gh pr close を ask ====
+# ==== gh pr close / gh issue close を ask ====
 if echo "$CMD" | grep -qE 'gh[[:space:]]+pr[[:space:]]+close\b'; then
   jq -n '{decision:"ask", reason:"PR close は意図的か確認"}' >&2
+  exit 0
+fi
+if echo "$CMD" | grep -qE 'gh[[:space:]]+issue[[:space:]]+close\b'; then
+  jq -n '{decision:"ask", reason:"Issue close は scope SSOT の削除。意図的か確認"}' >&2
   exit 0
 fi
 

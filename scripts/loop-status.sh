@@ -28,9 +28,9 @@ done_n=$(ls nights/done/*.md 2>/dev/null | wc -l | tr -d ' ')
 trace_lines=$(grep -oE 'TRACE_LINES *= *[0-9]+' tests/cpu_nestest_trace.test.ts 2>/dev/null | grep -oE '[0-9]+' | head -1)
 open_pr=$(gh pr list --state open --json number,isDraft,title \
   -q '.[] | "  #\(.number) draft=\(.isDraft) — \(.title)"' 2>/dev/null)
-open_issue=$(gh issue list --state open --label night --json number,title \
-  -q '.[] | "  #\(.number) — \(.title)"' 2>/dev/null)
-open_issue_n=$(echo "$open_issue" | grep -c '#' 2>/dev/null || echo 0)
+open_issue_json=$(gh issue list --state open --label night --json number,title -L 10 2>/dev/null || echo '[]')
+open_issue_n=$(printf '%s' "$open_issue_json" | jq 'length')
+open_issue=$(printf '%s' "$open_issue_json" | jq -r '.[] | "  #\(.number) — \(.title)"' 2>/dev/null)
 
 echo "=== loop status ==="
 echo "tmux pane     : $pane"

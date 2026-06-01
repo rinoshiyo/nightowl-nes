@@ -10,6 +10,12 @@ cd "$CWD"
 # --- Issue (scope SSOT) ---
 ISSUE_JSON=$(gh issue list -s open -l night --json number,title,body -L 1 2>/dev/null || echo '[]')
 ISSUE_COUNT=$(printf '%s' "$ISSUE_JSON" | jq 'length')
+ISSUE_NUMBER=""
+ISSUE_TITLE=""
+if [ "$ISSUE_COUNT" != "0" ]; then
+  ISSUE_NUMBER=$(printf '%s' "$ISSUE_JSON" | jq -r '.[0].number')
+  ISSUE_TITLE=$(printf '%s' "$ISSUE_JSON" | jq -r '.[0].title')
+fi
 
 # --- PR (delivery SSOT) ---
 PR_JSON=$(gh pr list -s open --json number,title,isDraft,mergeStateStatus,body,headRefName,comments -L 1 2>/dev/null || echo '[]')
@@ -21,8 +27,6 @@ fi
 
 # --- Issue セクション ---
 if [ "$ISSUE_COUNT" != "0" ]; then
-  ISSUE_NUMBER=$(printf '%s' "$ISSUE_JSON" | jq -r '.[0].number')
-  ISSUE_TITLE=$(printf '%s' "$ISSUE_JSON" | jq -r '.[0].title')
   ISSUE_BODY=$(printf '%s' "$ISSUE_JSON" | jq -r '.[0].body // ""' | head -60)
   cat <<ISSUE_EOF
 # Open Issue #${ISSUE_NUMBER}: ${ISSUE_TITLE} (scope SSOT)
@@ -34,7 +38,6 @@ ISSUE_EOF
 fi
 
 # --- PR セクション ---
-NUMBER="" TITLE="" DRAFT="" STATUS="" BRANCH="" BODY="" LAST_REVIEW=""
 if [ "$COUNT" != "0" ]; then
   NUMBER=$(printf '%s' "$PR_JSON" | jq -r '.[0].number')
   TITLE=$(printf '%s' "$PR_JSON" | jq -r '.[0].title')
@@ -59,7 +62,7 @@ ${LAST_REVIEW:-なし}
 
 PR_EOF
 elif [ "$ISSUE_COUNT" != "0" ]; then
-  echo "No open PR found — Issue #${ISSUE_NUMBER} exists. Resume from 起動時の作法 step 5 (ブランチ切り → 実装)."
+  echo "No open PR found — Issue #${ISSUE_NUMBER} exists. Resume from 起動時の作法 step 4 (/goal 設定 → ブランチ切り → 実装)."
   echo ""
 fi
 
