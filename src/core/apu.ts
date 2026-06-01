@@ -7,6 +7,7 @@
  */
 
 import { DmcChannel } from "./apu-dmc.ts";
+import { ApuMixer } from "./apu-mixer.ts";
 import { NoiseChannel } from "./apu-noise.ts";
 import { PulseChannel } from "./apu-pulse.ts";
 import { TriangleChannel } from "./apu-triangle.ts";
@@ -74,6 +75,9 @@ export class Apu {
   private sampleRateAccum = 0;
   private sampleRateThreshold = CPU_CLOCK;
   private sampleRateStep = 44100;
+
+  /** 非線形ミキサー + アナログフィルタチェイン */
+  private mixer = new ApuMixer(44100);
 
   /** サンプルバッファ (リングバッファ、最大 4095 エントリ使用) */
   private readonly sampleBuffer = new Float32Array(4096);
@@ -229,7 +233,13 @@ export class Apu {
       this.sampleRateAccum -= this.sampleRateThreshold;
       const nextWrite = (this.bufferWritePos + 1) & 0xfff;
       if (nextWrite !== this.bufferReadPos) {
-        this.sampleBuffer[this.bufferWritePos] = this.mixOutput();
+        this.sampleBuffer[this.bufferWritePos] = this.mixer.process(
+          this.pulse1.output(),
+          this.pulse2.output(),
+          this.triangle.output(),
+          this.noise.output(),
+          this.dmc.output(),
+        );
         this.bufferWritePos = nextWrite;
       }
     }
@@ -275,33 +285,10 @@ export class Apu {
     this.pulse2.tickSweep();
   }
 
-  /** ミキシング出力 (0.0 ~ 1.0) */
-  private mixOutput(): number {
-    const p1 = this.pulse1.output();
-    const p2 = this.pulse2.output();
-    const tri = this.triangle.output();
-    const noi = this.noise.output();
-    const dmc = this.dmc.output();
-
-    // nesdev wiki 近似式 (pulse と tnd を分離)
-    let pulseOut = 0;
-    if (p1 !== 0 || p2 !== 0) {
-      pulseOut = 95.88 / (8128 / (p1 + p2) + 100);
-    }
-
-    // tnd_out = 159.79 / (1 / (tri/8227 + noise/12241 + dmc/22638) + 100)
-    let tndOut = 0;
-    const tndSum = tri / 8227 + noi / 12241 + dmc / 22638;
-    if (tndSum !== 0) {
-      tndOut = 159.79 / (1 / tndSum + 100);
-    }
-
-    return pulseOut + tndOut;
-  }
-
-  /** オーディオサンプルレートを設定 */
+  /** オーディオサンプルレートを設定 (フィルタ係数も再計算) */
   setSampleRate(rate: number): void {
     this.sampleRateStep = rate;
+    this.mixer = new ApuMixer(rate);
   }
 
   /** バッファからサンプルを読み出して output 配列を埋める。読み出し分だけ進む */
