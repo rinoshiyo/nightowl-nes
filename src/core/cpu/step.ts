@@ -5,12 +5,10 @@ import { OPCODES } from "./opcodes.ts";
 
 const NMI_VECTOR = 0xfffa;
 const IRQ_VECTOR = 0xfffe;
-const NMI_CYCLES = 7;
-const IRQ_CYCLES = 7;
+const INTERRUPT_CYCLES = 7;
 
-/** NMI 割り込みを処理: PC と P をスタックに push し、NMI ベクタへジャンプ */
-function handleNmi(cpu: Cpu, bus: Bus): number {
-  cpu.nmiPending = false;
+/** 割り込み共通処理: PC と P をスタックに push し、指定ベクタへジャンプ */
+function handleInterrupt(cpu: Cpu, bus: Bus, vector: number): number {
   const pc = cpu.pc;
   bus.write(0x0100 | cpu.sp, (pc >> 8) & 0xff);
   cpu.sp = (cpu.sp - 1) & 0xff;
@@ -19,28 +17,11 @@ function handleNmi(cpu: Cpu, bus: Bus): number {
   bus.write(0x0100 | cpu.sp, (cpu.p & ~CpuFlags.B) | CpuFlags.U);
   cpu.sp = (cpu.sp - 1) & 0xff;
   cpu.p |= CpuFlags.I;
-  const lo = bus.read(NMI_VECTOR);
-  const hi = bus.read(NMI_VECTOR + 1);
+  const lo = bus.read(vector);
+  const hi = bus.read(vector + 1);
   cpu.pc = (hi << 8) | lo;
-  cpu.cycles += NMI_CYCLES;
-  return NMI_CYCLES;
-}
-
-/** IRQ 割り込みを処理: PC と P をスタックに push し、IRQ ベクタへジャンプ */
-function handleIrq(cpu: Cpu, bus: Bus): number {
-  const pc = cpu.pc;
-  bus.write(0x0100 | cpu.sp, (pc >> 8) & 0xff);
-  cpu.sp = (cpu.sp - 1) & 0xff;
-  bus.write(0x0100 | cpu.sp, pc & 0xff);
-  cpu.sp = (cpu.sp - 1) & 0xff;
-  bus.write(0x0100 | cpu.sp, (cpu.p & ~CpuFlags.B) | CpuFlags.U);
-  cpu.sp = (cpu.sp - 1) & 0xff;
-  cpu.p |= CpuFlags.I;
-  const lo = bus.read(IRQ_VECTOR);
-  const hi = bus.read(IRQ_VECTOR + 1);
-  cpu.pc = (hi << 8) | lo;
-  cpu.cycles += IRQ_CYCLES;
-  return IRQ_CYCLES;
+  cpu.cycles += INTERRUPT_CYCLES;
+  return INTERRUPT_CYCLES;
 }
 
 /**
@@ -49,10 +30,11 @@ function handleIrq(cpu: Cpu, bus: Bus): number {
  */
 export function cpuStep(cpu: Cpu, bus: Bus): number {
   if (cpu.nmiPending) {
-    return handleNmi(cpu, bus);
+    cpu.nmiPending = false;
+    return handleInterrupt(cpu, bus, NMI_VECTOR);
   }
   if (cpu.irqPending && (cpu.p & CpuFlags.I) === 0) {
-    return handleIrq(cpu, bus);
+    return handleInterrupt(cpu, bus, IRQ_VECTOR);
   }
 
   const opcode = bus.read(cpu.pc);
