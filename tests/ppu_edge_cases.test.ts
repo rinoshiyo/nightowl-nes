@@ -140,6 +140,26 @@ describe("パレットミラーリング", () => {
     expect(ppu.palette[0x04]).toBe(0x30);
     expect(ppu.palette[0x14]).toBe(0x30);
   });
+
+  it("ppuRead でパレットミラーが反映される", () => {
+    const ppu = new Ppu();
+    ppu.palette[0x00] = 0x0f;
+    // ppuRead($3F10) → mirrorPalette → index 0 → 0x0f
+    expect(ppu.ppuRead(0x3f10)).toBe(0x0f);
+    expect(ppu.ppuRead(0x3f14)).toBe(ppu.palette[0x04]);
+    expect(ppu.ppuRead(0x3f18)).toBe(ppu.palette[0x08]);
+    expect(ppu.ppuRead(0x3f1c)).toBe(ppu.palette[0x0c]);
+  });
+
+  it("パレットアドレスは $3F20 以上で折り返す ($3FFF まで)", () => {
+    const ppu = new Ppu();
+    ppu.palette[0x01] = 0x22;
+    // $3F21 → addr & 0x1f = 0x01
+    expect(ppu.ppuRead(0x3f21)).toBe(0x22);
+    // $3F60 → addr & 0x1f = 0x00 → mirrorPalette(0x3f60) = 0
+    ppu.palette[0x00] = 0x33;
+    expect(ppu.ppuRead(0x3f60)).toBe(0x33);
+  });
 });
 
 describe("$2007 read バッファ", () => {
