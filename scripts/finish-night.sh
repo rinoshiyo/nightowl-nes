@@ -15,9 +15,11 @@
 # PR が状態の SSOT。latest.md は生成しない。
 set -euo pipefail
 
-# /goal テキスト (固定文言、turns 数は環境変数で上書き可)
+# /goal テキスト (turns 数は環境変数で上書き可)
+# finish-night.sh 時点では次の夜の Issue はまだ存在しないため汎用文言を使う。
+# Issue が既に存在する場合の具体的 goal は loop-start skill 側で生成する。
 LOOP_TURNS="${LOOP_TURNS:-80}"
-GOAL_TEXT="次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後次フラグ書込まで行え、or stop after ${LOOP_TURNS} turns"
+GOAL_TEXT="次の夜の Issue を1つ作成し、その Issue のみを対象に実装→レビュー→merge を完了せよ。達成判定: transcript に「🎯 GOAL CONDITION MET」が出現したこと。scope: この 1 Issue のみ。他の Issue・夜には着手しない。or stop after ${LOOP_TURNS} turns"
 
 # 引数パース
 STOP=false

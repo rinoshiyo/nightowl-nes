@@ -65,12 +65,23 @@ judgment が重いため機械化しない。停止して指示を仰ぐこと�
 **以下を必ず実行してから turn を終えろ。実装には絶対に入るな。**
 
 ```bash
-# 1. フラグ書込 (finish-night.sh と同じ形式・同じ経路)
+# 1. フラグ書込 — Issue の有無で goal 文言を出し分ける
 PANE="${TMUX_PANE#%}"
 [ -z "$PANE" ] && { echo "ERROR: TMUX_PANE が空。flag 書込不可"; exit 1; }
 mkdir -p .claude/state
 LOOP_TURNS="${LOOP_TURNS:-80}"
-GOAL_TEXT="次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後次フラグ書込まで行え、or stop after ${LOOP_TURNS} turns"
+
+# open な night Issue があれば具体的 goal、なければ汎用 goal
+# sort:created-asc で最若番号を取得 (gh のデフォルトは newest-first)
+ISSUE_JSON=$(gh issue list -s open -l night --search 'sort:created-asc' --json number,title -q '.[0]' 2>/dev/null || echo "")
+GOAL_SUFFIX="実装→レビュー→merge を完了せよ。達成判定: transcript に「🎯 GOAL CONDITION MET」が出現したこと。scope: この 1 Issue のみ。他の Issue・夜には着手しない。or stop after ${LOOP_TURNS} turns"
+if [ -n "$ISSUE_JSON" ] && [ "$ISSUE_JSON" != "null" ]; then
+  ISSUE_NUM=$(echo "$ISSUE_JSON" | jq -r .number)
+  ISSUE_TITLE=$(echo "$ISSUE_JSON" | jq -r .title)
+  GOAL_TEXT="Issue #${ISSUE_NUM} (${ISSUE_TITLE}) のみを対象に${GOAL_SUFFIX}"
+else
+  GOAL_TEXT="次の夜の Issue を1つ作成し、その Issue のみを対象に${GOAL_SUFFIX}"
+fi
 printf '/goal %s' "$GOAL_TEXT" > ".claude/state/loop-next.${PANE}.txt"
 ```
 

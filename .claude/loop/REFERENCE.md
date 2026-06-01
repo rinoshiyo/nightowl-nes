@@ -31,7 +31,7 @@
 - `stop-hook.sh` (Stop hook): worker が **pane スコープのフラグ** `.claude/state/loop-next.${TMUX_PANE#%}.txt` を書いたら進行役 `loop-helper.sh` を非同期 spawn して exit 0 (block しない)。 フラグ無しの発話終了は no-op
 - `loop-helper.sh` (外部プロセス・/clear で生き残る): **前夜 PR の merge 完了を待ち** (`LOOP_WAIT_MERGE` 既定 ON。 30 分タイムアウトで安全停止。 テスト時のみ `=0`) → `/clear` (resume ラベルは `loop-clear-$(date +%Y%m%d-%H%M)` で夜ごと一意) → **/clear 完了シグナルを待ち** → 次ゴールを send-keys。 spawn 前に Stop hook が turn 終了 (=idle) を保証するため /clear 前の明示的な idle 待ちは不要
 - `loop-session-restore.sh` (SessionStart `clear` matcher): /clear 後に `scripts/pr-context.sh` で GitHub 上の open Issue/PR 情報を取得し再注入して状態復元 + **pane スコープの完了シグナル `.claude/state/loop-cleared.${TMUX_PANE#%}.txt` を置いて** helper に /clear 完了を知らせる (画面 scrape 非依存の idle 検出)
-- フラグ中身 = `/goal <固定文言>` なら次の夜へ連鎖 / `STOP` なら連鎖終了
+- フラグ中身 = `/goal <動的文言>` なら次の夜へ連鎖 / `STOP` なら連鎖終了。goal 文言は Issue の有無で出し分け (finish-night.sh / loop-start SKILL.md 参照)
 - 暴走ブレーキ: `NIGHTOWL_LOOP_MAX` (既定 20) 回で自動停止。 clear hook が発火せず完了シグナルが来ない場合も helper のシグナル待ちタイムアウト (300s) で安全停止 + bot 名義 gh issue 通知 (無限課金しない)
 - カウンタが pane キーなのは `/clear` が session_id を変える (#20797) ため (session キーだと毎回リセットされ MAX が効かない)
 - **helper はワンショット**: 1 連鎖 (merge 待ち→/clear→完了シグナル待ち→次ゴール) を回して exit する常駐でない。 次の /clear は worker の Stop hook (turn 完了) が再トリガーする。 worker が turn 途中で死ぬ (例: API Error) と Stop hook が鳴らず連鎖は静かに止まる (無限 /clear ループは構造的に起きない)
