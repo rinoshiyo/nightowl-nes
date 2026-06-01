@@ -388,46 +388,36 @@ describe("APU フレームカウンタ", () => {
 
   describe("quarter/half frame の正確なカウント (1 周期分)", () => {
     it("4-step モード: 1 周期で quarter 4 回、half 2 回", () => {
-      let quarterCount = 0;
-      let halfCount = 0;
-
-      // envelope.tick() 呼び出しをスパイ
       apu.write(0x4015, 0x01);
       apu.write(0x4000, 0x30); // halt=true, constant, vol=0
       apu.write(0x4003, 0x08); // 長さカウンタ 254
       apu.write(0x4017, 0x00); // 4-step
 
-      const origEnvTick = apu.pulse1.envelope.tick.bind(apu.pulse1.envelope);
-      apu.pulse1.envelope.tick = () => { quarterCount++; origEnvTick(); };
-      const origLenTick = apu.pulse1.tickLength.bind(apu.pulse1);
-      apu.pulse1.tickLength = () => { halfCount++; origLenTick(); };
+      const envSpy = vi.spyOn(apu.pulse1.envelope, "tick");
+      const lenSpy = vi.spyOn(apu.pulse1, "tickLength");
 
       tickN(apu, 29830); // 1 周期
-      expect(quarterCount).toBe(4);
-      expect(halfCount).toBe(2);
+      expect(envSpy).toHaveBeenCalledTimes(4);
+      expect(lenSpy).toHaveBeenCalledTimes(2);
     });
 
     it("5-step モード: 1 周期で quarter 4 回 + 即時分 1 回、half 2 回 + 即時分 1 回", () => {
-      let quarterCount = 0;
-      let halfCount = 0;
-
       apu.write(0x4015, 0x01);
       apu.write(0x4000, 0x30);
       apu.write(0x4003, 0x08);
 
-      const origEnvTick = apu.pulse1.envelope.tick.bind(apu.pulse1.envelope);
-      apu.pulse1.envelope.tick = () => { quarterCount++; origEnvTick(); };
-      const origLenTick = apu.pulse1.tickLength.bind(apu.pulse1);
-      apu.pulse1.tickLength = () => { halfCount++; origLenTick(); };
+      const envSpy = vi.spyOn(apu.pulse1.envelope, "tick");
+      const lenSpy = vi.spyOn(apu.pulse1, "tickLength");
 
       apu.write(0x4017, 0x80); // 5-step → 即時 quarter+half
-      expect(quarterCount).toBe(1);
-      expect(halfCount).toBe(1);
+      expect(envSpy).toHaveBeenCalledTimes(1);
+      expect(lenSpy).toHaveBeenCalledTimes(1);
 
       tickN(apu, 37282); // 1 周期
-      // 通常 step: quarter 4 回 (7457, 14913, 22371, 37281) + half 2 回 (14913, 37281)
-      expect(quarterCount).toBe(5); // 即時 1 + 通常 4
-      expect(halfCount).toBe(3);    // 即時 1 + 通常 2
+      // 即時 1 + 通常 4 (7457, 14913, 22371, 37281)
+      expect(envSpy).toHaveBeenCalledTimes(5);
+      // 即時 1 + 通常 2 (14913, 37281)
+      expect(lenSpy).toHaveBeenCalledTimes(3);
     });
   });
 

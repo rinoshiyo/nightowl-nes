@@ -22,7 +22,7 @@ const ACT_R = 8;  // カウンタリセット
 /**
  * フレームカウンタのステップ定義。
  * cycle: 発火する CPU cycle 数、action: ビットフラグ。
- * 最終エントリは action=0 でカウンタリセットのみ。
+ * 最終エントリは ACT_R でカウンタリセット。action=0 は「何もしない」ステップ。
  * 仕様参照: https://www.nesdev.org/wiki/APU_Frame_Counter
  */
 const FRAME_4STEP: readonly { cycle: number; action: number }[] = [
