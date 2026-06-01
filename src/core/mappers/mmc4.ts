@@ -100,11 +100,11 @@ export class MapperMmc4 implements Mapper {
 
   /**
    * PPU が CHR を読んだ後に呼ばれる latch 更新。
-   * MMC4 のトリガー (MMC2 とは低位テーブルの範囲が異なる):
-   * - $0FD8-$0FDF を fetch → latch[0] = FD (0)
-   * - $0FE8-$0FEF を fetch → latch[0] = FE (1)
-   * - $1FD8-$1FDF を fetch → latch[1] = FD (0)
-   * - $1FE8-$1FEF を fetch → latch[1] = FE (1)
+   * MMC4 のトリガー (MMC2 と異なり低位・高位とも対称的に全行でトリガー):
+   * - $0FD8-$0FDF → latch[0] = FD (タイル全行)
+   * - $0FE8-$0FEF → latch[0] = FE (タイル全行)
+   * - $1FD8-$1FDF → latch[1] = FD (タイル全行)
+   * - $1FE8-$1FEF → latch[1] = FE (タイル全行)
    */
   onChrRead(addr: number): void {
     if (addr >= 0x0fd8 && addr <= 0x0fdf) {

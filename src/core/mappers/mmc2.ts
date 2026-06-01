@@ -102,11 +102,11 @@ export class MapperMmc2 implements Mapper {
 
   /**
    * PPU が CHR を読んだ後に呼ばれる latch 更新。
-   * MMC2 のトリガー:
-   * - $0FD8 を fetch → latch[0] = FD (0)
-   * - $0FE8 を fetch → latch[0] = FE (1)
-   * - $1FD8-$1FDF を fetch → latch[1] = FD (0)
-   * - $1FE8-$1FEF を fetch → latch[1] = FE (1)
+   * MMC2 のトリガー (非対称: 低位は単一アドレス、高位は範囲):
+   * - $0FD8 のみ → latch[0] = FD (タイル先頭行のみ)
+   * - $0FE8 のみ → latch[0] = FE (タイル先頭行のみ)
+   * - $1FD8-$1FDF → latch[1] = FD (タイル全行)
+   * - $1FE8-$1FEF → latch[1] = FE (タイル全行)
    */
   onChrRead(addr: number): void {
     if (addr === 0x0fd8) {
