@@ -401,6 +401,51 @@ describe("MapperVrc6 エッジケース", () => {
   });
 
   // ==========================================================================
+  // CHR バンキングモード エッジケース
+  // ==========================================================================
+  describe("CHR バンキングモード エッジケース", () => {
+    it("mode 0 → mode 3 への動的切替", () => {
+      const cart = makeCart({ chrSize: 0x20000 });
+      const m = new MapperVrc6(cart, 24);
+
+      // mode 0: 1KB×8
+      m.writePrg(0xd000, 5);
+      expect(m.readChr(0x0000)).toBe(cart.chrRom[5 * 0x0400]!);
+
+      // mode 3: 2KB×4 に切替
+      m.writePrg(0xb003, 0x03);
+      // R0=5 → 2KB バンク = 5>>1 = 2 → offset = 2*0x0800
+      expect(m.readChr(0x0000)).toBe(cart.chrRom[2 * 0x0800]!);
+    });
+
+    it("mode 1: R1 への書き込みは $0000-$07FF に影響しない (R0 が使われる)", () => {
+      const cart = makeCart({ chrSize: 0x20000 });
+      const m = new MapperVrc6(cart, 24);
+
+      m.writePrg(0xb003, 0x01); // mode 1
+      m.writePrg(0xd000, 10);   // R0 = 10
+      m.writePrg(0xd001, 20);   // R1 = 20 (mode 1 では $0000-$07FF に無関係)
+
+      // $0000-$07FF は R0 が支配 (2KB)
+      expect(m.readChr(0x0000)).toBe(cart.chrRom[5 * 0x0800]!);
+    });
+
+    it("mode 3: 奇数レジスタ (R1,R3,R5,R7) は無視される", () => {
+      const cart = makeCart({ chrSize: 0x20000 });
+      const m = new MapperVrc6(cart, 24);
+
+      m.writePrg(0xb003, 0x03); // mode 3: 2KB×4
+      m.writePrg(0xd000, 6);    // R0 = 6
+      m.writePrg(0xd001, 99);   // R1 = 99 (無視される)
+
+      // $0000-$07FF は R0 が支配
+      expect(m.readChr(0x0000)).toBe(cart.chrRom[3 * 0x0800]!);
+      // $0400-$07FF も同じ 2KB バンク内
+      expect(m.readChr(0x0400)).toBe(cart.chrRom[3 * 0x0800 + 0x0400]!);
+    });
+  });
+
+  // ==========================================================================
   // ミラーリング + PRG RAM の複合
   // ==========================================================================
   describe("ミラーリング + PRG RAM 複合", () => {
