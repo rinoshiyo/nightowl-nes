@@ -352,4 +352,70 @@ describe("Mapper ステート詳細テスト", () => {
     expect(restored.mapper.data["chrBankFE"]).toEqual([0, 15]);
     expect(nes.bus.read(0x6000)).toBe(0xab);
   });
+
+  it("Bandai FCG: PRG/CHR バンクと IRQ 状態が復元される", () => {
+    const nes = new NesConsole(makeCartForMapper(16, 256 * 1024, 128 * 1024));
+
+    // PRG バンク切替 (reg $8)
+    nes.bus.write(0x8008, 5);
+    // CHR バンク切替 (reg $0-$2)
+    nes.bus.write(0x8000, 10);
+    nes.bus.write(0x8001, 20);
+    nes.bus.write(0x8002, 30);
+    // IRQ ラッチ設定
+    nes.bus.write(0x800b, 0x34);
+    nes.bus.write(0x800c, 0x12);
+    // PRG RAM 書き込み
+    nes.bus.write(0x6000, 0xab);
+
+    const state = nes.saveState();
+
+    // 状態を破壊
+    nes.bus.write(0x8008, 0);
+    nes.bus.write(0x8000, 0);
+    nes.bus.write(0x6000, 0);
+
+    nes.loadState(state);
+
+    const restored = nes.saveState();
+    expect(restored.mapper.data["prgBank"]).toBe(5);
+    expect((restored.mapper.data["chrBanks"] as number[])[0]).toBe(10);
+    expect((restored.mapper.data["chrBanks"] as number[])[1]).toBe(20);
+    expect((restored.mapper.data["chrBanks"] as number[])[2]).toBe(30);
+    expect(restored.mapper.data["irqLatch"]).toBe(0x1234);
+    expect(nes.bus.read(0x6000)).toBe(0xab);
+  });
+
+  it("Jaleco SS8806: PRG/CHR バンクと IRQ 状態が復元される", () => {
+    const nes = new NesConsole(makeCartForMapper(18, 256 * 1024, 256 * 1024));
+
+    // PRG バンク切替 (4bit ペア)
+    nes.bus.write(0x8000, 5);
+    nes.bus.write(0x8001, 1); // PRG0 = 0x15
+    // CHR バンク切替
+    nes.bus.write(0xa000, 0x0a);
+    nes.bus.write(0xa001, 0x02); // CHR0 = 0x2A
+    // IRQ ラッチ設定
+    nes.bus.write(0xe000, 0x04);
+    nes.bus.write(0xe001, 0x03);
+    nes.bus.write(0xe002, 0x02);
+    nes.bus.write(0xe003, 0x01); // latch = 0x1234
+    // PRG RAM 書き込み
+    nes.bus.write(0x6000, 0xcd);
+
+    const state = nes.saveState();
+
+    // 状態を破壊
+    nes.bus.write(0x8000, 0);
+    nes.bus.write(0x8001, 0);
+    nes.bus.write(0x6000, 0);
+
+    nes.loadState(state);
+
+    const restored = nes.saveState();
+    expect((restored.mapper.data["prgBanks"] as number[])[0]).toBe(0x15);
+    expect((restored.mapper.data["chrBanks"] as number[])[0]).toBe(0x2a);
+    expect(restored.mapper.data["irqLatch"]).toBe(0x1234);
+    expect(nes.bus.read(0x6000)).toBe(0xcd);
+  });
 });

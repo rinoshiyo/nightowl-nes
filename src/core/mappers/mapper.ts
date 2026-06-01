@@ -19,6 +19,8 @@ import { MapperCodemasters } from "./codemasters.ts";
 import { MapperMmc2 } from "./mmc2.ts";
 import { MapperMmc4 } from "./mmc4.ts";
 import { MapperDxrom } from "./dxrom.ts";
+import { MapperBandaiFcg } from "./bandai-fcg.ts";
+import { MapperJalecoSs8806 } from "./jaleco-ss8806.ts";
 
 export interface Mapper {
   /** CPU アドレス空間 $8000-$FFFF の読み出し */
@@ -53,6 +55,8 @@ export interface Mapper {
   deserializeMapper(data: Record<string, unknown>): void;
   /** PPU が CHR 領域を読み出した時の通知 (MMC2/MMC4 の latch 機構用) */
   onChrRead?(addr: number): void;
+  /** CPU サイクルごとの IRQ clocking (Bandai FCG / Jaleco SS8806 等、CPU cycle ベース IRQ 用) */
+  cpuCycleTick?(): void;
 }
 
 export function createMapper(cart: Cart): Mapper {
@@ -75,6 +79,10 @@ export function createMapper(cart: Cart): Mapper {
       return new MapperMmc4(cart);
     case 11:
       return new MapperColorDreams(cart);
+    case 16:
+      return new MapperBandaiFcg(cart);
+    case 18:
+      return new MapperJalecoSs8806(cart);
     case 66:
       return new MapperGxrom(cart);
     case 71:
