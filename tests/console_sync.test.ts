@@ -28,6 +28,51 @@ function makeTestCart(prgRom?: Uint8Array): Cart {
   };
 }
 
+describe("NesConsole APU フレームカウンタ IRQ 連携", () => {
+  it("APU onIrq コールバックが CPU irqPending をセットする", () => {
+    const cart = makeTestCart();
+    const nes = new NesConsole(cart);
+
+    expect(nes.cpu.irqPending).toBe(false);
+    nes.apu.onIrq!();
+    expect(nes.cpu.irqPending).toBe(true);
+  });
+
+  it("step() 後に frameIrqFlag が irqPending に反映される", () => {
+    const cart = makeTestCart();
+    const nes = new NesConsole(cart);
+
+    nes.apu.frameIrqFlag = true;
+    nes.step();
+    expect(nes.cpu.irqPending).toBe(true);
+  });
+
+  it("frameIrqFlag がクリアされると irqPending も落ちる", () => {
+    const cart = makeTestCart();
+    const nes = new NesConsole(cart);
+
+    nes.apu.frameIrqFlag = true;
+    nes.step();
+    expect(nes.cpu.irqPending).toBe(true);
+
+    nes.apu.frameIrqFlag = false;
+    nes.apu.dmc.irqFlag = false;
+    nes.step();
+    expect(nes.cpu.irqPending).toBe(false);
+  });
+
+  it("reset() で frameIrqFlag と dmc.irqFlag がクリアされる", () => {
+    const cart = makeTestCart();
+    const nes = new NesConsole(cart);
+
+    nes.apu.frameIrqFlag = true;
+    nes.apu.dmc.irqFlag = true;
+    nes.reset();
+    expect(nes.apu.frameIrqFlag).toBe(false);
+    expect(nes.apu.dmc.irqFlag).toBe(false);
+  });
+});
+
 describe("NesConsole CPU-PPU 同期", () => {
   it("step() が CPU cycle × 3 回 PPU を tick する", () => {
     const cart = makeTestCart();
