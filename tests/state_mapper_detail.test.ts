@@ -267,6 +267,26 @@ describe("Mapper ステート詳細テスト", () => {
     expect(restoredState.mapper.data["switchBankOffset"]).toBe(state.mapper.data["switchBankOffset"]);
   });
 
+  it("DxROM: バンクレジスタ状態が復元される", () => {
+    const nes = new NesConsole(makeCartForMapper(206, 64 * 1024, 32 * 1024));
+
+    // R6 で PRG バンク切替
+    nes.bus.write(0x8000, 6); // bank select = R6
+    nes.bus.write(0x8001, 3); // bank data = 3
+
+    const state = nes.saveState();
+
+    // 状態を破壊
+    nes.bus.write(0x8000, 6);
+    nes.bus.write(0x8001, 0);
+
+    nes.loadState(state);
+
+    const restoredState = nes.saveState();
+    expect(restoredState.mapper.data["bankSelect"]).toBe(state.mapper.data["bankSelect"]);
+    expect(restoredState.mapper.data["registers"]).toEqual(state.mapper.data["registers"]);
+  });
+
   it("AxROM: バンク切替とミラーリング状態が復元される", () => {
     const nes = new NesConsole(makeCartForMapper(7, 128 * 1024, 0));
 
