@@ -40,6 +40,9 @@ export class NesConsole {
     this.apu.onIrq = () => {
       this.cpu.irqPending = true;
     };
+    this.mapper.onMirroringChange = (m) => {
+      this.ppu.mirroring = m;
+    };
     this.reset();
   }
 
@@ -56,6 +59,7 @@ export class NesConsole {
     this.bus.dmaCycles = 0;
     this.apu.frameIrqFlag = false;
     this.apu.dmc.irqFlag = false;
+    this.mapper.reset();
     this.ppu.reset();
   }
 
@@ -76,7 +80,7 @@ export class NesConsole {
     for (let i = 0; i < totalCycles; i++) {
       this.apu.tick();
     }
-    this.cpu.irqPending = this.apu.frameIrqFlag || this.apu.dmc.irqFlag;
+    this.cpu.irqPending = this.apu.frameIrqFlag || this.apu.dmc.irqFlag || this.mapper.irqPending;
     return totalCycles;
   }
 

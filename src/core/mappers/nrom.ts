@@ -13,6 +13,9 @@ import type { Mapper } from "./mapper.ts";
 const CHR_RAM_SIZE = 0x2000;
 
 export class MapperNrom implements Mapper {
+  onMirroringChange: ((m: import("../cart.ts").Mirroring) => void) | null = null;
+  irqPending = false;
+
   private readonly prgRom: Uint8Array;
   private readonly prgMask: number;
   private readonly chrData: Uint8Array;
@@ -47,4 +50,9 @@ export class MapperNrom implements Mapper {
       this.chrData[addr & 0x1fff] = value;
     }
   }
+
+  readPrgRam(_addr: number): number { return 0; }
+  writePrgRam(_addr: number, _value: number): void {}
+  reset(): void {}
+  clockIrqCounter(): void {}
 }

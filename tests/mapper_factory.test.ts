@@ -4,6 +4,7 @@ import type { Cart } from "../src/core/cart.ts";
 import { createMapper } from "../src/core/mappers/index.ts";
 import { MapperCnrom } from "../src/core/mappers/cnrom.ts";
 import { MapperMmc1 } from "../src/core/mappers/mmc1.ts";
+import { MapperMmc3 } from "../src/core/mappers/mmc3.ts";
 import { MapperNrom } from "../src/core/mappers/nrom.ts";
 import { MapperUxrom } from "../src/core/mappers/uxrom.ts";
 
@@ -45,8 +46,13 @@ describe("createMapper", () => {
     expect(mapper).toBeInstanceOf(MapperCnrom);
   });
 
+  it("mapper 4 で MapperMmc3 を返す", () => {
+    const mapper = createMapper(makeCart(4));
+    expect(mapper).toBeInstanceOf(MapperMmc3);
+  });
+
   it("未サポート mapper で Error を throw", () => {
-    expect(() => createMapper(makeCart(4))).toThrow("Unsupported mapper: 4");
+    expect(() => createMapper(makeCart(5))).toThrow("Unsupported mapper: 5");
     expect(() => createMapper(makeCart(255))).toThrow("Unsupported mapper: 255");
   });
 });
