@@ -36,64 +36,50 @@ const PRG_RAM_SIZE = 0x2000;  // 8KB
 const TONE_CLOCK_DIVIDER = 16;
 const NOISE_CLOCK_DIVIDER = 16;
 
-/** エンベロープ形状テーブル (YM2149 互換)。各形状は 64 ステップの音量値 (0-15)。 */
-function buildEnvelopeShapes(): Uint8Array[] {
-  const shapes: Uint8Array[] = [];
-  for (let shape = 0; shape < 16; shape++) {
-    const data = new Uint8Array(64);
-    // YM2149 エンベロープ形状 (4bit: Continue, Attack, Alternate, Hold)
-    const attack = (shape & 0x04) !== 0;
-    const alternate = (shape & 0x02) !== 0;
-    const hold = (shape & 0x01) !== 0;
-    const cont = (shape & 0x08) !== 0;
+/**
+ * YM2149 エンベロープ音量をランタイム計算する。
+ * 形状レジスタ (4bit): bit3=Continue, bit2=Attack, bit1=Alternate, bit0=Hold。
+ * 位置は 0 から無限に進む (Continue 時)。各周期は 32 ステップ。
+ */
+function envelopeVolume(shape: number, position: number): number {
+  const attack = (shape & 0x04) !== 0;
+  const alternate = (shape & 0x02) !== 0;
+  const hold = (shape & 0x01) !== 0;
+  const cont = (shape & 0x08) !== 0;
 
-    for (let step = 0; step < 64; step++) {
-      const halfPeriod = Math.floor(step / 32);
-      const pos = step & 31;
+  const cycle = Math.floor(position / 32);
+  const step = position & 31;
 
-      if (!cont && halfPeriod >= 1) {
-        // Continue=0: 最初の半周期後は 0
-        data[step] = attack ? 0 : 0;
-      } else if (cont) {
-        if (hold) {
-          if (halfPeriod === 0) {
-            // 最初の半周期
-            data[step] = attack ? pos : (31 - pos);
-          } else {
-            // Hold: 最終値を保持
-            if (alternate) {
-              data[step] = attack ? 31 : 0;
-            } else {
-              data[step] = attack ? 31 : 0;
-            }
-          }
-        } else if (alternate) {
-          // Alternate: 上下を繰り返す
-          if (halfPeriod % 2 === 0) {
-            data[step] = attack ? pos : (31 - pos);
-          } else {
-            data[step] = attack ? (31 - pos) : pos;
-          }
-        } else {
-          // Continue, no alternate, no hold: 鋸歯波
-          data[step] = attack ? pos : (31 - pos);
-        }
-      } else {
-        // !cont, first half
-        data[step] = attack ? pos : (31 - pos);
-      }
-    }
-
-    // 5bit (0-31) → 4bit (0-15) に正規化
-    for (let i = 0; i < 64; i++) {
-      data[i] = data[i]! >> 1;
-    }
-    shapes.push(data);
+  if (cycle === 0) {
+    // 最初の周期: attack で上昇 / !attack で下降
+    return attack ? step : (31 - step);
   }
-  return shapes;
-}
 
-const ENVELOPE_SHAPES = buildEnvelopeShapes();
+  // 最初の周期後
+  if (!cont) {
+    // Continue=0: 0 で停止
+    return 0;
+  }
+
+  if (hold) {
+    // Hold: 最初の周期末の値で保持
+    if (alternate) {
+      return attack ? 0 : 31;
+    }
+    return attack ? 31 : 0;
+  }
+
+  if (alternate) {
+    // Alternate: 偶数周期は attack の逆、奇数周期は attack
+    if (cycle % 2 === 0) {
+      return attack ? (31 - step) : step;
+    }
+    return attack ? step : (31 - step);
+  }
+
+  // Continue, no alternate, no hold: 鋸歯波の繰り返し
+  return attack ? step : (31 - step);
+}
 
 export class MapperSunsoftFme7 implements Mapper {
   irqPending = false;
@@ -480,8 +466,11 @@ export class MapperSunsoftFme7 implements Mapper {
     this.envelopeCounter++;
     if (this.envelopeCounter >= period) {
       this.envelopeCounter = 0;
-      if (this.envelopePosition < 63) {
-        this.envelopePosition++;
+      this.envelopePosition++;
+      // Continue + !Hold 時は無限ループするが、位置が際限なく大きくなるのを防ぐ
+      // (32 ステップ × 周期 で mod すれば十分だが、Hold/!Continue で停止する形状もあるため上限を設ける)
+      if (this.envelopePosition >= 0x10000) {
+        this.envelopePosition = 0x10000;
       }
     }
   }
@@ -501,11 +490,10 @@ export class MapperSunsoftFme7 implements Mapper {
 
       if ((tone & noise) === 0) continue;
 
-      // 音量: エンベロープモードなら形状テーブル参照
+      // 音量: エンベロープモードならランタイム計算
       let vol: number;
       if (this.envelopeMode[ch]) {
-        const shape = ENVELOPE_SHAPES[this.envelopeShape];
-        vol = shape?.[this.envelopePosition] ?? 0;
+        vol = envelopeVolume(this.envelopeShape, this.envelopePosition) >> 1;
       } else {
         vol = this.channelVolume[ch] ?? 0;
       }
