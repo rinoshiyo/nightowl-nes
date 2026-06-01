@@ -12,7 +12,7 @@
 - **各夜は有限の /goal** (`or stop after N turns`、 N=80 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
 - 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達。 pending 枯渇では停止しない — `finish-night.sh` は常に `/goal` を書き、 fresh session が起動時の作法 (step 2) で pending 空を検知し seed する
 - 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
-- **連鎖の起動**: `loop-start` skill (手動起動用。 description マッチで起動) か、 最初の夜ゴールを手で投入する。 以降は各夜末のフラグ書込で /clear 連鎖が自走する
+- **連鎖の起動**: `loop-start` skill がセットアップ (issue/branch) → flag 書込 → /clear 発火し、fresh session が /goal active で立ち上がる。以降は各夜末の flag 書込で /clear 連鎖が自走する。**手動/自動連鎖とも同一経路 (flag → Stop hook → loop-helper → /clear → /goal 注入)**
 - **アンチパターン**: 「pending 全消化を 1 つの /goal で」 は使わない (夜ごとに /clear リセットするため)。 旧「1 セッションで N 夜をターン上限まで /goal 連鎖」 は context 肥大化で廃止済み
 
 ## 連鎖継続条件
@@ -106,22 +106,40 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 
 ## 起動時の作法
 
+ループ開始は2フェーズ構成。**setup フェーズ (loop-start skill)** がセットアップを行い、
+**実装フェーズ (fresh session)** が /goal active の状態で実装する。
+全てのループ開始（手動/自動連鎖/resume）が同一経路に乗る:
+
+```
+loop-start (setup) → flag 書込 → Stop hook → loop-helper → /clear → /goal 注入
+                                                                        ↓
+                                              fresh session: /goal active + 実装開始
+```
+
+### Setup フェーズ (loop-start skill が実行)
+
 0. **open Issue / PR を確認**。`gh issue list -s open -l night` で open Issue、`gh pr list --state open` で open PR を確認。**判定基準**:
-   - **open PR あり** → `isDraft` / `mergeStateStatus` を確認。draft = レビュー隔離中 (再開対象) / 非 draft かつ BLOCKED = 正常 in-flight (loop-helper が merge 待ち中、中断不要) / 非 draft かつ CLEAN = loop-helper 停止の可能性で最優先再開。再開時は `git checkout <headRefName>` してから **中断箇所に応じた step で再開** (実装途中 → step 7 / レビュー中断・draft 戻し → step 10)。/goal は step 4 で設定してから再開
-   - **open Issue あり + PR なし** → scope は決まっている。**step 4 (/goal 設定) から再開** (step 5 でブランチを切って実装)
+   - **open PR あり** → `isDraft` / `mergeStateStatus` を確認。draft = レビュー隔離中 (再開対象) / 非 draft かつ BLOCKED = 正常 in-flight (loop-helper が merge 待ち中、中断不要。flag 書かず停止) / 非 draft かつ CLEAN = loop-helper 停止の可能性で最優先再開。ブランチを checkout
+   - **open Issue あり + PR なし** → scope は決まっている。ブランチが存在すれば checkout、なければ作成
    - **どちらもなし** → step 1 から通常開始
 1. `git checkout main && git pull` で main を最新化
-2. `nights/pending/` の最若番号の md を Read (open Issue がなく pending もなければ `loop-start` skill の seed 手順で夜 md を作成)
+2. `nights/pending/` の最若番号の md を Read (open Issue がなく pending もなければ seed してから続行)
 3. **Issue 作成** (`gh issue create --title "夜 NNN: <topic>" --label night --body "<DoD チェックリスト>"`)。open Issue が既にあればスキップ。Issue が scope の SSOT
-4. **/goal 設定**。夜 md「## ゴール」セクションの条件で /goal を設定する。**loop-start の出口条件 = /goal が active であること。/goal なしで実装に入ることは許されない**
-5. `night/NNN-<topic>` ブランチを切る → 実装開始
-6. 最初の commit → push → **draft PR** (`gh pr create --draft --body "Closes #<Issue番号>"`)。以降の delivery 状態は PR が SSOT
-7. 実装続行。ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
-8. /goal 評価のため pass / fail を必ず transcript に出力
-9. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
-10. `gh pr ready` で draft を解除 (この時点では auto-merge を打たない)
-11. メインが `code-review --fix` を直呼びでレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --merge --delete-branch`
-12. CI 緑 → auto-merge 反映 → Issue 自動 close を見届けてセッション完了報告
+4. `night/NNN-<topic>` ブランチを切る (既にあれば checkout)
+5. **flag 書込して turn 終了** — `/goal <汎用テキスト>` を `.claude/state/loop-next.${PANE#%}.txt` に書いて turn を終える。**実装には入らない**。Stop hook が flag を検出し loop-helper → /clear → /goal 注入を自動で行う
+
+### 実装フェーズ (fresh session が実行。/goal はインフラが注入済み)
+
+**/goal は loop-helper が注入するためモデルは実行しない。** fresh session が起動した時点で /goal は active。SessionStart hook (clear matcher) が Issue/PR state を注入する。
+
+6. 夜 md を Read し DoD を把握 → 実装開始
+7. 最初の commit → push → **draft PR** (`gh pr create --draft --body "Closes #<Issue番号>"`)。以降の delivery 状態は PR が SSOT
+8. 実装続行。ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
+9. /goal 評価のため pass / fail を必ず transcript に出力
+10. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
+11. `gh pr ready` で draft を解除 (この時点では auto-merge を打たない)
+12. メインが `code-review --fix` を直呼びでレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --merge --delete-branch`
+13. CI 緑 → auto-merge 反映 → Issue 自動 close を見届けてセッション完了報告
 
 ## ブランチ運用 + PR フロー
 
