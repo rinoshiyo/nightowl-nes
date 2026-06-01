@@ -97,10 +97,10 @@ export function createMapper(cart: Cart): Mapper {
       return new MapperJalecoSs8806(cart);
     case 19:
       return new MapperNamco163(cart);
-    case 69:
-      return new MapperSunsoftFme7(cart);
     case 66:
       return new MapperGxrom(cart);
+    case 69:
+      return new MapperSunsoftFme7(cart);
     case 71:
       return new MapperCodemasters(cart);
     case 206:

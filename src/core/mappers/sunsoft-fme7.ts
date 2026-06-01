@@ -33,8 +33,10 @@ const PRG_RAM_SIZE = 0x2000;  // 8KB
  * トーン周期レジスタの分周: 出力周波数 = master / (2 * 16 * period)。
  * ここでは CPU cycle 16 分周でトーンカウンタを更新する。
  */
-const TONE_CLOCK_DIVIDER = 16;
-const NOISE_CLOCK_DIVIDER = 16;
+const SOUND_CLOCK_DIVIDER = 16;
+
+/** audioOutput 正規化定数: 0.15 / 45 (3ch × max vol 15) */
+const SOUND_OUTPUT_SCALE = 0.15 / 45;
 
 /**
  * YM2149 エンベロープ音量をランタイム計算する。
@@ -70,8 +72,8 @@ function envelopeVolume(shape: number, position: number): number {
   }
 
   if (alternate) {
-    // Alternate: 偶数周期は attack の逆、奇数周期は attack
-    if (cycle % 2 === 0) {
+    // Alternate: 奇数周期 (1,3,5...) は attack の逆、偶数周期 (2,4,6...) は attack
+    if (cycle % 2 !== 0) {
       return attack ? (31 - step) : step;
     }
     return attack ? step : (31 - step);
@@ -154,9 +156,8 @@ export class MapperSunsoftFme7 implements Mapper {
   /** エンベロープ形状 (0-15) */
   private envelopeShape = 0;
 
-  /** 拡張音源の分周カウンタ */
-  private toneClockCounter = 0;
-  private noiseClockCounter = 0;
+  /** 拡張音源の分周カウンタ (トーン・ノイズ・エンベロープ共通) */
+  private soundClockCounter = 0;
 
   /** 最終音声出力値 */
   private soundOutput = 0;
@@ -252,12 +253,10 @@ export class MapperSunsoftFme7 implements Mapper {
         this.updateMirroring();
         break;
       case 13:
-        // IRQ 制御
+        // IRQ 制御 (書き込みで IRQ acknowledge — 無条件)
+        this.irqPending = false;
         this.irqCounterEnabled = (value & 0x80) !== 0;
         this.irqEnabled = (value & 0x01) !== 0;
-        if (!this.irqEnabled) {
-          this.irqPending = false;
-        }
         break;
       case 14:
         // IRQ カウンタ下位 8bit
@@ -341,8 +340,7 @@ export class MapperSunsoftFme7 implements Mapper {
     this.envelopeCounter = 0;
     this.envelopePosition = 0;
     this.envelopeShape = 0;
-    this.toneClockCounter = 0;
-    this.noiseClockCounter = 0;
+    this.soundClockCounter = 0;
     this.soundOutput = 0;
   }
 
@@ -360,22 +358,15 @@ export class MapperSunsoftFme7 implements Mapper {
       }
     }
 
-    // 拡張音源: トーンジェネレータ更新
-    this.toneClockCounter++;
-    if (this.toneClockCounter >= TONE_CLOCK_DIVIDER) {
-      this.toneClockCounter = 0;
+    // 拡張音源: 共通分周 (トーン・ノイズ・エンベロープ)
+    this.soundClockCounter++;
+    if (this.soundClockCounter >= SOUND_CLOCK_DIVIDER) {
+      this.soundClockCounter = 0;
       this.tickToneGenerators();
-      this.tickEnvelope();
-    }
-
-    // ノイズジェネレータ更新
-    this.noiseClockCounter++;
-    if (this.noiseClockCounter >= NOISE_CLOCK_DIVIDER) {
-      this.noiseClockCounter = 0;
       this.tickNoiseGenerator();
+      this.tickEnvelope();
+      this.updateSoundOutput();
     }
-
-    this.updateSoundOutput();
   }
 
   /** 拡張音源レジスタ ($E000) への書き込み */
@@ -467,11 +458,6 @@ export class MapperSunsoftFme7 implements Mapper {
     if (this.envelopeCounter >= period) {
       this.envelopeCounter = 0;
       this.envelopePosition++;
-      // Continue + !Hold 時は無限ループするが、位置が際限なく大きくなるのを防ぐ
-      // (32 ステップ × 周期 で mod すれば十分だが、Hold/!Continue で停止する形状もあるため上限を設ける)
-      if (this.envelopePosition >= 0x10000) {
-        this.envelopePosition = 0x10000;
-      }
     }
   }
 
@@ -506,8 +492,7 @@ export class MapperSunsoftFme7 implements Mapper {
 
   /** 拡張音源出力 (APU ミキサー統合用) */
   audioOutput(): number {
-    // 3ch × 最大音量 15 = 45。正規化して APU とバランスを取る。
-    return (this.soundOutput / 45) * 0.15;
+    return this.soundOutput * SOUND_OUTPUT_SCALE;
   }
 
   /** ミラーリング更新 */
@@ -548,8 +533,7 @@ export class MapperSunsoftFme7 implements Mapper {
       envelopeCounter: this.envelopeCounter,
       envelopePosition: this.envelopePosition,
       envelopeShape: this.envelopeShape,
-      toneClockCounter: this.toneClockCounter,
-      noiseClockCounter: this.noiseClockCounter,
+      soundClockCounter: this.soundClockCounter,
       soundOutput: this.soundOutput,
       prgRam: Array.from(this.prgRam),
       chrRam: this.useChrRam ? Array.from(this.chrData) : undefined,
@@ -588,8 +572,7 @@ export class MapperSunsoftFme7 implements Mapper {
     this.envelopeCounter = data["envelopeCounter"] as number;
     this.envelopePosition = data["envelopePosition"] as number;
     this.envelopeShape = data["envelopeShape"] as number;
-    this.toneClockCounter = data["toneClockCounter"] as number;
-    this.noiseClockCounter = data["noiseClockCounter"] as number;
+    this.soundClockCounter = data["soundClockCounter"] as number;
     this.soundOutput = data["soundOutput"] as number;
     if (Array.isArray(data["prgRam"])) this.prgRam.set(data["prgRam"] as number[]);
     if (this.useChrRam && Array.isArray(data["chrRam"])) {
