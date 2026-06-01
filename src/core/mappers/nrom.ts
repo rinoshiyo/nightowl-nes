@@ -65,4 +65,22 @@ export class MapperNrom implements Mapper {
   }
   reset(): void {}
   clockIrqCounter(): void {}
+
+  mapperId(): number { return 0; }
+
+  serializeMapper(): Record<string, unknown> {
+    return {
+      prgRam: Array.from(this.prgRam),
+      chrRam: this.chrIsRam ? Array.from(this.chrData) : undefined,
+    };
+  }
+
+  deserializeMapper(data: Record<string, unknown>): void {
+    if (Array.isArray(data["prgRam"])) {
+      this.prgRam.set(data["prgRam"] as number[]);
+    }
+    if (this.chrIsRam && Array.isArray(data["chrRam"])) {
+      this.chrData.set((data["chrRam"] as number[]).slice(0, CHR_RAM_SIZE));
+    }
+  }
 }

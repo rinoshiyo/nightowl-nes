@@ -8,6 +8,7 @@
 import { Envelope } from "./apu-envelope.ts";
 import { LENGTH_TABLE } from "./apu-length.ts";
 import { SweepUnit } from "./apu-sweep.ts";
+import type { PulseState } from "./state.ts";
 
 /** デューティサイクルテーブル (4パターン × 8ステップ) */
 const DUTY_TABLE: readonly (readonly number[])[] = [
@@ -93,5 +94,31 @@ export class PulseChannel {
     if (DUTY_TABLE[this.duty]![this.dutyPos] === 0) return 0;
     if (this.sweep.isMuting(this.timerPeriod)) return 0;
     return this.envelope.output();
+  }
+
+  serialize(): PulseState {
+    return {
+      duty: this.duty,
+      dutyPos: this.dutyPos,
+      timerPeriod: this.timerPeriod,
+      timerValue: this.timerValue,
+      lengthCounter: this.lengthCounter,
+      lengthHalt: this.lengthHalt,
+      enabled: this.enabled,
+      envelope: this.envelope.serialize(),
+      sweep: this.sweep.serialize(),
+    };
+  }
+
+  deserialize(state: PulseState): void {
+    this.duty = state.duty;
+    this.dutyPos = state.dutyPos;
+    this.timerPeriod = state.timerPeriod;
+    this.timerValue = state.timerValue;
+    this.lengthCounter = state.lengthCounter;
+    this.lengthHalt = state.lengthHalt;
+    this.enabled = state.enabled;
+    this.envelope.deserialize(state.envelope);
+    this.sweep.deserialize(state.sweep);
   }
 }

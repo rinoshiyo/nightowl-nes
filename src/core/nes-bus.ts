@@ -10,6 +10,7 @@ import type { Bus } from "./bus.ts";
 import type { Controller } from "./controller.ts";
 import type { Mapper } from "./mappers/index.ts";
 import type { Ppu } from "./ppu.ts";
+import type { BusState } from "./state.ts";
 
 const RAM_SIZE = 0x800;
 
@@ -98,5 +99,17 @@ export class NesBus implements Bus {
       this.ppu.oam[(this.ppu.oamAddr + i) & 0xff] = this.read(base + i);
     }
     this.dmaCycles = 513;
+  }
+
+  serialize(): BusState {
+    return {
+      ram: Array.from(this.ram),
+      dmaCycles: this.dmaCycles,
+    };
+  }
+
+  deserialize(state: BusState): void {
+    this.ram.set(state.ram);
+    this.dmaCycles = state.dmaCycles;
   }
 }

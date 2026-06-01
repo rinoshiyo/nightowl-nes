@@ -65,4 +65,24 @@ export class MapperUxrom implements Mapper {
   }
   reset(): void {}
   clockIrqCounter(): void {}
+
+  mapperId(): number { return 2; }
+
+  serializeMapper(): Record<string, unknown> {
+    return {
+      switchBankOffset: this.switchBankOffset,
+      chrRam: Array.from(this.chrRam),
+      prgRam: Array.from(this.prgRam),
+    };
+  }
+
+  deserializeMapper(data: Record<string, unknown>): void {
+    this.switchBankOffset = data["switchBankOffset"] as number;
+    if (Array.isArray(data["chrRam"])) {
+      this.chrRam.set(data["chrRam"] as number[]);
+    }
+    if (Array.isArray(data["prgRam"])) {
+      this.prgRam.set(data["prgRam"] as number[]);
+    }
+  }
 }

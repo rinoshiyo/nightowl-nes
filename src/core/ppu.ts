@@ -15,6 +15,7 @@
 
 import type { Mirroring } from "./cart.ts";
 import type { Mapper } from "./mappers/index.ts";
+import type { PpuState } from "./state.ts";
 
 const CHR_RAM_SIZE = 0x2000;
 const VRAM_SIZE = 0x1000;
@@ -628,5 +629,69 @@ export class Ppu {
       case "four-screen":
         return relative;
     }
+  }
+
+  serialize(): PpuState {
+    return {
+      ctrl: this.ctrl,
+      mask: this.mask,
+      status: this.status,
+      oamAddr: this.oamAddr,
+      ioLatch: this.ioLatch,
+      v: this.v,
+      t: this.t,
+      x: this.x,
+      w: this.w,
+      readBuffer: this.readBuffer,
+      dot: this.dot,
+      scanline: this.scanline,
+      frameComplete: this.frameComplete,
+      bgNametable: this.bgNametable,
+      bgAttribute: this.bgAttribute,
+      bgPatternLo: this.bgPatternLo,
+      bgPatternHi: this.bgPatternHi,
+      bgFetchedCol: this.bgFetchedCol,
+      bgColorIdx: this.bgColorIdx,
+      slInitCoarseX: this.slInitCoarseX,
+      slInitNtX: this.slInitNtX,
+      spriteCount: this.spriteCount,
+      sprite0InLine: this.sprite0InLine,
+      lastA12: this.lastA12,
+      chrRam: Array.from(this.chrRam),
+      vram: Array.from(this.vram),
+      palette: Array.from(this.palette),
+      oam: Array.from(this.oam),
+    };
+  }
+
+  deserialize(state: PpuState): void {
+    this.ctrl = state.ctrl;
+    this.mask = state.mask;
+    this.status = state.status;
+    this.oamAddr = state.oamAddr;
+    this.ioLatch = state.ioLatch;
+    this.v = state.v;
+    this.t = state.t;
+    this.x = state.x;
+    this.w = state.w;
+    this.readBuffer = state.readBuffer;
+    this.dot = state.dot;
+    this.scanline = state.scanline;
+    this.frameComplete = state.frameComplete;
+    this.bgNametable = state.bgNametable;
+    this.bgAttribute = state.bgAttribute;
+    this.bgPatternLo = state.bgPatternLo;
+    this.bgPatternHi = state.bgPatternHi;
+    this.bgFetchedCol = state.bgFetchedCol;
+    this.bgColorIdx = state.bgColorIdx;
+    this.slInitCoarseX = state.slInitCoarseX;
+    this.slInitNtX = state.slInitNtX;
+    this.spriteCount = state.spriteCount;
+    this.sprite0InLine = state.sprite0InLine;
+    this.lastA12 = state.lastA12;
+    this.chrRam.set(state.chrRam);
+    this.vram.set(state.vram);
+    this.palette.set(state.palette);
+    this.oam.set(state.oam);
   }
 }

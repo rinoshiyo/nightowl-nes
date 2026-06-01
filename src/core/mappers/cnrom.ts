@@ -60,4 +60,20 @@ export class MapperCnrom implements Mapper {
   }
   reset(): void {}
   clockIrqCounter(): void {}
+
+  mapperId(): number { return 3; }
+
+  serializeMapper(): Record<string, unknown> {
+    return {
+      chrBankOffset: this.chrBankOffset,
+      prgRam: Array.from(this.prgRam),
+    };
+  }
+
+  deserializeMapper(data: Record<string, unknown>): void {
+    this.chrBankOffset = data["chrBankOffset"] as number;
+    if (Array.isArray(data["prgRam"])) {
+      this.prgRam.set(data["prgRam"] as number[]);
+    }
+  }
 }

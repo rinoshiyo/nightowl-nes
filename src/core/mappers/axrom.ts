@@ -70,4 +70,24 @@ export class MapperAxrom implements Mapper {
   }
 
   clockIrqCounter(): void {}
+
+  mapperId(): number { return 7; }
+
+  serializeMapper(): Record<string, unknown> {
+    return {
+      bankOffset: this.bankOffset,
+      chrRam: Array.from(this.chrRam),
+      prgRam: Array.from(this.prgRam),
+    };
+  }
+
+  deserializeMapper(data: Record<string, unknown>): void {
+    this.bankOffset = data["bankOffset"] as number;
+    if (Array.isArray(data["chrRam"])) {
+      this.chrRam.set(data["chrRam"] as number[]);
+    }
+    if (Array.isArray(data["prgRam"])) {
+      this.prgRam.set(data["prgRam"] as number[]);
+    }
+  }
 }

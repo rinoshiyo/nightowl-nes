@@ -1,4 +1,5 @@
 import { CpuFlags } from "./flags.ts";
+import type { CpuState } from "../state.ts";
 
 /**
  * 6502 CPU の状態を表す型。
@@ -42,5 +43,33 @@ export function createCpu(overrides?: Partial<Cpu>): Cpu {
     nmiPending: false,
     irqPending: false,
     ...overrides,
+  };
+}
+
+export function serializeCpu(cpu: Cpu): CpuState {
+  return {
+    a: cpu.a,
+    x: cpu.x,
+    y: cpu.y,
+    sp: cpu.sp,
+    pc: cpu.pc,
+    p: cpu.p,
+    cycles: cpu.cycles,
+    nmiPending: cpu.nmiPending,
+    irqPending: cpu.irqPending,
+  };
+}
+
+export function deserializeCpu(state: CpuState): Cpu {
+  return {
+    a: state.a,
+    x: state.x,
+    y: state.y,
+    sp: state.sp,
+    pc: state.pc,
+    p: state.p,
+    cycles: state.cycles,
+    nmiPending: state.nmiPending,
+    irqPending: state.irqPending,
   };
 }

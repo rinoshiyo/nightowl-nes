@@ -163,6 +163,44 @@ export class MapperMmc3 implements Mapper {
     this.irqPending = false;
   }
 
+  mapperId(): number { return 4; }
+
+  serializeMapper(): Record<string, unknown> {
+    return {
+      registers: Array.from(this.registers),
+      bankSelect: this.bankSelect,
+      prgBankMode: this.prgBankMode,
+      chrInversion: this.chrInversion,
+      irqCounter: this.irqCounter,
+      irqLatch: this.irqLatch,
+      irqReload: this.irqReload,
+      irqEnabled: this.irqEnabled,
+      irqPending: this.irqPending,
+      prgRam: Array.from(this.prgRam),
+      chrRam: this.useChrRam ? Array.from(this.chrData) : undefined,
+    };
+  }
+
+  deserializeMapper(data: Record<string, unknown>): void {
+    if (Array.isArray(data["registers"])) {
+      this.registers.set(data["registers"] as number[]);
+    }
+    this.bankSelect = data["bankSelect"] as number;
+    this.prgBankMode = data["prgBankMode"] as number;
+    this.chrInversion = data["chrInversion"] as number;
+    this.irqCounter = data["irqCounter"] as number;
+    this.irqLatch = data["irqLatch"] as number;
+    this.irqReload = data["irqReload"] as boolean;
+    this.irqEnabled = data["irqEnabled"] as boolean;
+    this.irqPending = data["irqPending"] as boolean;
+    if (Array.isArray(data["prgRam"])) {
+      this.prgRam.set(data["prgRam"] as number[]);
+    }
+    if (this.useChrRam && Array.isArray(data["chrRam"])) {
+      this.chrData.set((data["chrRam"] as number[]).slice(0, CHR_RAM_SIZE));
+    }
+  }
+
   clockIrqCounter(): void {
     if (this.irqCounter === 0 || this.irqReload) {
       this.irqCounter = this.irqLatch;

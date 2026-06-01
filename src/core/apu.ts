@@ -11,6 +11,7 @@ import { ApuMixer } from "./apu-mixer.ts";
 import { NoiseChannel } from "./apu-noise.ts";
 import { PulseChannel } from "./apu-pulse.ts";
 import { TriangleChannel } from "./apu-triangle.ts";
+import type { ApuState } from "./state.ts";
 
 const CPU_CLOCK = 1789773;
 
@@ -314,5 +315,39 @@ export class Apu {
       written++;
     }
     return written;
+  }
+
+  serialize(): ApuState {
+    return {
+      pulse1: this.pulse1.serialize(),
+      pulse2: this.pulse2.serialize(),
+      triangle: this.triangle.serialize(),
+      noise: this.noise.serialize(),
+      dmc: this.dmc.serialize(),
+      frameMode: this.frameMode,
+      frameCycle: this.frameCycle,
+      frameStep: this.frameStep,
+      frameIrqInhibit: this.frameIrqInhibit,
+      frameIrqFlag: this.frameIrqFlag,
+      cpuCycleOdd: this.cpuCycleOdd,
+    };
+  }
+
+  deserialize(state: ApuState): void {
+    this.pulse1.deserialize(state.pulse1);
+    this.pulse2.deserialize(state.pulse2);
+    this.triangle.deserialize(state.triangle);
+    this.noise.deserialize(state.noise);
+    this.dmc.deserialize(state.dmc);
+    this.frameMode = state.frameMode;
+    this.frameCycle = state.frameCycle;
+    this.frameStep = state.frameStep;
+    this.frameIrqInhibit = state.frameIrqInhibit;
+    this.frameIrqFlag = state.frameIrqFlag;
+    this.cpuCycleOdd = state.cpuCycleOdd;
+    this.bufferWritePos = 0;
+    this.bufferReadPos = 0;
+    this.sampleRateAccum = 0;
+    this.resetFilters();
   }
 }

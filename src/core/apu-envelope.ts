@@ -5,6 +5,8 @@
  * 仕様参照: https://www.nesdev.org/wiki/APU_Envelope
  */
 
+import type { EnvelopeState } from "./state.ts";
+
 export class Envelope {
   start = false;
   loop = false;
@@ -37,5 +39,25 @@ export class Envelope {
 
   output(): number {
     return this.constantVolume ? this.volume : this.decayLevel;
+  }
+
+  serialize(): EnvelopeState {
+    return {
+      start: this.start,
+      loop: this.loop,
+      constantVolume: this.constantVolume,
+      volume: this.volume,
+      decayLevel: this.decayLevel,
+      divider: this.divider,
+    };
+  }
+
+  deserialize(state: EnvelopeState): void {
+    this.start = state.start;
+    this.loop = state.loop;
+    this.constantVolume = state.constantVolume;
+    this.volume = state.volume;
+    this.decayLevel = state.decayLevel;
+    this.divider = state.divider;
   }
 }
