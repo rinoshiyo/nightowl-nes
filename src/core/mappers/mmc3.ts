@@ -49,6 +49,9 @@ export class MapperMmc3 implements Mapper {
   /** CHR A12 反転: bit 7 of $8000 */
   private chrInversion = 0;
 
+  /** 現在のミラーリングモード (ステートセーブ用) */
+  private currentMirroring: Mirroring = "vertical";
+
   /** IRQ カウンタ */
   private irqCounter = 0;
   /** IRQ ラッチ値 */
@@ -97,8 +100,8 @@ export class MapperMmc3 implements Mapper {
     } else if (addr < 0xc000) {
       if (isOdd === 0) {
         // $A000: Mirroring
-        const m: Mirroring = (value & 1) === 0 ? "vertical" : "horizontal";
-        if (this.onMirroringChange) this.onMirroringChange(m);
+        this.currentMirroring = (value & 1) === 0 ? "vertical" : "horizontal";
+        if (this.onMirroringChange) this.onMirroringChange(this.currentMirroring);
       }
       // $A001: PRG RAM protect (未実装 — 多くのゲームで不要)
     } else if (addr < 0xe000) {
@@ -171,6 +174,7 @@ export class MapperMmc3 implements Mapper {
       bankSelect: this.bankSelect,
       prgBankMode: this.prgBankMode,
       chrInversion: this.chrInversion,
+      currentMirroring: this.currentMirroring,
       irqCounter: this.irqCounter,
       irqLatch: this.irqLatch,
       irqReload: this.irqReload,
@@ -188,6 +192,9 @@ export class MapperMmc3 implements Mapper {
     this.bankSelect = data["bankSelect"] as number;
     this.prgBankMode = data["prgBankMode"] as number;
     this.chrInversion = data["chrInversion"] as number;
+    if (typeof data["currentMirroring"] === "string") {
+      this.currentMirroring = data["currentMirroring"] as Mirroring;
+    }
     this.irqCounter = data["irqCounter"] as number;
     this.irqLatch = data["irqLatch"] as number;
     this.irqReload = data["irqReload"] as boolean;
@@ -199,6 +206,7 @@ export class MapperMmc3 implements Mapper {
     if (this.useChrRam && Array.isArray(data["chrRam"])) {
       this.chrData.set((data["chrRam"] as number[]).slice(0, CHR_RAM_SIZE));
     }
+    this.onMirroringChange?.(this.currentMirroring);
   }
 
   clockIrqCounter(): void {

@@ -633,6 +633,7 @@ export class Ppu {
 
   serialize(): PpuState {
     return {
+      mirroring: this.mirroring,
       ctrl: this.ctrl,
       mask: this.mask,
       status: this.status,
@@ -665,6 +666,7 @@ export class Ppu {
   }
 
   deserialize(state: PpuState): void {
+    this.mirroring = state.mirroring as import("./cart.ts").Mirroring;
     this.ctrl = state.ctrl;
     this.mask = state.mask;
     this.status = state.status;

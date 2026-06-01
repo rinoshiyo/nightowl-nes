@@ -20,6 +20,7 @@ export interface CpuState {
 }
 
 export interface PpuState {
+  mirroring: string;
   ctrl: number;
   mask: number;
   status: number;

@@ -59,12 +59,13 @@ function stateKey(romHash: string, slot: number): string {
   return `${STATE_PREFIX}${romHash}-slot${slot}`;
 }
 
-export function saveState(romHash: string, slot: number, state: NesState): void {
+export function saveState(romHash: string, slot: number, state: NesState): boolean {
   const key = stateKey(romHash, slot);
   try {
     localStorage.setItem(key, JSON.stringify(state));
+    return true;
   } catch {
-    // QuotaExceededError
+    return false;
   }
 }
 

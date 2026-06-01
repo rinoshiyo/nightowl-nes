@@ -197,6 +197,7 @@ export class MapperMmc1 implements Mapper {
     if (this.useChrRam && Array.isArray(data["chrRam"])) {
       this.chrData.set((data["chrRam"] as number[]).slice(0, CHR_RAM_SIZE));
     }
+    this.applyMirroring();
   }
 
   /** control レジスタ bit 0-1 から mirroring モードを通知 */

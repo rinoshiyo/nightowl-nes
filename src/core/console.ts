@@ -3,7 +3,7 @@
  */
 
 import type { Cpu } from "./cpu/index.ts";
-import { createCpu, serializeCpu, deserializeCpu } from "./cpu/index.ts";
+import { createCpu, serializeCpu } from "./cpu/index.ts";
 import { CpuFlags } from "./cpu/flags.ts";
 import { cpuStep } from "./cpu/step.ts";
 import { Apu } from "./apu.ts";
@@ -117,16 +117,7 @@ export class NesConsole {
     if (state.mapper.id !== this.mapper.mapperId()) {
       throw new Error(`Mapper 不一致: 期待=${this.mapper.mapperId()}, 実際=${state.mapper.id}`);
     }
-    const restored = deserializeCpu(state.cpu);
-    this.cpu.a = restored.a;
-    this.cpu.x = restored.x;
-    this.cpu.y = restored.y;
-    this.cpu.sp = restored.sp;
-    this.cpu.pc = restored.pc;
-    this.cpu.p = restored.p;
-    this.cpu.cycles = restored.cycles;
-    this.cpu.nmiPending = restored.nmiPending;
-    this.cpu.irqPending = restored.irqPending;
+    Object.assign(this.cpu, state.cpu);
     this.ppu.deserialize(state.ppu);
     this.apu.deserialize(state.apu);
     this.bus.deserialize(state.bus);

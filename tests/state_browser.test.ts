@@ -28,6 +28,7 @@ function makeMinimalState(overrides?: Partial<NesState>): NesState {
     version: STATE_VERSION,
     cpu: { a: 0x42, x: 0x10, y: 0x20, sp: 0xfd, pc: 0x8000, p: 0x24, cycles: 1234, nmiPending: false, irqPending: false },
     ppu: {
+      mirroring: "vertical",
       ctrl: 0, mask: 0, status: 0, oamAddr: 0, ioLatch: 0,
       v: 0, t: 0, x: 0, w: false, readBuffer: 0,
       dot: 0, scanline: 0, frameComplete: false,

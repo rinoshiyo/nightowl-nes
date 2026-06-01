@@ -342,10 +342,12 @@ function updateStateButtons(): void {
 function doSaveState(slot: number): void {
   if (!nes || !currentRomHash) return;
   const state = nes.saveState();
-  saveState(currentRomHash, slot, state);
+  const ok = saveState(currentRomHash, slot, state);
   updateStateButtons();
-  stateStatus.textContent = `💾 スロット ${slot} にセーブしました`;
-  setTimeout(() => { stateStatus.textContent = ""; }, 2000);
+  stateStatus.textContent = ok
+    ? `💾 スロット ${slot} にセーブしました`
+    : `⚠ スロット ${slot} のセーブに失敗しました (容量不足)`;
+  setTimeout(() => { stateStatus.textContent = ""; }, 3000);
 }
 
 function doLoadState(slot: number): void {

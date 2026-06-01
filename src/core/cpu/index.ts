@@ -60,16 +60,3 @@ export function serializeCpu(cpu: Cpu): CpuState {
   };
 }
 
-export function deserializeCpu(state: CpuState): Cpu {
-  return {
-    a: state.a,
-    x: state.x,
-    y: state.y,
-    sp: state.sp,
-    pc: state.pc,
-    p: state.p,
-    cycles: state.cycles,
-    nmiPending: state.nmiPending,
-    irqPending: state.irqPending,
-  };
-}
