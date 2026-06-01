@@ -45,6 +45,24 @@
       font-size: 0.8rem;
       color: #6272a4;
     }
+    #save-info {
+      margin-top: 0.3rem;
+      font-size: 0.75rem;
+      color: #50fa7b;
+    }
+    #save-info:empty { display: none; }
+    #delete-save {
+      margin-left: 0.5rem;
+      padding: 0.1rem 0.4rem;
+      font-size: 0.7rem;
+      background: #ff5555;
+      color: #f8f8f2;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      display: none;
+    }
+    #delete-save:hover { background: #ff6e6e; }
   </style>
 </head>
 <body>
@@ -55,6 +73,7 @@
     <input type="file" id="rom-input" accept=".nes">
   </div>
   <div id="status">ROM を読み込んでください</div>
+  <div id="save-info"><button id="delete-save">セーブ削除</button></div>
   <script type="module" src="./main.ts"></script>
 </body>
 </html>

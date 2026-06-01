@@ -22,6 +22,7 @@ export class MapperMmc1 implements Mapper {
   irqPending = false;
 
   private readonly prgRom: Uint8Array;
+  private readonly prgRam = new Uint8Array(0x2000); // 8KB PRG RAM
   private readonly chrData: Uint8Array;
   private readonly useChrRam: boolean;
 
@@ -149,8 +150,22 @@ export class MapperMmc1 implements Mapper {
     this.chrData[addr & 0x1fff] = value;
   }
 
-  readPrgRam(_addr: number): number { return 0; }
-  writePrgRam(_addr: number, _value: number): void {}
+  readPrgRam(addr: number): number {
+    return this.prgRam[addr & 0x1fff] ?? 0;
+  }
+
+  writePrgRam(addr: number, value: number): void {
+    this.prgRam[addr & 0x1fff] = value;
+  }
+
+  getPrgRam(): Uint8Array | null {
+    return this.prgRam;
+  }
+
+  setPrgRam(data: Uint8Array): void {
+    this.prgRam.set(data.subarray(0, this.prgRam.length));
+  }
+
   reset(): void {}
   clockIrqCounter(): void {}
 

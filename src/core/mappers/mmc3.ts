@@ -129,6 +129,14 @@ export class MapperMmc3 implements Mapper {
     this.prgRam[addr & 0x1fff] = value;
   }
 
+  getPrgRam(): Uint8Array | null {
+    return this.prgRam;
+  }
+
+  setPrgRam(data: Uint8Array): void {
+    this.prgRam.set(data.subarray(0, this.prgRam.length));
+  }
+
   readChr(addr: number): number {
     if (this.useChrRam) {
       return this.chrData[addr & 0x1fff] ?? 0;
