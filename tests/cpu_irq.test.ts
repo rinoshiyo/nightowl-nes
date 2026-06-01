@@ -297,6 +297,14 @@ describe("NesConsole IRQ 接続", () => {
     expect(nes.apu.frameIrqFlag).toBe(false);
   });
 
+  it("reset() で APU の dmc.irqFlag が false にクリアされる", () => {
+    const cart = makeTestCart();
+    const nes = new NesConsole(cart);
+    nes.apu.dmc.irqFlag = true;
+    nes.reset();
+    expect(nes.apu.dmc.irqFlag).toBe(false);
+  });
+
   it("$4015 読み出しでフレーム IRQ フラグがクリアされ step() 末尾の再評価で irqPending も落ちる", () => {
     const prgRom = new Uint8Array(0x8000);
     prgRom[0x7ffc] = 0x00;

@@ -55,6 +55,7 @@ export class NesConsole {
     this.cpu.irqPending = false;
     this.bus.dmaCycles = 0;
     this.apu.frameIrqFlag = false;
+    this.apu.dmc.irqFlag = false;
     this.ppu.reset();
   }
 
