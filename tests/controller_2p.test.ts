@@ -124,6 +124,31 @@ describe("2P コントローラ — NesBus 統合", () => {
   });
 });
 
+describe("$4017 read/write の分離 (read=2P コントローラ, write=APU)", () => {
+  it("$4017 write は APU フレームカウンタに届き、2P コントローラには影響しない", () => {
+    const { bus, ctrl2 } = makeBus();
+    ctrl2.press(Button.A);
+    ctrl2.press(Button.B);
+
+    // $4017 write = APU フレームカウンタ設定 (bit7: IRQ inhibit)
+    bus.write(0x4017, 0xc0);
+
+    // 2P コントローラのボタン状態は変わっていないことを確認
+    const bits = latchAndRead(bus, 0x4017);
+    expect(bits).toEqual([1, 1, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it("$4017 write の後でも $4017 read は正常に 2P のシフトレジスタを返す", () => {
+    const { bus, ctrl2 } = makeBus();
+    ctrl2.setButtons(0b10101010);
+
+    bus.write(0x4017, 0x40);
+
+    const bits = latchAndRead(bus, 0x4017);
+    expect(bits).toEqual([0, 1, 0, 1, 0, 1, 0, 1]);
+  });
+});
+
 describe("2P コントローラ — NesConsole 統合", () => {
   it("NesConsole.controller2 が存在し NesBus 経由で動作する", async () => {
     const { NesConsole } = await import("../src/core/console.ts");
