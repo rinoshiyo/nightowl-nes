@@ -371,6 +371,100 @@ describe("PPU スプライト描画", () => {
 
       expect(ppu.status & 0x20).toBe(0);
     });
+
+    it("8×16 モードで 16px 高さが overflow 判定に使われる", () => {
+      ppu.ctrl = 0x20;
+      for (let i = 0; i < 9; i++) {
+        setSprite(ppu, i, 0, 0x00, 0, i * 10);
+      }
+      writeTile(ppu, 0, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+      writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      // スキャンライン 9 (Y=0 → row=8) は 8×8 なら範囲外、8×16 なら範囲内
+      tickTo(ppu, 10, 0);
+      expect(ppu.status & 0x20).toBe(0x20);
+    });
+  });
+
+  describe("8×16 スプライト描画", () => {
+    it("PPUCTRL bit5=1 で 8×16 モードになり上下タイルが描画される", () => {
+      ppu.ctrl = 0x20;
+      // タイルインデックス 0x02: bit0=0 → パターンテーブル 0x0000, baseTile=0x02
+      // 上タイル=0x02, 下タイル=0x03
+      setSprite(ppu, 0, 0, 0x02, 0, 0);
+      ppu.palette[0x11] = 0x30;
+      // 上タイル (0x02): 全ピクセル lo=1
+      writeTile(ppu, 0x02, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+      // 下タイル (0x03): 全ピクセル lo=1
+      writeTile(ppu, 0x03, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      // スキャンライン 1 (Y=0 → row=0: 上タイル)
+      tickTo(ppu, 2, 0);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
+
+      // スキャンライン 9 (Y=0 → row=8: 下タイル) — 8×8 なら範囲外
+      tickTo(ppu, 10, 0);
+      expect(ppu.framebuffer[SCREEN_W * 9]).toBe(0x30);
+    });
+
+    it("8×16 でタイルインデックス bit0=1 ならパターンテーブル 0x1000 から取得", () => {
+      ppu.ctrl = 0x20;
+      // タイルインデックス 0x01: bit0=1 → パターンテーブル 0x1000, baseTile=0x00
+      // 上タイル=0x00, 下タイル=0x01
+      setSprite(ppu, 0, 0, 0x01, 0, 0);
+      ppu.palette[0x11] = 0x30;
+      writeTile(ppu, 0x00, 0x1000, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+      writeTile(ppu, 0x01, 0x1000, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      tickTo(ppu, 2, 0);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
+    });
+
+    it("8×16 では PPUCTRL bit3 が無視される", () => {
+      ppu.ctrl = 0x20 | 0x08;
+      // タイルインデックス 0x02: bit0=0 → パターンテーブル 0x0000 (bit3 の 0x1000 は無視)
+      setSprite(ppu, 0, 0, 0x02, 0, 0);
+      ppu.palette[0x11] = 0x30;
+      // 0x0000 に書く
+      writeTile(ppu, 0x02, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+      writeTile(ppu, 0x03, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      tickTo(ppu, 2, 0);
+      expect(ppu.framebuffer[ROW1]).toBe(0x30);
+    });
+
+    it("8×16 垂直フリップで上下タイルが入れ替わる", () => {
+      ppu.ctrl = 0x20;
+      // タイルインデックス 0x02: 上タイル=0x02, 下タイル=0x03
+      setSprite(ppu, 0, 0, 0x02, 0x80, 0); // attr bit7 = V flip
+      ppu.palette[0x11] = 0x30;
+      ppu.palette[0x12] = 0x25;
+      // 上タイル (0x02): colorIdx=1
+      writeTile(ppu, 0x02, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+      // 下タイル (0x03): colorIdx=2
+      writeTile(ppu, 0x03, 0, new Uint8Array(8), new Uint8Array(8).fill(0xff));
+
+      // V flip: row=0 → fineY=15 → tileOffset=1 → 下タイル (0x03) が表示される
+      tickTo(ppu, 2, 0);
+      expect(ppu.framebuffer[ROW1]).toBe(0x25);
+
+      // V flip: row=8 → fineY=7 → tileOffset=0 → 上タイル (0x02) が表示される
+      tickTo(ppu, 10, 0);
+      expect(ppu.framebuffer[SCREEN_W * 9]).toBe(0x30);
+    });
+
+    it("8×16 モードで水平フリップが正しく動作する", () => {
+      ppu.ctrl = 0x20;
+      setSprite(ppu, 0, 0, 0x02, 0x40, 0); // attr bit6 = H flip
+      ppu.palette[0x11] = 0x30;
+      writeTile(ppu, 0x02, 0, new Uint8Array([0x80, 0, 0, 0, 0, 0, 0, 0]), new Uint8Array(8));
+      writeTile(ppu, 0x03, 0, new Uint8Array(8), new Uint8Array(8));
+
+      tickTo(ppu, 2, 0);
+      // H flip: bit7 (左端) → x=7 に表示
+      expect(ppu.framebuffer[ROW1]).toBe(0x0f);
+      expect(ppu.framebuffer[ROW1 + 7]).toBe(0x30);
+    });
   });
 
   describe("PPUMASK 制御", () => {
