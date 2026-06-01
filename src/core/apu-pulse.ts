@@ -11,7 +11,7 @@ import { SweepUnit } from "./apu-sweep.ts";
 import type { PulseState } from "./state.ts";
 
 /** デューティサイクルテーブル (4パターン × 8ステップ) */
-const DUTY_TABLE: readonly (readonly number[])[] = [
+export const DUTY_TABLE: readonly (readonly number[])[] = [
   [0, 0, 0, 0, 0, 0, 0, 1], // 12.5%
   [0, 0, 0, 0, 0, 0, 1, 1], // 25%
   [0, 0, 0, 0, 1, 1, 1, 1], // 50%
