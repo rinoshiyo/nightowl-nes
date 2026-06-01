@@ -162,6 +162,31 @@ describe("パレットミラーリング", () => {
   });
 });
 
+describe("$2002 PPUSTATUS read 副作用", () => {
+  it("vblank フラグが read 後にクリアされる", () => {
+    const ppu = new Ppu();
+    ppu.status = 0x80;
+    ppu.read(2);
+    expect(ppu.status & 0x80).toBe(0);
+  });
+
+  it("write toggle (w) が read 後にリセットされる", () => {
+    const ppu = new Ppu();
+    ppu.write(5, 0x10); // 1st write → w = true
+    expect(ppu.w).toBe(true);
+    ppu.read(2); // w をリセット
+    expect(ppu.w).toBe(false);
+  });
+
+  it("sprite 0 hit と sprite overflow は read でクリアされない", () => {
+    const ppu = new Ppu();
+    ppu.status = 0x60; // bit 6 (sprite 0 hit) + bit 5 (sprite overflow)
+    ppu.read(2);
+    // bit 6, 5 は保持される (vblank bit 7 のみクリア)
+    expect(ppu.status & 0x60).toBe(0x60);
+  });
+});
+
 describe("$2007 read バッファ", () => {
   it("CHR 領域は 1 read 遅延 (バッファ経由)", () => {
     const ppu = new Ppu();
@@ -250,5 +275,51 @@ describe("$2007 read バッファ", () => {
     ppu.write(6, 0x00);
     ppu.read(7);
     expect(ppu.v).toBe(0x2020);
+  });
+
+  it("$2007 write で VRAM アドレスが +1 インクリメントされる", () => {
+    const ppu = new Ppu();
+    ppu.write(0, 0x00);
+    ppu.write(6, 0x20);
+    ppu.write(6, 0x00);
+    ppu.write(7, 0x55);
+    expect(ppu.v).toBe(0x2001);
+    expect(ppu.vram[0]).toBe(0x55);
+  });
+
+  it("$2007 write で VRAM アドレスが +32 インクリメントされる", () => {
+    const ppu = new Ppu();
+    ppu.write(0, 0x04);
+    ppu.write(6, 0x20);
+    ppu.write(6, 0x00);
+    ppu.write(7, 0x77);
+    expect(ppu.v).toBe(0x2020);
+  });
+});
+
+describe("$2004 OAMDATA", () => {
+  it("read は oamAddr の OAM データを返す", () => {
+    const ppu = new Ppu();
+    ppu.oam[0x10] = 0xab;
+    ppu.write(3, 0x10);
+    expect(ppu.read(4)).toBe(0xab);
+  });
+
+  it("write で OAM に書き込み、oamAddr が +1 される", () => {
+    const ppu = new Ppu();
+    ppu.write(3, 0x00);
+    ppu.write(4, 0x11);
+    ppu.write(4, 0x22);
+    expect(ppu.oam[0x00]).toBe(0x11);
+    expect(ppu.oam[0x01]).toBe(0x22);
+    expect(ppu.oamAddr).toBe(0x02);
+  });
+
+  it("oamAddr は $FF で wrap around して $00 になる", () => {
+    const ppu = new Ppu();
+    ppu.write(3, 0xff);
+    ppu.write(4, 0xee);
+    expect(ppu.oam[0xff]).toBe(0xee);
+    expect(ppu.oamAddr).toBe(0x00);
   });
 });
