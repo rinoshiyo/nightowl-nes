@@ -16,6 +16,7 @@ const PRG_BANK_SIZE = 0x4000;
 const CHR_RAM_SIZE = 0x2000;
 
 export class MapperUxrom implements Mapper {
+  onMirroringChange: ((m: import("../cart.ts").Mirroring) => void) | null = null;
   irqPending = false;
 
   private readonly prgRom: Uint8Array;
@@ -52,5 +53,6 @@ export class MapperUxrom implements Mapper {
 
   readPrgRam(_addr: number): number { return 0; }
   writePrgRam(_addr: number, _value: number): void {}
+  reset(): void {}
   clockIrqCounter(): void {}
 }

@@ -418,6 +418,26 @@ describe("MapperMmc3", () => {
       expect(mapper.readPrg(0xa000)).toBe((8 * 0x2000) & 0xff);
     });
 
+    it("R6/R7 は 6-bit マスクされる", () => {
+      const mapper = new MapperMmc3(makeCart()); // 16 banks
+      mapper.writePrg(0x8000, 6);
+      mapper.writePrg(0x8001, 0xff); // 0xFF → 0x3F → 0x3F % 16 = 15 ではなく 63 % 16 = 15
+
+      // 0x3F = 63, 63 % 16 = 15 (last bank for 128KB)
+      const val = mapper.readPrg(0x8000);
+      expect(val).toBe((15 * 0x2000) & 0xff);
+    });
+
+    it("R0-R5 は 8-bit のまま格納される", () => {
+      const mapper = new MapperMmc3(makeCart());
+      mapper.writePrg(0x8000, 2); // R2 選択
+      mapper.writePrg(0x8001, 0x80); // R2 = 128 (8-bit)
+
+      const val = mapper.readChr(0x1000); // R2 → $1000
+      // 128 % 128 (chrBankCount) = 0
+      expect(val).toBe((0 * 0x400 + 0x80) & 0xff);
+    });
+
     it("$A001 (PRG RAM protect) への書き込みはクラッシュしない", () => {
       const mapper = new MapperMmc3(makeCart());
       expect(() => mapper.writePrg(0xa001, 0x80)).not.toThrow();
@@ -472,6 +492,22 @@ describe("MapperMmc3", () => {
 
       mapper.writePrg(0xe000, 0); // disable (偶数)
       expect(mapper.irqPending).toBe(false);
+    });
+
+    it("reset() で全レジスタが初期化される", () => {
+      const mapper = new MapperMmc3(makeCart());
+      // 状態を変更
+      mapper.writePrg(0x8000, 0xc6); // prgMode=1, chrInversion=1, bankSelect=6
+      mapper.writePrg(0x8001, 10);
+      mapper.writePrg(0xe001, 0); // IRQ enable
+      mapper.writePrg(0xc000, 42); // latch = 42
+
+      mapper.reset();
+
+      // 全て初期値に戻る
+      expect(mapper.irqPending).toBe(false);
+      // R6=0 → PRG $8000 はバンク 0 (prgMode=0)
+      expect(mapper.readPrg(0x8000)).toBe(0);
     });
 
     it("PRG $9FFF/$BFFF/$DFFF/$FFFF の各ウィンドウ末尾が正しく読める", () => {

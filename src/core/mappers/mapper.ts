@@ -26,6 +26,10 @@ export interface Mapper {
   readPrgRam(addr: number): number;
   /** CPU アドレス空間 $6000-$7FFF への書き込み (PRG RAM) */
   writePrgRam(addr: number, value: number): void;
+  /** ミラーリング変更通知コールバック (動的 mirroring を持つ mapper 用) */
+  onMirroringChange: ((m: import("../cart.ts").Mirroring) => void) | null;
+  /** mapper 内部状態をリセット */
+  reset(): void;
   /** IRQ 保留フラグ (MMC3 等の scanline カウンタ用。未使用 mapper は常に false) */
   irqPending: boolean;
   /** scanline ごとの IRQ カウンタ clocking (PPU が呼び出す)。未使用 mapper は空実装 */

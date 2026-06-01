@@ -13,6 +13,7 @@ import type { Mapper } from "./mapper.ts";
 const CHR_BANK_SIZE = 0x2000;
 
 export class MapperCnrom implements Mapper {
+  onMirroringChange: ((m: import("../cart.ts").Mirroring) => void) | null = null;
   irqPending = false;
 
   private readonly prgRom: Uint8Array;
@@ -47,5 +48,6 @@ export class MapperCnrom implements Mapper {
 
   readPrgRam(_addr: number): number { return 0; }
   writePrgRam(_addr: number, _value: number): void {}
+  reset(): void {}
   clockIrqCounter(): void {}
 }

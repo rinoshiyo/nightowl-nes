@@ -17,6 +17,7 @@ const CHR_BANK_SIZE = 0x1000; // 4KB
 const CHR_RAM_SIZE = 0x2000;  // 8KB
 
 export class MapperMmc1 implements Mapper {
+  onMirroringChange: ((m: import("../cart.ts").Mirroring) => void) | null = null;
   irqPending = false;
 
   private readonly prgRom: Uint8Array;
@@ -149,6 +150,7 @@ export class MapperMmc1 implements Mapper {
 
   readPrgRam(_addr: number): number { return 0; }
   writePrgRam(_addr: number, _value: number): void {}
+  reset(): void {}
   clockIrqCounter(): void {}
 
   /** 内部レジスタへの書き込み (アドレスの bit 13-14 でレジスタ選択) */

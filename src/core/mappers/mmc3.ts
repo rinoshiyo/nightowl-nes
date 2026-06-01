@@ -60,7 +60,7 @@ export class MapperMmc3 implements Mapper {
 
   constructor(cart: Cart) {
     this.prgRom = cart.prgRom;
-    this.prgBankCount = Math.max(1, cart.prgRom.length / PRG_BANK_SIZE);
+    this.prgBankCount = Math.max(2, cart.prgRom.length / PRG_BANK_SIZE);
 
     if (cart.header.chrRomSize === 0) {
       this.chrData = new Uint8Array(CHR_RAM_SIZE);
@@ -90,8 +90,9 @@ export class MapperMmc3 implements Mapper {
         this.prgBankMode = (value >> 6) & 1;
         this.chrInversion = (value >> 7) & 1;
       } else {
-        // $8001: Bank Data
-        this.registers[this.bankSelect] = value;
+        // $8001: Bank Data — R6/R7 は 6-bit (実機は PRG アドレス線が 6 本)
+        const sel = this.bankSelect;
+        this.registers[sel] = (sel === 6 || sel === 7) ? value & 0x3f : value;
       }
     } else if (addr < 0xc000) {
       if (isOdd === 0) {
@@ -140,6 +141,18 @@ export class MapperMmc3 implements Mapper {
   writeChr(addr: number, value: number): void {
     if (!this.useChrRam) return;
     this.chrData[addr & 0x1fff] = value;
+  }
+
+  reset(): void {
+    this.bankSelect = 0;
+    this.prgBankMode = 0;
+    this.chrInversion = 0;
+    this.registers.fill(0);
+    this.irqCounter = 0;
+    this.irqLatch = 0;
+    this.irqReload = false;
+    this.irqEnabled = false;
+    this.irqPending = false;
   }
 
   clockIrqCounter(): void {
