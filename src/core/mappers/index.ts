@@ -12,3 +12,5 @@ export { MapperCodemasters } from "./codemasters.ts";
 export { MapperMmc2 } from "./mmc2.ts";
 export { MapperMmc4 } from "./mmc4.ts";
 export { MapperDxrom } from "./dxrom.ts";
+export { MapperBandaiFcg } from "./bandai-fcg.ts";
+export { MapperJalecoSs8806 } from "./jaleco-ss8806.ts";

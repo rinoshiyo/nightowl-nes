@@ -87,7 +87,13 @@ export class NesConsole {
     for (let i = 0; i < totalCycles; i++) {
       apu.tick();
     }
-    this.cpu.irqPending = apu.frameIrqFlag || apu.dmc.irqFlag || this.mapper.irqPending;
+    const mapper = this.mapper;
+    if (mapper.cpuCycleTick) {
+      for (let i = 0; i < totalCycles; i++) {
+        mapper.cpuCycleTick();
+      }
+    }
+    this.cpu.irqPending = apu.frameIrqFlag || apu.dmc.irqFlag || mapper.irqPending;
     return totalCycles;
   }
 
