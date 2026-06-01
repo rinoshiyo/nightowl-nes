@@ -53,7 +53,7 @@ seed の手順:
 1. 次の実装テーマを決定（nestest 全行完走済みの場合は機能拡張: mapper/IRQ/UI 等）
 2. `nights/template/NNN-template.md` に沿って `nights/pending/NNN-<topic>.md` を設計
 3. 粒度の手本に直近 done の md を参照
-4. seed を commit & push（`chore(nights): seed NNN`）
+4. seed を commit し main に push（`PUSH_MAIN_OK=1 git push origin main`。hook bypass が必要）
 5. Issue 作成 + ブランチ作成 & checkout
 
 ### bootstrap — pending も done も空（真の初回）
@@ -67,6 +67,8 @@ judgment が重いため機械化しない。停止して指示を仰ぐこと�
 ```bash
 # 1. フラグ書込 (finish-night.sh と同じ形式・同じ経路)
 PANE="${TMUX_PANE#%}"
+[ -z "$PANE" ] && { echo "ERROR: TMUX_PANE が空。flag 書込不可"; exit 1; }
+mkdir -p .claude/state
 LOOP_TURNS="${LOOP_TURNS:-80}"
 GOAL_TEXT="次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、完了後次フラグ書込まで行え、or stop after ${LOOP_TURNS} turns"
 printf '/goal %s' "$GOAL_TEXT" > ".claude/state/loop-next.${PANE}.txt"

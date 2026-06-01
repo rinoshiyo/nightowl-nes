@@ -10,7 +10,7 @@
 
 - **1 夜 = 1 つの夜 md = 1 Issue = 1 本の PR = 1 つの /clear リセット境界** (所要目安 3-5 時間、 DoD 20-40 項目)
 - **各夜は有限の /goal** (`or stop after N turns`、 N=80 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
-- 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達。 pending 枯渇では停止しない — `finish-night.sh` は常に `/goal` を書き、 fresh session が起動時の作法 (step 2) で pending 空を検知し seed する
+- 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達。 pending 枯渇では停止しない — `finish-night.sh` は常に `/goal` を書き、 fresh session の setup フェーズ (loop-start skill) で pending 空を検知し seed する
 - 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
 - **連鎖の起動**: `loop-start` skill がセットアップ (issue/branch) → flag 書込 → /clear 発火し、fresh session が /goal active で立ち上がる。以降は各夜末の flag 書込で /clear 連鎖が自走する。**手動/自動連鎖とも同一経路 (flag → Stop hook → loop-helper → /clear → /goal 注入)**
 - **アンチパターン**: 「pending 全消化を 1 つの /goal で」 は使わない (夜ごとに /clear リセットするため)。 旧「1 セッションで N 夜をターン上限まで /goal 連鎖」 は context 肥大化で廃止済み

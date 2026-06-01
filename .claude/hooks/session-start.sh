@@ -18,7 +18,7 @@ if [ "$SOURCE" = "compact" ] && [ -n "$CWD" ]; then
     }'
   else
     NEXT_NIGHT=$(ls "$CWD/nights/pending/" 2>/dev/null | sort -V | head -1)
-    FALLBACK="コンパクト後: open PR/Issue なし。起動時の作法 step 0 から再開。"
+    FALLBACK="コンパクト後: open PR/Issue なし。/goal が active なら実装フェーズ step 6 から再開。active でなければ loop-start skill を呼んで setup から。"
     [ -n "$NEXT_NIGHT" ] && FALLBACK="$FALLBACK 次の夜 md: nights/pending/$NEXT_NIGHT"
     jq -n --arg content "$FALLBACK" '{
       hookSpecificOutput: {
