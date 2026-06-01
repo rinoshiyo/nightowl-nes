@@ -11,8 +11,7 @@
  * 仕様参照: https://www.nesdev.org/wiki/AxROM
  */
 
-import type { Cart } from "../cart.ts";
-import type { Mirroring } from "../cart.ts";
+import type { Cart, Mirroring } from "../cart.ts";
 import type { Mapper } from "./mapper.ts";
 
 const PRG_BANK_SIZE = 0x8000;
