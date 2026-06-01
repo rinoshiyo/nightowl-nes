@@ -30,7 +30,7 @@ if [ -z "$CONTEXT" ]; then
   jq -n '{
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: "Resumed after /clear. No open PR/Issue found — start from 起動時の作法 step 0."
+      additionalContext: "Resumed after /clear. No open PR/Issue found — 起動時の作法 (CORE.md) に従い pending 確認から開始。"
     }
   }'
   exit 0
