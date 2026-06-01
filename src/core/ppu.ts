@@ -434,8 +434,8 @@ export class Ppu {
 
     const ntY = (Ppu.ntSelect(this.v) >> 1) & 1;
     const ntSelect = (ntY << 1) | (this.slInitNtX ^ ntXFlip);
-    const coarseY = (this.v >> 5) & 0x1f;
-    const fineY = (this.v >> 12) & 0x07;
+    const coarseY = Ppu.coarseY(this.v);
+    const fineY = Ppu.fineY(this.v);
 
     const fetchKey = (ntSelect << 15) | (coarseY << 10) | (tileCol << 5) | fineY;
     if (fetchKey !== this.bgFetchedCol) {

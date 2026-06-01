@@ -20,6 +20,8 @@ const DPAD_BUTTONS: readonly { btn: Button; key: keyof DpadState; }[] = [
   { btn: Button.Right, key: "right" },
 ];
 
+const TOUCH_OPTS: AddEventListenerOptions = { passive: false };
+
 export class TouchControls {
   private readonly container: HTMLDivElement;
   private readonly controller: Controller;
@@ -34,8 +36,8 @@ export class TouchControls {
     this.container.innerHTML = this.buildHtml();
 
     this.setupDpad();
-    this.setupActionButtons();
-    this.setupMenuButtons();
+    this.setupButtons(".action-btn", { a: Button.A, b: Button.B });
+    this.setupButtons(".menu-btn", { start: Button.Start, select: Button.Select });
   }
 
   get element(): HTMLDivElement {
@@ -85,9 +87,9 @@ export class TouchControls {
         this.syncDpad();
       };
 
-      btn.addEventListener("touchstart", press);
-      btn.addEventListener("touchend", release);
-      btn.addEventListener("touchcancel", release);
+      btn.addEventListener("touchstart", press, TOUCH_OPTS);
+      btn.addEventListener("touchend", release, TOUCH_OPTS);
+      btn.addEventListener("touchcancel", release, TOUCH_OPTS);
     }
   }
 
@@ -101,59 +103,27 @@ export class TouchControls {
     }
   }
 
-  private setupActionButtons(): void {
-    const btnMap: Record<string, Button> = {
-      a: Button.A,
-      b: Button.B,
-    };
-    const actionBtns = this.container.querySelectorAll<HTMLButtonElement>(".action-btn");
-    for (const btn of actionBtns) {
+  private setupButtons(selector: string, btnMap: Record<string, Button>): void {
+    const buttons = this.container.querySelectorAll<HTMLButtonElement>(selector);
+    const ctrl = this.controller;
+    for (const btn of buttons) {
       const key = btn.dataset["btn"];
       if (!key) continue;
       const nesBtn = btnMap[key];
       if (nesBtn === undefined) continue;
 
-      const ctrl = this.controller;
       btn.addEventListener("touchstart", (e) => {
         e.preventDefault();
         ctrl.press(nesBtn);
-      });
+      }, TOUCH_OPTS);
       btn.addEventListener("touchend", (e) => {
         e.preventDefault();
         ctrl.release(nesBtn);
-      });
+      }, TOUCH_OPTS);
       btn.addEventListener("touchcancel", (e) => {
         e.preventDefault();
         ctrl.release(nesBtn);
-      });
-    }
-  }
-
-  private setupMenuButtons(): void {
-    const btnMap: Record<string, Button> = {
-      start: Button.Start,
-      select: Button.Select,
-    };
-    const menuBtns = this.container.querySelectorAll<HTMLButtonElement>(".menu-btn");
-    for (const btn of menuBtns) {
-      const key = btn.dataset["btn"];
-      if (!key) continue;
-      const nesBtn = btnMap[key];
-      if (nesBtn === undefined) continue;
-
-      const ctrl = this.controller;
-      btn.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        ctrl.press(nesBtn);
-      });
-      btn.addEventListener("touchend", (e) => {
-        e.preventDefault();
-        ctrl.release(nesBtn);
-      });
-      btn.addEventListener("touchcancel", (e) => {
-        e.preventDefault();
-        ctrl.release(nesBtn);
-      });
+      }, TOUCH_OPTS);
     }
   }
 }

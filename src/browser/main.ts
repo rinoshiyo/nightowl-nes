@@ -62,7 +62,6 @@ let lastSaveTime = 0;
 // --- FPS カウンタ ---
 let fpsFrameCount = 0;
 let fpsLastTime = 0;
-let fpsDisplay = 0;
 const fpsCounter = getEl<HTMLDivElement>("fps-counter");
 
 function updateSaveUi(): void {
@@ -287,7 +286,7 @@ function gameLoop(timestamp: number): void {
   const elapsed = timestamp - lastFrameTime;
   if (elapsed >= FRAME_MS) {
     const framesToRun = Math.min(Math.floor(elapsed / FRAME_MS), MAX_FRAME_SKIP + 1);
-    lastFrameTime += framesToRun * FRAME_MS;
+    lastFrameTime = timestamp - (elapsed % FRAME_MS);
 
     try {
       for (let i = 0; i < framesToRun; i++) {
@@ -301,14 +300,13 @@ function gameLoop(timestamp: number): void {
       return;
     }
 
-    fpsFrameCount++;
+    fpsFrameCount += framesToRun;
   }
 
   // FPS カウンタ更新 (1 秒間隔)
   const fpsDelta = timestamp - fpsLastTime;
   if (fpsDelta >= 1000) {
-    fpsDisplay = Math.round(fpsFrameCount * 1000 / fpsDelta);
-    fpsCounter.textContent = `${fpsDisplay} FPS`;
+    fpsCounter.textContent = `${Math.round(fpsFrameCount * 1000 / fpsDelta)} FPS`;
     fpsFrameCount = 0;
     fpsLastTime = timestamp;
   }
@@ -335,8 +333,8 @@ function isNarrowScreen(): boolean {
 }
 
 function applyScale(scale: ScreenScale): void {
-  currentScale = scale;
   if (isNarrowScreen()) return;
+  currentScale = scale;
   const w = SCREEN_W * scale;
   canvas.style.width = `${w}px`;
   canvas.style.height = `${VISIBLE_LINES * scale}px`;
