@@ -580,6 +580,10 @@ export class Ppu {
       return this.chrRam[addr & 0x1fff]!;
     }
     if (addr < 0x3f00) {
+      if (this.mapper?.readNametable) {
+        const custom = this.mapper.readNametable(addr);
+        if (custom !== undefined) return custom;
+      }
       return this.vram[this.mirrorNametable(addr)]!;
     }
     return this.palette[Ppu.mirrorPalette(addr)]!;
@@ -598,7 +602,12 @@ export class Ppu {
     this.incrementVramAddr();
 
     if (addr >= 0x3f00) {
-      this.readBuffer = this.vram[this.mirrorNametable(addr)]!;
+      if (this.mapper?.readNametable) {
+        const custom = this.mapper.readNametable(addr);
+        this.readBuffer = custom !== undefined ? custom : this.vram[this.mirrorNametable(addr)]!;
+      } else {
+        this.readBuffer = this.vram[this.mirrorNametable(addr)]!;
+      }
       const palVal = this.palette[Ppu.mirrorPalette(addr)]!;
       return (palVal & 0x3f) | (this.ioLatch & 0xc0);
     }
@@ -615,6 +624,13 @@ export class Ppu {
     }
 
     const buffered = this.readBuffer;
+    if (this.mapper?.readNametable) {
+      const custom = this.mapper.readNametable(addr);
+      if (custom !== undefined) {
+        this.readBuffer = custom;
+        return buffered;
+      }
+    }
     this.readBuffer = this.vram[this.mirrorNametable(addr)]!;
     return buffered;
   }
@@ -638,6 +654,7 @@ export class Ppu {
         this.chrRam[addr & 0x1fff] = value;
       }
     } else {
+      if (this.mapper?.writeNametable?.(addr, value)) return;
       this.vram[this.mirrorNametable(addr)] = value;
     }
   }

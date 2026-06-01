@@ -65,6 +65,9 @@ export class Apu {
   /** IRQ 発生時に呼ばれるコールバック (NesConsole が CPU の irqPending をセットする) */
   onIrq?: () => void;
 
+  /** 拡張音源出力を取得するコールバック (Mapper が設定する) */
+  expansionAudioCallback?: () => number;
+
   constructor() {
     this.dmc.onIrq = () => this.onIrq?.();
   }
@@ -234,12 +237,14 @@ export class Apu {
       this.sampleRateAccum -= this.sampleRateThreshold;
       const nextWrite = (this.bufferWritePos + 1) & 0xfff;
       if (nextWrite !== this.bufferReadPos) {
+        const expansion = this.expansionAudioCallback?.() ?? 0;
         this.sampleBuffer[this.bufferWritePos] = this.mixer.process(
           this.pulse1.output(),
           this.pulse2.output(),
           this.triangle.output(),
           this.noise.output(),
           this.dmc.output(),
+          expansion,
         );
         this.bufferWritePos = nextWrite;
       }

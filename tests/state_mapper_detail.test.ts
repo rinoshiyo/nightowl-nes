@@ -418,4 +418,45 @@ describe("Mapper ステート詳細テスト", () => {
     expect(restored.mapper.data["irqLatch"]).toBe(0x1234);
     expect(nes.bus.read(0x6000)).toBe(0xcd);
   });
+
+  it("Namco 163: PRG/CHR バンク・内部 RAM・IRQ 状態が復元される", () => {
+    const nes = new NesConsole(makeCartForMapper(19, 256 * 1024, 256 * 1024));
+
+    // PRG バンク切替
+    nes.bus.write(0xe000, 5);  // bank 0 = 5
+    nes.bus.write(0xe800, 10); // bank 1 = 10
+    nes.bus.write(0xf000, 15); // bank 2 = 15
+
+    // 内部 RAM に値を書き込み
+    nes.bus.write(0xf800, 0x80 | 0x00); // addr=0, auto-increment
+    nes.bus.write(0x4800, 0xab);
+    nes.bus.write(0x4800, 0xcd);
+
+    // IRQ カウンタ設定
+    nes.bus.write(0x5000, 0x34);
+    nes.bus.write(0x5800, 0x92);
+
+    // PRG RAM 書き込み
+    nes.bus.write(0x6000, 0xef);
+
+    const state = nes.saveState();
+
+    // 状態を破壊
+    nes.bus.write(0xe000, 0);
+    nes.bus.write(0xf800, 0x00);
+    nes.bus.write(0x4800, 0x00);
+    nes.bus.write(0x6000, 0x00);
+
+    nes.loadState(state);
+
+    const restored = nes.saveState();
+    expect((restored.mapper.data["prgBanks"] as number[])[0]).toBe(5);
+    expect((restored.mapper.data["prgBanks"] as number[])[1]).toBe(10);
+    expect((restored.mapper.data["prgBanks"] as number[])[2]).toBe(15);
+    expect((restored.mapper.data["internalRam"] as number[])[0]).toBe(0xab);
+    expect((restored.mapper.data["internalRam"] as number[])[1]).toBe(0xcd);
+    expect(restored.mapper.data["irqCounter"]).toBe(0x1234);
+    expect(restored.mapper.data["irqEnabled"]).toBe(true);
+    expect(nes.bus.read(0x6000)).toBe(0xef);
+  });
 });

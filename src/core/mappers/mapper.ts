@@ -21,6 +21,7 @@ import { MapperMmc4 } from "./mmc4.ts";
 import { MapperDxrom } from "./dxrom.ts";
 import { MapperBandaiFcg } from "./bandai-fcg.ts";
 import { MapperJalecoSs8806 } from "./jaleco-ss8806.ts";
+import { MapperNamco163 } from "./namco163.ts";
 
 export interface Mapper {
   /** CPU アドレス空間 $8000-$FFFF の読み出し */
@@ -57,6 +58,16 @@ export interface Mapper {
   onChrRead?(addr: number): void;
   /** CPU サイクルごとの IRQ clocking (Bandai FCG / Jaleco SS8806 等、CPU cycle ベース IRQ 用) */
   cpuCycleTick?(): void;
+  /** 拡張音源出力 (Namco 163 等)。正規化された [-1, 1] の値を返す */
+  audioOutput?(): number;
+  /** $4018-$5FFF のレジスタ読み出し (Namco 163 等の拡張レジスタ用) */
+  readRegister?(addr: number): number;
+  /** $4018-$5FFF のレジスタ書き込み (Namco 163 等の拡張レジスタ用) */
+  writeRegister?(addr: number, value: number): void;
+  /** NT 読み出しのカスタム処理。undefined を返すと PPU の通常処理に委譲 */
+  readNametable?(addr: number): number | undefined;
+  /** NT 書き込みのカスタム処理。true を返すと書き込みを mapper が処理済み (PPU は書き込まない) */
+  writeNametable?(addr: number, value: number): boolean;
 }
 
 export function createMapper(cart: Cart): Mapper {
@@ -83,6 +94,8 @@ export function createMapper(cart: Cart): Mapper {
       return new MapperBandaiFcg(cart);
     case 18:
       return new MapperJalecoSs8806(cart);
+    case 19:
+      return new MapperNamco163(cart);
     case 66:
       return new MapperGxrom(cart);
     case 71:

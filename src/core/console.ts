@@ -47,6 +47,9 @@ export class NesConsole {
     this.mapper.onMirroringChange = cart.header.fourScreen
       ? null
       : (m) => { this.ppu.mirroring = m; };
+    if (this.mapper.audioOutput) {
+      this.apu.expansionAudioCallback = () => this.mapper.audioOutput!();
+    }
     this.reset();
   }
 
