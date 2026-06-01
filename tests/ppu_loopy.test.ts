@@ -285,6 +285,62 @@ describe("loopy coarse X/Y increment", () => {
   });
 });
 
+describe("PPUDATA v increment (15 bit wrap)", () => {
+  it("v は 15 bit (0x7FFF) でラップする", () => {
+    const ppu = new Ppu();
+    ppu.write(0, 0x00);
+    ppu.v = 0x7FFF;
+    ppu.write(7, 0x00);
+    expect(ppu.v).toBe(0);
+  });
+
+  it("increment=32 でも 15 bit ラップ", () => {
+    const ppu = new Ppu();
+    ppu.write(0, 0x04);
+    ppu.v = 0x7FE0;
+    ppu.write(7, 0x00);
+    expect(ppu.v).toBe(0);
+  });
+});
+
+describe("loopy scrollX/scrollY 後方互換 getter/setter", () => {
+  it("scrollX setter が t の coarseX と x を設定する", () => {
+    const ppu = new Ppu();
+    ppu.scrollX = 0b10101_011;
+    expect(Ppu.coarseX(ppu.t)).toBe(0b10101);
+    expect(ppu.x).toBe(0b011);
+  });
+
+  it("scrollX getter が t の coarseX と x から値を復元する", () => {
+    const ppu = new Ppu();
+    ppu.t = Ppu.setCoarseX(0, 20);
+    ppu.x = 5;
+    expect(ppu.scrollX).toBe(20 * 8 + 5);
+  });
+
+  it("scrollY setter が t の coarseY と fineY を設定する", () => {
+    const ppu = new Ppu();
+    ppu.scrollY = 0b01010_110;
+    expect(Ppu.coarseY(ppu.t)).toBe(0b01010);
+    expect(Ppu.fineY(ppu.t)).toBe(0b110);
+  });
+
+  it("scrollY getter が t の coarseY と fineY から値を復元する", () => {
+    const ppu = new Ppu();
+    ppu.t = Ppu.setCoarseY(Ppu.setFineY(0, 3), 15);
+    expect(ppu.scrollY).toBe(15 * 8 + 3);
+  });
+
+  it("scrollY=240 で NT Y bit がフリップする", () => {
+    const ppu = new Ppu();
+    ppu.t = 0;
+    ppu.scrollY = 240;
+    expect(Ppu.coarseY(ppu.t)).toBe(0);
+    expect(Ppu.fineY(ppu.t)).toBe(0);
+    expect((Ppu.ntSelect(ppu.t) >> 1) & 1).toBe(1);
+  });
+});
+
 describe("loopy pre-render scanline", () => {
   it("dot 280-304 で vert(v) = vert(t) が発生する", () => {
     const ppu = new Ppu();
