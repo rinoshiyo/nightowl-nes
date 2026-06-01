@@ -117,8 +117,7 @@ describe("PPU ミラーリング", () => {
 
       // single-lower に戻ると元の値が残っている
       ppu.mirroring = "single-lower";
-      const val = writeThenRead(ppu, 0x2000, 0x11, 0x2000);
-      // 書き込みで上書きするので確認方法を変える
+      writeThenRead(ppu, 0x2000, 0x11, 0x2000);
       // lower の VRAM[0] と upper の VRAM[0x400] が独立
       expect(ppu.vram[0]).toBe(0x11);
       expect(ppu.vram[0x400]).toBe(0x22);
