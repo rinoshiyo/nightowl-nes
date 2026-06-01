@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Cart } from "../src/core/cart.ts";
 import { createMapper } from "../src/core/mappers/index.ts";
 import { MapperCnrom } from "../src/core/mappers/cnrom.ts";
+import { MapperMmc1 } from "../src/core/mappers/mmc1.ts";
 import { MapperNrom } from "../src/core/mappers/nrom.ts";
 import { MapperUxrom } from "../src/core/mappers/uxrom.ts";
 
@@ -27,6 +28,11 @@ describe("createMapper", () => {
   it("mapper 0 で MapperNrom を返す", () => {
     const mapper = createMapper(makeCart(0));
     expect(mapper).toBeInstanceOf(MapperNrom);
+  });
+
+  it("mapper 1 で MapperMmc1 を返す", () => {
+    const mapper = createMapper(makeCart(1));
+    expect(mapper).toBeInstanceOf(MapperMmc1);
   });
 
   it("mapper 2 で MapperUxrom を返す", () => {
