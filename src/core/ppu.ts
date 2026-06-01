@@ -571,10 +571,11 @@ export class Ppu {
 
     if (addr >= 0x3f00) {
       const palIdx = Ppu.mirrorPalette(addr);
-      this.palette[palIdx] = value;
+      const masked = value & 0x3f;
+      this.palette[palIdx] = masked;
       // $XX00/$XX04/$XX08/$XX0C の背景色スロットは双方向ミラー
       if ((palIdx & 0x03) === 0) {
-        this.palette[palIdx ^ 0x10] = value;
+        this.palette[palIdx ^ 0x10] = masked;
       }
     } else if (addr < 0x2000) {
       if (this.mapper) {
