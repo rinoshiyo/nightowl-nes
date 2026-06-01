@@ -67,6 +67,7 @@ export class MapperAxrom implements Mapper {
 
   reset(): void {
     this.bankOffset = 0;
+    this.lastMirroring = "single-lower";
     this.onMirroringChange?.("single-lower");
   }
 

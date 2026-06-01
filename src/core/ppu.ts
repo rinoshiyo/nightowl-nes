@@ -666,7 +666,7 @@ export class Ppu {
   }
 
   deserialize(state: PpuState): void {
-    this.mirroring = state.mirroring as import("./cart.ts").Mirroring;
+    this.mirroring = state.mirroring;
     this.ctrl = state.ctrl;
     this.mask = state.mask;
     this.status = state.status;

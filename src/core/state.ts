@@ -20,7 +20,7 @@ export interface CpuState {
 }
 
 export interface PpuState {
-  mirroring: string;
+  mirroring: import("./cart.ts").Mirroring;
   ctrl: number;
   mask: number;
   status: number;

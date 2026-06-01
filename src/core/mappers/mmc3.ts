@@ -158,6 +158,7 @@ export class MapperMmc3 implements Mapper {
     this.bankSelect = 0;
     this.prgBankMode = 0;
     this.chrInversion = 0;
+    this.currentMirroring = "vertical";
     this.registers.fill(0);
     this.irqCounter = 0;
     this.irqLatch = 0;
