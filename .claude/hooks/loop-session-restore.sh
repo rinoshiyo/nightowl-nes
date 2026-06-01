@@ -4,8 +4,9 @@
 # When the loop driver injects /clear at a task boundary, the conversation
 # context is wiped. This hook:
 #   1. Signals "clear completed" to the loop driver (pane-scoped file)
-#   2. Re-injects PR state from GitHub so the fresh session knows where
-#      the previous task left off. PR is the SSOT — no local state file.
+#   2. Re-injects Issue/PR state from GitHub (GitHub Flow) so the fresh
+#      session knows where the previous task left off.
+#      Issue = scope SSOT / PR = delivery SSOT — no local state file.
 set -euo pipefail
 
 input=$(cat)
@@ -29,7 +30,7 @@ if [ -z "$CONTEXT" ]; then
   jq -n '{
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: "Resumed after /clear. No open PR found — start from 起動時の作法 step 0."
+      additionalContext: "Resumed after /clear. No open PR/Issue found — start from 起動時の作法 step 0."
     }
   }'
   exit 0
@@ -38,7 +39,7 @@ fi
 jq -n --arg content "$CONTEXT" '{
   hookSpecificOutput: {
     hookEventName: "SessionStart",
-    additionalContext: ("State restored after /clear (PR is SSOT):\n\n" + $content)
+    additionalContext: ("State restored after /clear (GitHub Flow: Issue=scope / PR=delivery):\n\n" + $content)
   }
 }'
 exit 0

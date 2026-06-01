@@ -32,8 +32,9 @@ auto-compact (~95% で不可避・無効化不可) や手動 `/compact` で会�
 
 1. **アクティブな /goal 条件** (設定中なら全文)
 2. **次にやる夜**: `nights/pending/` の最若番号の夜 md (番号 + topic)
-3. **進行中の PR**: 番号・ブランチ名・code-review レビュー / triage の状態 (中断 PR があれば最優先で再開対象)
-4. **自走連鎖プロトコルの現在地**: どの夜まで done か、次に seed すべき夜番号
-5. **直近の未解決の設計判断・論点**
+3. **アクティブな Issue 番号** (GitHub Issue #NNN — scope SSOT)
+4. **進行中の PR**: 番号・ブランチ名・code-review レビュー / triage の状態 (中断 PR があれば最優先で再開対象)
+5. **自走連鎖プロトコルの現在地**: どの夜まで done か、次に seed すべき夜番号
+6. **直近の未解決の設計判断・論点**
 
-compaction 後は SessionStart hook (matcher: compact) が open PR の情報を `gh pr view` で取得し注入する。本セクション (要約への保持指示) と hook (GitHub からの復元) の二層で state を保全し、compaction を跨いでも自走が継続できるようにする。PR が状態の SSOT であり、ローカルの state ファイルには依存しない。
+compaction 後は SessionStart hook (matcher: compact) が open Issue/PR の情報を GitHub から取得し注入する。本セクション (要約への保持指示) と hook (GitHub からの復元) の二層で state を保全し、compaction を跨いでも自走が継続できるようにする。GitHub Flow: Issue = scope SSOT / PR = delivery SSOT であり、ローカルの state ファイルには依存しない。

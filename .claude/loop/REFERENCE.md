@@ -17,20 +17,20 @@
 
 `nights/pending/` が空になった時、 **Claude が次の夜 md を起こす**。 朝石井が起こす想定は廃止。 起こし方:
 
-1. 直近 done になった夜の DoD と nestest.log / 設計の現状を踏まえ、 1 夜 1-1.5 時間スケールの次タスクを設計
+1. 直近 done になった夜の DoD と nestest.log / 設計の現状を踏まえ、 1 夜分の次タスクを設計
 2. `nights/template/NNN-template.md` をコピーして `nights/pending/NNN+1-<topic>.md` を作成 (NNN は直近 done の番号 + 1)
-3. **同セッションの bootstrap PR で起こす**: 夜 N のブランチに含めず、 別の `chore/seed-NNN+1` ブランチを切って独立 PR にする。 もしくは次の夜ブランチの最初の commit で md を起こすパターンも可 (`chore(nights): seed NNN+1 from done NNN insights` に分離)
-4. seed PR / 夜開始 commit のいずれであっても、 main merge を待ってから実装着手
+3. main 上で seed を commit (`chore(nights): seed NNN+1`)。main は直 push しない — 次の night ブランチに含めて push する
+4. **GitHub Issue を作成** (`gh issue create --title "夜 NNN+1: <topic>" --label night --body "<DoD>"`)。Issue = scope SSOT
 
 ## /clear 自走ループ駆動 (実装済み)
 
-夜境界の context リセットは `/compact` ではなく **`/clear`** で行う。 handoff を PR に外出し済み (PR-as-SSOT) なので要約を残す意味がなく、 完全リセットの方が context 汚染ゼロ。 公式ガイダンスも「新タスク=/clear / 同一会話継続=/compact」 で 1 夜=新タスクに合致。
+夜境界の context リセットは `/compact` ではなく **`/clear`** で行う。 handoff を PR に外出し済み (GitHub Flow: Issue = scope SSOT / PR = delivery SSOT) なので要約を残す意味がなく、 完全リセットの方が context 汚染ゼロ。 公式ガイダンスも「新タスク=/clear / 同一会話継続=/compact」 で 1 夜=新タスクに合致。
 
 駆動機構は `.claude/hooks/` に実装済み。 **外部シェル常駐は不要** — フック自身が自己連鎖する:
 
 - `stop-hook.sh` (Stop hook): worker が **pane スコープのフラグ** `.claude/state/loop-next.${TMUX_PANE#%}.txt` を書いたら進行役 `loop-helper.sh` を非同期 spawn して exit 0 (block しない)。 フラグ無しの発話終了は no-op
 - `loop-helper.sh` (外部プロセス・/clear で生き残る): **前夜 PR の merge 完了を待ち** (`LOOP_WAIT_MERGE` 既定 ON。 30 分タイムアウトで安全停止。 テスト時のみ `=0`) → `/clear` (resume ラベルは `loop-clear-$(date +%Y%m%d-%H%M)` で夜ごと一意) → **/clear 完了シグナルを待ち** → 次ゴールを send-keys。 spawn 前に Stop hook が turn 終了 (=idle) を保証するため /clear 前の明示的な idle 待ちは不要
-- `loop-session-restore.sh` (SessionStart `clear` matcher): /clear 後に `scripts/pr-context.sh` で GitHub 上の open PR 情報を取得し再注入して状態復元 + **pane スコープの完了シグナル `.claude/state/loop-cleared.${TMUX_PANE#%}.txt` を置いて** helper に /clear 完了を知らせる (画面 scrape 非依存の idle 検出)
+- `loop-session-restore.sh` (SessionStart `clear` matcher): /clear 後に `scripts/pr-context.sh` で GitHub 上の open Issue/PR 情報を取得し再注入して状態復元 + **pane スコープの完了シグナル `.claude/state/loop-cleared.${TMUX_PANE#%}.txt` を置いて** helper に /clear 完了を知らせる (画面 scrape 非依存の idle 検出)
 - フラグ中身 = `/goal <固定文言>` なら次の夜へ連鎖 / `STOP` なら連鎖終了
 - 暴走ブレーキ: `NIGHTOWL_LOOP_MAX` (既定 20) 回で自動停止。 clear hook が発火せず完了シグナルが来ない場合も helper のシグナル待ちタイムアウト (300s) で安全停止 + bot 名義 gh issue 通知 (無限課金しない)
 - カウンタが pane キーなのは `/clear` が session_id を変える (#20797) ため (session キーだと毎回リセットされ MAX が効かない)
