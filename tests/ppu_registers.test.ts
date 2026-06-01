@@ -169,9 +169,11 @@ describe("PPUCTRL ($2000) / PPUMASK ($2001)", () => {
     expect(ppu.mask).toBe(0x1e);
   });
 
-  it("CTRL/MASK の read は 0 を返す (write only)", () => {
+  it("write-only レジスタの read は open bus (IO latch 値) を返す", () => {
     const ppu = new Ppu();
     ppu.write(0, 0xff);
-    expect(ppu.read(0)).toBe(0);
+    expect(ppu.read(0)).toBe(0xff);
+    ppu.write(1, 0x42);
+    expect(ppu.read(1)).toBe(0x42);
   });
 });

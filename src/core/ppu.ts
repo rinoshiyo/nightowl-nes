@@ -43,6 +43,9 @@ export class Ppu {
   /** $2003 OAMADDR */
   oamAddr = 0;
 
+  /** IO latch (open bus) — レジスタへの最後の write/read 値 */
+  ioLatch = 0;
+
   /** loopy v — current VRAM address (15 bit) */
   v = 0;
   /** loopy t — temporary VRAM address (15 bit) */
@@ -106,6 +109,7 @@ export class Ppu {
     this.t = 0;
     this.x = 0;
     this.w = false;
+    this.ioLatch = 0;
     this.readBuffer = 0;
     this.dot = 0;
     this.scanline = 0;
@@ -219,24 +223,33 @@ export class Ppu {
 
   /** $2000-$2007 の read (addr は 0-7 にマスク済みで渡される想定) */
   read(reg: number): number {
+    let val: number;
     switch (reg) {
       case 2: {
-        const val = this.status;
+        // bit 7-5 はステータス、bit 4-0 は open bus (latch の下位 5 bit)
+        val = (this.status & 0xe0) | (this.ioLatch & 0x1f);
         this.status &= 0x7f;
         this.w = false;
-        return val;
+        break;
       }
       case 4:
-        return this.oam[this.oamAddr] ?? 0;
+        val = this.oam[this.oamAddr] ?? 0;
+        break;
       case 7:
-        return this.readVram();
+        val = this.readVram();
+        break;
       default:
-        return 0;
+        // write-only レジスタ ($2000, $2001, $2003, $2005, $2006) → open bus
+        val = this.ioLatch;
+        break;
     }
+    this.ioLatch = val;
+    return val;
   }
 
   /** $2000-$2007 の write (addr は 0-7 にマスク済み、value は 0-255 で渡される想定) */
   write(reg: number, value: number): void {
+    this.ioLatch = value;
     switch (reg) {
       case 0:
         this.ctrl = value;
@@ -516,7 +529,15 @@ export class Ppu {
     if (addr < 0x3f00) {
       return this.vram[this.mirrorNametable(addr)] ?? 0;
     }
-    return this.palette[addr & 0x1f] ?? 0;
+    return this.palette[Ppu.mirrorPalette(addr)] ?? 0;
+  }
+
+  /** パレットアドレスミラーリング ($3F10→$3F00, $3F14→$3F04, $3F18→$3F08, $3F1C→$3F0C) */
+  static mirrorPalette(addr: number): number {
+    const idx = addr & 0x1f;
+    // $3F10/$3F14/$3F18/$3F1C (背景色スロット) は $3F00/$3F04/$3F08/$3F0C にミラー
+    if (idx >= 0x10 && (idx & 0x03) === 0) return idx - 0x10;
+    return idx;
   }
 
   private readVram(): number {
@@ -524,8 +545,11 @@ export class Ppu {
     this.incrementVramAddr();
 
     if (addr >= 0x3f00) {
+      // パレット read 時はネームテーブルの値をバッファに入れる
       this.readBuffer = this.vram[this.mirrorNametable(addr)] ?? 0;
-      return this.palette[addr & 0x1f] ?? 0;
+      // NES パレット RAM は 6 bit 幅。bits 7-6 は open bus (現在の IO latch)
+      const palVal = this.palette[Ppu.mirrorPalette(addr)] ?? 0;
+      return (palVal & 0x3f) | (this.ioLatch & 0xc0);
     }
 
     if (addr < 0x2000) {
@@ -546,10 +570,12 @@ export class Ppu {
     this.incrementVramAddr();
 
     if (addr >= 0x3f00) {
-      const palIdx = addr & 0x1f;
-      this.palette[palIdx] = value;
+      const palIdx = Ppu.mirrorPalette(addr);
+      const masked = value & 0x3f;
+      this.palette[palIdx] = masked;
+      // $XX00/$XX04/$XX08/$XX0C の背景色スロットは双方向ミラー
       if ((palIdx & 0x03) === 0) {
-        this.palette[palIdx ^ 0x10] = value;
+        this.palette[palIdx ^ 0x10] = masked;
       }
     } else if (addr < 0x2000) {
       if (this.mapper) {
