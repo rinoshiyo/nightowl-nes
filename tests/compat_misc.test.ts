@@ -18,7 +18,7 @@ romTest.skip = (name: string, _path: string) => {
 };
 
 describe("PPU read buffer", () => {
-  romTest("ppu_read_buffer", "roms/test/ppu_read_buffer/test_ppu_read_buffer.nes");
+  romTest("ppu_read_buffer", "roms/test/ppu_read_buffer/test_ppu_read_buffer.nes", 3000);
 });
 
 describe("PPU open bus", () => {
