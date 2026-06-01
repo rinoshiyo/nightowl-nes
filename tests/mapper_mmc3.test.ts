@@ -409,5 +409,66 @@ describe("MapperMmc3", () => {
       expect(mapper.readPrg(0xc000)).toBe((2 * 0x2000) & 0xff);
       expect(mapper.readPrg(0xe000)).toBe((3 * 0x2000) & 0xff);
     });
+
+    it("IRQ disable 後に enable しても旧 pending はクリア済み", () => {
+      const mapper = new MapperMmc3(makeCart());
+      mapper.writePrg(0xe001, 0); // enable
+      mapper.writePrg(0xc000, 1);
+      mapper.writePrg(0xc001, 0);
+      mapper.clockIrqCounter(); // reload → 1
+      mapper.clockIrqCounter(); // 0 → IRQ
+      expect(mapper.irqPending).toBe(true);
+
+      mapper.writePrg(0xe000, 0); // disable + clear
+      expect(mapper.irqPending).toBe(false);
+
+      mapper.writePrg(0xe001, 0); // enable
+      // pending は clear されたまま
+      expect(mapper.irqPending).toBe(false);
+    });
+
+    it("$8000/$8001 の奇偶アドレスが正しくディスパッチ", () => {
+      const mapper = new MapperMmc3(makeCart());
+      // $8001 → Bank Data (奇数アドレス)
+      mapper.writePrg(0x8000, 6); // select R6
+      mapper.writePrg(0x8001, 10); // R6 = 10
+
+      // $8003 も Bank Data (奇数アドレスの別ミラー)
+      mapper.writePrg(0x8000, 7); // select R7
+      mapper.writePrg(0x9FFF, 12); // 奇数 → R7 = 12
+
+      expect(mapper.readPrg(0x8000)).toBe((10 * 0x2000) & 0xff); // R6
+      expect(mapper.readPrg(0xa000)).toBe((12 * 0x2000) & 0xff); // R7
+    });
+
+    it("$E000/$E001 の奇偶が正しくディスパッチ", () => {
+      const mapper = new MapperMmc3(makeCart());
+      mapper.writePrg(0xe001, 0); // enable (奇数)
+      mapper.writePrg(0xc000, 1);
+      mapper.writePrg(0xc001, 0);
+      mapper.clockIrqCounter();
+      mapper.clockIrqCounter();
+      expect(mapper.irqPending).toBe(true);
+
+      mapper.writePrg(0xe000, 0); // disable (偶数)
+      expect(mapper.irqPending).toBe(false);
+    });
+
+    it("PRG $9FFF/$BFFF/$DFFF/$FFFF の各ウィンドウ末尾が正しく読める", () => {
+      const mapper = new MapperMmc3(makeCart());
+      mapper.writePrg(0x8000, 6);
+      mapper.writePrg(0x8001, 1); // R6 = 1
+      mapper.writePrg(0x8000, 7);
+      mapper.writePrg(0x8001, 2); // R7 = 2
+
+      // $9FFF = R6(1) のオフセット 0x1FFF
+      expect(mapper.readPrg(0x9fff)).toBe((1 * 0x2000 + 0x1fff) & 0xff);
+      // $BFFF = R7(2) のオフセット 0x1FFF
+      expect(mapper.readPrg(0xbfff)).toBe((2 * 0x2000 + 0x1fff) & 0xff);
+      // $DFFF = second-last(14) のオフセット 0x1FFF
+      expect(mapper.readPrg(0xdfff)).toBe((14 * 0x2000 + 0x1fff) & 0xff);
+      // $FFFF = last(15) のオフセット 0x1FFF
+      expect(mapper.readPrg(0xffff)).toBe((15 * 0x2000 + 0x1fff) & 0xff);
+    });
   });
 });

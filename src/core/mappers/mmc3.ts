@@ -57,11 +57,6 @@ export class MapperMmc3 implements Mapper {
   /** IRQ 有効フラグ */
   private irqEnabled = false;
 
-  /** 末尾から2番目の PRG バンクオフセット */
-  private readonly prgSecondLastOffset: number;
-  /** 末尾の PRG バンクオフセット */
-  private readonly prgLastOffset: number;
-
   constructor(cart: Cart) {
     this.prgRom = cart.prgRom;
     this.prgBankCount = Math.max(1, cart.prgRom.length / PRG_BANK_SIZE);
@@ -76,8 +71,6 @@ export class MapperMmc3 implements Mapper {
       this.chrBankCount = Math.max(1, cart.chrRom.length / CHR_BANK_SIZE);
     }
 
-    this.prgSecondLastOffset = (this.prgBankCount - 2) * PRG_BANK_SIZE;
-    this.prgLastOffset = (this.prgBankCount - 1) * PRG_BANK_SIZE;
   }
 
   readPrg(addr: number): number {
