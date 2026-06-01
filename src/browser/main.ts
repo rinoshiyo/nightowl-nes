@@ -1,8 +1,10 @@
 import { parseINes } from "../core/cart.ts";
+import type { Cart } from "../core/cart.ts";
 import { NesConsole } from "../core/console.ts";
 import { Button } from "../core/controller.ts";
 import { NesAudio } from "./audio.ts";
 import { Renderer } from "./renderer.ts";
+import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData } from "./save-manager.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -18,9 +20,19 @@ const renderer = new Renderer(canvas);
 const audio = new NesAudio();
 let nes: NesConsole | null = null;
 let running = false;
+let currentRomHash: string | null = null;
+let currentCart: Cart | null = null;
 
 const FRAME_MS = 1000 / 60;
 let lastFrameTime = 0;
+const SAVE_INTERVAL_MS = 5000;
+let lastSaveTime = 0;
+
+function flushSave(): void {
+  if (!nes || !currentRomHash || !currentCart?.header.hasBattery) return;
+  const ram = nes.mapper.getPrgRam();
+  if (ram) savePrgRam(currentRomHash, ram);
+}
 
 romInput.addEventListener("change", () => {
   const file = romInput.files?.[0];
@@ -29,14 +41,32 @@ romInput.addEventListener("change", () => {
   const reader = new FileReader();
   reader.onload = () => {
     try {
+      flushSave();
       const buf = new Uint8Array(reader.result as ArrayBuffer);
       const cart = parseINes(buf);
+      currentCart = cart;
       nes = new NesConsole(cart);
       audio.start(nes.apu);
-      status.textContent = `${file.name} (PRG: ${cart.header.prgRomSize / 1024}KB, CHR: ${cart.header.chrRomSize / 1024}KB, Mapper: ${cart.header.mapper})`;
+
+      computeRomHash(cart.prgRom).then((hash) => {
+        currentRomHash = hash;
+        if (cart.header.hasBattery) {
+          const saved = loadPrgRam(hash);
+          if (saved) {
+            nes!.mapper.setPrgRam(saved);
+            status.textContent += " [SAVE LOADED]";
+          }
+        }
+      });
+
+      let statusText = `${file.name} (PRG: ${cart.header.prgRomSize / 1024}KB, CHR: ${cart.header.chrRomSize / 1024}KB, Mapper: ${cart.header.mapper})`;
+      if (cart.header.hasBattery) statusText += " [Battery]";
+      status.textContent = statusText;
+
       if (!running) {
         running = true;
         lastFrameTime = 0;
+        lastSaveTime = 0;
         requestAnimationFrame(gameLoop);
       }
     } catch (e) {
@@ -95,5 +125,12 @@ function gameLoop(timestamp: number): void {
     }
   }
 
+  if (timestamp - lastSaveTime >= SAVE_INTERVAL_MS) {
+    lastSaveTime = timestamp;
+    flushSave();
+  }
+
   requestAnimationFrame(gameLoop);
 }
+
+window.addEventListener("beforeunload", flushSave);
