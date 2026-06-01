@@ -301,4 +301,41 @@ describe("MMC1 エッジケース", () => {
     mapper.writeChr(0x2000, 0xab);
     expect(mapper.readChr(0x0000)).toBe(0xab);
   });
+
+  it("PRG mode 0/1 で奇数バンク番号は bit 0 無視 (32KB 単位)", () => {
+    const mapper = new MapperMmc1(makeMmc1Cart(16, 0));
+    writeShiftRegister(mapper, 0x8000, 0x00); // PRG mode 0
+    // PRG bank = 5 → bit 0 無視で 4 → 32KB バンク 2 = 16KB バンク 4,5
+    writeShiftRegister(mapper, 0xe000, 5);
+    expect(mapper.readPrg(0x8000)).toBe(4);
+    expect(mapper.readPrg(0xc000)).toBe(5);
+  });
+
+  it("bit 7 リセット後もシフトレジスタが正常に使える", () => {
+    const mapper = new MapperMmc1(makeMmc1Cart(16, 0));
+    writeShiftRegister(mapper, 0xe000, 3);
+    expect(mapper.readPrg(0x8000)).toBe(3);
+    // リセット
+    mapper.writePrg(0x8000, 0x80);
+    // 再度書き込み
+    writeShiftRegister(mapper, 0xe000, 7);
+    expect(mapper.readPrg(0x8000)).toBe(7);
+  });
+
+  it("全アドレス範囲のレジスタ選択が正しい", () => {
+    const mapper = new MapperMmc1(makeMmc1Cart(16, 8));
+    // $8000 → control (reg 0)
+    writeShiftRegister(mapper, 0x8000, 0x1c); // PRG mode 3 + CHR mode 1
+    // $A000 → CHR bank 0 (reg 1)
+    writeShiftRegister(mapper, 0xa000, 2);
+    // $C000 → CHR bank 1 (reg 2)
+    writeShiftRegister(mapper, 0xc000, 4);
+    // $E000 → PRG bank (reg 3)
+    writeShiftRegister(mapper, 0xe000, 9);
+    // 各レジスタの効果を検証
+    expect(mapper.readChr(0x0000)).toBe(2); // CHR bank 0
+    expect(mapper.readChr(0x1000)).toBe(4); // CHR bank 1
+    expect(mapper.readPrg(0x8000)).toBe(9); // PRG bank 切替
+    expect(mapper.readPrg(0xc000)).toBe(15); // 末尾固定
+  });
 });
