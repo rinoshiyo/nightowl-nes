@@ -205,11 +205,14 @@ export class Ppu {
   set scrollY(val: number) {
     let coarseY = val >> 3;
     const fineY = val & 0x07;
-    this.t &= ~0x0800;
+    // ctrl 由来の NT Y を基準に、scroll >= 240 なら相対フリップ
+    const baseNtY = (this.ctrl & 0x02) !== 0 ? 0x0800 : 0;
+    let scrollNtY = 0;
     if (coarseY >= 30) {
       coarseY -= 30;
-      this.t |= 0x0800;
+      scrollNtY = 0x0800;
     }
+    this.t = (this.t & ~0x0800) | (baseNtY ^ scrollNtY);
     this.t = Ppu.setCoarseY(this.t, coarseY);
     this.t = Ppu.setFineY(this.t, fineY);
   }
