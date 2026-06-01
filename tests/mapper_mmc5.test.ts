@@ -132,6 +132,18 @@ describe("MapperMmc5", () => {
       expect(m.readPrgRam(0x7fff)).toBe(0xab);
     });
 
+    it("モード 3: RAM バンク ($8000-$DFFF) の読み書き", () => {
+      const m = new MapperMmc5(makeCart());
+      m.writeRegister!(0x5100, 3); // モード 3
+      m.writeRegister!(0x5102, 0x02);
+      m.writeRegister!(0x5103, 0x01);
+
+      // $5114 = RAM bank 0 (bit 7=0)
+      m.writeRegister!(0x5114, 0x00);
+      m.writePrg(0x8000, 0x42);
+      expect(m.readPrg(0x8000)).toBe(0x42);
+    });
+
     it("PRG RAM 書き込み保護が有効な時は書き込み不可", () => {
       const m = new MapperMmc5(makeCart());
       // デフォルトは保護有効
@@ -174,6 +186,18 @@ describe("MapperMmc5", () => {
       expect(m.readChr(0x1400)).toBe(cart.chrRom[60 * 0x400]!);
       expect(m.readChr(0x1800)).toBe(cart.chrRom[70 * 0x400]!);
       expect(m.readChr(0x1c00)).toBe(cart.chrRom[80 * 0x400]!);
+    });
+
+    it("CHR バンク上位ビット ($5130) が反映される", () => {
+      const cart = makeCart({ chrSize: 0x80000 }); // 512KB = 512 × 1KB
+      const m = new MapperMmc5(cart);
+      m.writeRegister!(0x5101, 3); // モード 3
+
+      // 上位ビットを 1 に設定 → バンク値に 0x100 が加算される
+      m.writeRegister!(0x5130, 1);
+      m.writeRegister!(0x5120, 5); // 実効バンク = 0x100 + 5 = 261
+
+      expect(m.readChr(0x0000)).toBe(cart.chrRom[(261 % 512) * 0x400]!);
     });
 
     it("CHR RAM モード", () => {
