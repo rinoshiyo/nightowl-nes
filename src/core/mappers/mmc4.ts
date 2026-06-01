@@ -145,6 +145,7 @@ export class MapperMmc4 implements Mapper {
     this.latch[0] = 0;
     this.latch[1] = 0;
     this.currentMirroring = "vertical";
+    this.onMirroringChange?.(this.currentMirroring);
   }
 
   clockIrqCounter(): void {}
