@@ -602,7 +602,12 @@ export class Ppu {
     this.incrementVramAddr();
 
     if (addr >= 0x3f00) {
-      this.readBuffer = this.vram[this.mirrorNametable(addr)]!;
+      if (this.mapper?.readNametable) {
+        const custom = this.mapper.readNametable(addr);
+        this.readBuffer = custom !== undefined ? custom : this.vram[this.mirrorNametable(addr)]!;
+      } else {
+        this.readBuffer = this.vram[this.mirrorNametable(addr)]!;
+      }
       const palVal = this.palette[Ppu.mirrorPalette(addr)]!;
       return (palVal & 0x3f) | (this.ioLatch & 0xc0);
     }

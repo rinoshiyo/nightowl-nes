@@ -79,9 +79,9 @@ export class MapperNamco163 implements Mapper {
   private soundClockCounter = 0;
   /** 拡張音源: 現在更新中のチャンネルインデックス (0-7) */
   private soundChannelIndex = 7;
-  /** 拡張音源: 各チャンネルの位相アキュムレータ (24bit) */
-  private readonly soundPhase = new Uint32Array(8);
-  /** 拡張音源: 現在の出力値 (-15 ~ +15、全チャンネル合算) */
+  /** 拡張音源: 蓄積中の出力値 (全チャンネル合算完了前の中間値) */
+  private soundAccum = 0;
+  /** 拡張音源: 最終確定出力値 (全チャンネル合算完了後、audioOutput が参照) */
   private soundOutput = 0;
 
   constructor(cart: Cart) {
@@ -165,25 +165,32 @@ export class MapperNamco163 implements Mapper {
   }
 
   readChr(addr: number): number {
-    if (addr < 0x2000) {
-      const slot = (addr >> 10) & 7;
-      const bankValue = this.chrBanks[slot] ?? 0;
+    if (addr >= 0x2000) return 0;
 
-      // CHR RAM 判定: useChrRam 時はそのまま RAM アクセス
-      if (this.useChrRam) {
-        return this.chrData[addr & 0x1fff] ?? 0;
-      }
-
-      // CHR ROM バンク切替
-      const bank = bankValue % this.chrBankCount;
-      return this.chrData[bank * CHR_BANK_SIZE + (addr & 0x03ff)] ?? 0;
+    // CHR RAM のみのカート: バンク切替なしの flat アクセス
+    if (this.useChrRam) {
+      return this.chrData[addr & 0x1fff] ?? 0;
     }
-    return 0;
+
+    const slot = (addr >> 10) & 7;
+    const bankValue = this.chrBanks[slot] ?? 0;
+
+    // $E800 bit6/7 による CHR RAM 切替: 該当半分で bank >= $E0 なら CIRAM 相当
+    // (Namco 163 では $E0 以上のバンク値は内蔵 VRAM を示す)
+    if (addr < 0x1000 && this.chrRamLow && bankValue >= 0xe0) {
+      return 0;
+    }
+    if (addr >= 0x1000 && this.chrRamHigh && bankValue >= 0xe0) {
+      return 0;
+    }
+
+    const bank = bankValue % this.chrBankCount;
+    return this.chrData[bank * CHR_BANK_SIZE + (addr & 0x03ff)] ?? 0;
   }
 
   writeChr(addr: number, value: number): void {
-    if (!this.useChrRam) return;
-    if (addr < 0x2000) {
+    if (addr >= 0x2000) return;
+    if (this.useChrRam) {
       this.chrData[addr & 0x1fff] = value;
     }
   }
@@ -237,11 +244,13 @@ export class MapperNamco163 implements Mapper {
       return val;
     }
     if ((addr & 0xf800) === 0x5000) {
-      // IRQ カウンタ下位 8bit
+      // IRQ カウンタ下位 8bit (読み出しで IRQ acknowledge)
+      this.irqPending = false;
       return this.irqCounter & 0xff;
     }
     if ((addr & 0xf800) === 0x5800) {
-      // IRQ カウンタ上位 7bit + IRQ 有効
+      // IRQ カウンタ上位 7bit + IRQ 有効 (読み出しで IRQ acknowledge)
+      this.irqPending = false;
       return ((this.irqCounter >> 8) & 0x7f) | (this.irqEnabled ? 0x80 : 0);
     }
     return 0;
@@ -303,7 +312,7 @@ export class MapperNamco163 implements Mapper {
     this.chrRamLow = false;
     this.soundClockCounter = 0;
     this.soundChannelIndex = 7;
-    this.soundPhase.fill(0);
+    this.soundAccum = 0;
     this.soundOutput = 0;
   }
 
@@ -367,8 +376,6 @@ export class MapperNamco163 implements Mapper {
     this.internalRam[baseAddr + 3] = (phase >> 8) & 0xff;
     this.internalRam[baseAddr + 5] = (phase >> 16) & 0xff;
 
-    this.soundPhase[ch] = phase;
-
     // 波形テーブルから現在のサンプルを取得
     const sampleIndex = ((phase >> 16) % waveLength) & 0xff;
     const tableAddr = waveAddr + (sampleIndex >> 1);
@@ -376,20 +383,21 @@ export class MapperNamco163 implements Mapper {
     // 4bit サンプル: 偶数インデックスは下位ニブル、奇数インデックスは上位ニブル
     const sample = (sampleIndex & 1) ? (rawByte >> 4) : (rawByte & 0x0f);
 
-    // 出力: (sample - 8) * volume で -120 ~ +105 の範囲
+    // 出力: (sample - 8) * volume
     const channelOutput = (sample - 8) * volume;
 
-    // チャンネル出力を蓄積 (全アクティブチャンネルの合算)
-    // soundOutput は全チャンネル更新ごとにリフレッシュ
+    // チャンネル出力を蓄積
     if (ch === 7) {
-      this.soundOutput = channelOutput;
+      this.soundAccum = channelOutput;
     } else {
-      this.soundOutput += channelOutput;
+      this.soundAccum += channelOutput;
     }
 
     // 次のチャンネルへ (ch7 → ch6 → ... → 最小アクティブチャンネル → ch7 に戻る)
     this.soundChannelIndex--;
     if (this.soundChannelIndex < 8 - numChannels) {
+      // 全チャンネル更新完了: 確定値を soundOutput に反映
+      this.soundOutput = this.soundAccum;
       this.soundChannelIndex = 7;
     }
   }
@@ -461,7 +469,7 @@ export class MapperNamco163 implements Mapper {
       chrRamLow: this.chrRamLow,
       soundClockCounter: this.soundClockCounter,
       soundChannelIndex: this.soundChannelIndex,
-      soundPhase: Array.from(this.soundPhase),
+      soundAccum: this.soundAccum,
       soundOutput: this.soundOutput,
       prgRam: Array.from(this.prgRam),
       chrRam: this.useChrRam ? Array.from(this.chrData) : undefined,
@@ -483,11 +491,7 @@ export class MapperNamco163 implements Mapper {
     this.chrRamLow = data["chrRamLow"] as boolean;
     this.soundClockCounter = data["soundClockCounter"] as number;
     this.soundChannelIndex = data["soundChannelIndex"] as number;
-    if (Array.isArray(data["soundPhase"])) {
-      for (let i = 0; i < 8; i++) {
-        this.soundPhase[i] = (data["soundPhase"] as number[])[i] ?? 0;
-      }
-    }
+    this.soundAccum = data["soundAccum"] as number ?? 0;
     this.soundOutput = data["soundOutput"] as number;
     if (Array.isArray(data["prgRam"])) this.prgRam.set(data["prgRam"] as number[]);
     if (this.useChrRam && Array.isArray(data["chrRam"])) {

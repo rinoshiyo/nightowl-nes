@@ -283,6 +283,30 @@ describe("MapperNamco163", () => {
       expect(mapper.irqPending).toBe(false);
     });
 
+    it("IRQ カウンタの読み出しで irqPending がクリアされる (acknowledge)", () => {
+      const mapper = new MapperNamco163(makeCart());
+      // IRQ を発火させる
+      mapper.writeRegister!(0x5000, 0xfe);
+      mapper.writeRegister!(0x5800, 0xff); // IRQ 有効 + 上位 = $7F → $7FFE
+      mapper.cpuCycleTick!();
+      expect(mapper.irqPending).toBe(true);
+
+      // $5000 読み出しで pending クリア
+      mapper.readRegister!(0x5000);
+      expect(mapper.irqPending).toBe(false);
+    });
+
+    it("$5800 読み出しでも irqPending がクリアされる", () => {
+      const mapper = new MapperNamco163(makeCart());
+      mapper.writeRegister!(0x5000, 0xfe);
+      mapper.writeRegister!(0x5800, 0xff);
+      mapper.cpuCycleTick!();
+      expect(mapper.irqPending).toBe(true);
+
+      mapper.readRegister!(0x5800);
+      expect(mapper.irqPending).toBe(false);
+    });
+
     it("IRQ カウンタへの書き込みで irqPending がクリアされる", () => {
       const mapper = new MapperNamco163(makeCart());
       // IRQ を発火させる
