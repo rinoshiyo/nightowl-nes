@@ -112,26 +112,32 @@ describe("PRG RAM — MMC3", () => {
   });
 });
 
-describe("PRG RAM — NROM/UxROM/CNROM は非搭載", () => {
-  it("NROM: readPrgRam は 0 を返す", () => {
+describe("PRG RAM — NROM/UxROM/CNROM 搭載", () => {
+  it("NROM: PRG RAM 読み書き可能", () => {
     const mapper = new MapperNrom(makeCart(0));
     expect(mapper.readPrgRam(0x6000)).toBe(0);
-    expect(mapper.getPrgRam()).toBeNull();
+    mapper.writePrgRam(0x6000, 0x42);
+    expect(mapper.readPrgRam(0x6000)).toBe(0x42);
+    expect(mapper.getPrgRam()).not.toBeNull();
   });
 
-  it("UxROM: readPrgRam は 0 を返す", () => {
+  it("UxROM: PRG RAM 読み書き可能", () => {
     const mapper = new MapperUxrom(makeCart(2));
     expect(mapper.readPrgRam(0x6000)).toBe(0);
-    expect(mapper.getPrgRam()).toBeNull();
+    mapper.writePrgRam(0x6000, 0x42);
+    expect(mapper.readPrgRam(0x6000)).toBe(0x42);
+    expect(mapper.getPrgRam()).not.toBeNull();
   });
 
-  it("CNROM: readPrgRam は 0 を返す", () => {
+  it("CNROM: PRG RAM 読み書き可能", () => {
     const cart = makeCart(3);
     cart.chrRom = new Uint8Array(0x2000);
     cart.header.chrRomSize = 0x2000;
     const mapper = new MapperCnrom(cart);
     expect(mapper.readPrgRam(0x6000)).toBe(0);
-    expect(mapper.getPrgRam()).toBeNull();
+    mapper.writePrgRam(0x6000, 0x42);
+    expect(mapper.readPrgRam(0x6000)).toBe(0x42);
+    expect(mapper.getPrgRam()).not.toBeNull();
   });
 });
 

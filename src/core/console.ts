@@ -59,8 +59,7 @@ export class NesConsole {
     this.cpu.nmiPending = false;
     this.cpu.irqPending = false;
     this.bus.dmaCycles = 0;
-    this.apu.frameIrqFlag = false;
-    this.apu.dmc.irqFlag = false;
+    this.apu.powerOn();
     this.apu.resetFilters();
     this.mapper.reset();
     this.ppu.reset();

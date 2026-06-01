@@ -11,6 +11,7 @@ import type { Cart } from "../cart.ts";
 import type { Mapper } from "./mapper.ts";
 
 const CHR_RAM_SIZE = 0x2000;
+const PRG_RAM_SIZE = 0x2000;
 
 export class MapperNrom implements Mapper {
   onMirroringChange: ((m: import("../cart.ts").Mirroring) => void) | null = null;
@@ -20,6 +21,7 @@ export class MapperNrom implements Mapper {
   private readonly prgMask: number;
   private readonly chrData: Uint8Array;
   private readonly chrIsRam: boolean;
+  private readonly prgRam = new Uint8Array(PRG_RAM_SIZE);
 
   constructor(cart: Cart) {
     this.prgRom = cart.prgRom;
@@ -51,10 +53,16 @@ export class MapperNrom implements Mapper {
     }
   }
 
-  readPrgRam(_addr: number): number { return 0; }
-  writePrgRam(_addr: number, _value: number): void {}
-  getPrgRam(): Uint8Array | null { return null; }
-  setPrgRam(_data: Uint8Array): void {}
+  readPrgRam(addr: number): number {
+    return this.prgRam[(addr - 0x6000) & 0x1fff] ?? 0;
+  }
+  writePrgRam(addr: number, value: number): void {
+    this.prgRam[(addr - 0x6000) & 0x1fff] = value;
+  }
+  getPrgRam(): Uint8Array | null { return this.prgRam; }
+  setPrgRam(data: Uint8Array): void {
+    this.prgRam.set(data.subarray(0, PRG_RAM_SIZE));
+  }
   reset(): void {}
   clockIrqCounter(): void {}
 }

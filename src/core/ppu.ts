@@ -99,6 +99,9 @@ export class Ppu {
   /** sprite 0 が secondary OAM に含まれるか */
   private sprite0InLine = false;
 
+  /** 直近の PPU アドレスの A12 ビット (MMC3 IRQ カウンタ用) */
+  private lastA12 = 0;
+
   /** PPU 状態をリセット */
   reset(): void {
     this.ctrl = 0;
@@ -124,6 +127,16 @@ export class Ppu {
     this.slInitNtX = 0;
     this.spriteCount = 0;
     this.sprite0InLine = false;
+    this.lastA12 = 0;
+  }
+
+  /** PPU アドレスの A12 立ち上がりエッジで mapper の IRQ カウンタを clock する */
+  private checkA12(addr: number): void {
+    const a12 = (addr >> 12) & 1;
+    if (a12 === 1 && this.lastA12 === 0 && this.mapper) {
+      this.mapper.clockIrqCounter();
+    }
+    this.lastA12 = a12;
   }
 
   // --- loopy ヘルパー (v/t の bit field 操作) ---
@@ -251,11 +264,17 @@ export class Ppu {
   write(reg: number, value: number): void {
     this.ioLatch = value;
     switch (reg) {
-      case 0:
+      case 0: {
+        const prevNmi = this.ctrl & 0x80;
         this.ctrl = value;
         // NT 選択 bit (bit 0-1) を t の bit 10-11 に反映
         this.t = (this.t & ~0x0c00) | ((value & 0x03) << 10);
+        // NMI enable が 0→1 に変わり、VBL フラグが既に立っていれば即座に NMI 発火
+        if (prevNmi === 0 && (value & 0x80) !== 0 && (this.status & 0x80) !== 0 && this.onNmi) {
+          this.onNmi();
+        }
         break;
+      }
       case 1:
         this.mask = value;
         break;
@@ -286,6 +305,7 @@ export class Ppu {
           // 2nd write: lo byte → t、t → v
           this.t = (this.t & 0xff00) | value;
           this.v = this.t;
+          this.checkA12(this.v);
         }
         this.w = !this.w;
         break;
@@ -590,6 +610,7 @@ export class Ppu {
 
   private incrementVramAddr(): void {
     this.v = (this.v + ((this.ctrl & 0x04) !== 0 ? 32 : 1)) & 0x7fff;
+    this.checkA12(this.v);
   }
 
   /** ネームテーブルミラーリング (VRAM 内オフセットを返す) */
