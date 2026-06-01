@@ -78,7 +78,6 @@ export class Ppu {
   private bgAttribute = 0;
   private bgPatternLo = 0;
   private bgPatternHi = 0;
-  private bgPatternFineY = -1;
 
   /** 背景カラーインデックス (0=透明) — sprite 0 hit / priority 判定用 */
   private bgColorIdx = 0;
@@ -115,7 +114,6 @@ export class Ppu {
     this.bgAttribute = 0;
     this.bgPatternLo = 0;
     this.bgPatternHi = 0;
-    this.bgPatternFineY = -1;
     this.bgFetchedCol = -1;
     this.bgColorIdx = 0;
     this.slInitCoarseX = 0;
@@ -207,9 +205,10 @@ export class Ppu {
   set scrollY(val: number) {
     let coarseY = val >> 3;
     const fineY = val & 0x07;
+    this.t &= ~0x0800;
     if (coarseY >= 30) {
       coarseY -= 30;
-      this.t ^= 0x0800;
+      this.t |= 0x0800;
     }
     this.t = Ppu.setCoarseY(this.t, coarseY);
     this.t = Ppu.setFineY(this.t, fineY);
@@ -314,10 +313,11 @@ export class Ppu {
   private tickScrollVisible(): void {
     const dot = this.dot;
     if (dot >= 1 && dot <= 256) {
+      if ((dot & 0x07) === 0) {
+        this.incrementCoarseX();
+      }
       if (dot === 256) {
         this.incrementY();
-      } else if ((dot & 0x07) === 0) {
-        this.incrementCoarseX();
       }
     }
     if (dot === 257) {
@@ -328,6 +328,17 @@ export class Ppu {
   /** pre-render scanline のスクロール更新 */
   private tickScrollPreRender(): void {
     const dot = this.dot;
+    if (dot >= 1 && dot <= 256) {
+      if ((dot & 0x07) === 0) {
+        this.incrementCoarseX();
+      }
+      if (dot === 256) {
+        this.incrementY();
+      }
+    }
+    if (dot === 257) {
+      this.copyHorizontal();
+    }
     if (dot >= 280 && dot <= 304) {
       this.copyVertical();
     }
@@ -382,7 +393,6 @@ export class Ppu {
     const fetchKey = (ntSelect << 15) | (coarseY << 10) | (tileCol << 5) | fineY;
     if (fetchKey !== this.bgFetchedCol) {
       this.bgFetchedCol = fetchKey;
-      this.bgPatternFineY = fineY;
       this.fetchBgTileLoopy(tileCol, coarseY, fineY, ntSelect);
     }
 
