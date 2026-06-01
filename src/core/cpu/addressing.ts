@@ -85,6 +85,9 @@ export function indirectIndexed(cpu: Cpu, bus: Bus): Operand {
   const base = (lo | (hi << 8)) & 0xffff;
   const addr = (base + cpu.y) & 0xffff;
   const pageCrossed = (base & 0xff00) !== (addr & 0xff00);
+  if (pageCrossed) {
+    bus.read((hi << 8) | ((lo + cpu.y) & 0xff));
+  }
   return { addr, pageCrossed };
 }
 
@@ -116,6 +119,10 @@ export function absoluteX(cpu: Cpu, bus: Bus): Operand {
   const base = (lo | (hi << 8)) & 0xffff;
   const addr = (base + cpu.x) & 0xffff;
   const pageCrossed = (base & 0xff00) !== (addr & 0xff00);
+  if (pageCrossed) {
+    // page cross 時の dummy read: hi バイトが修正される前のアドレスを read
+    bus.read((hi << 8) | ((lo + cpu.x) & 0xff));
+  }
   return { addr, pageCrossed };
 }
 
@@ -130,7 +137,51 @@ export function absoluteY(cpu: Cpu, bus: Bus): Operand {
   const base = (lo | (hi << 8)) & 0xffff;
   const addr = (base + cpu.y) & 0xffff;
   const pageCrossed = (base & 0xff00) !== (addr & 0xff00);
+  if (pageCrossed) {
+    bus.read((hi << 8) | ((lo + cpu.y) & 0xff));
+  }
   return { addr, pageCrossed };
+}
+
+/**
+ * absoluteX_RMW: RMW/store 命令用。page cross の有無に関わらず常に dummy read を実行。
+ */
+export function absoluteX_RMW(cpu: Cpu, bus: Bus): Operand {
+  const lo = bus.read(cpu.pc);
+  const hi = bus.read((cpu.pc + 1) & 0xffff);
+  cpu.pc = (cpu.pc + 2) & 0xffff;
+  const base = (lo | (hi << 8)) & 0xffff;
+  const addr = (base + cpu.x) & 0xffff;
+  // RMW/store は常に dummy read
+  bus.read((hi << 8) | ((lo + cpu.x) & 0xff));
+  return { addr, pageCrossed: false };
+}
+
+/**
+ * absoluteY_RMW: store 命令用。page cross の有無に関わらず常に dummy read を実行。
+ */
+export function absoluteY_RMW(cpu: Cpu, bus: Bus): Operand {
+  const lo = bus.read(cpu.pc);
+  const hi = bus.read((cpu.pc + 1) & 0xffff);
+  cpu.pc = (cpu.pc + 2) & 0xffff;
+  const base = (lo | (hi << 8)) & 0xffff;
+  const addr = (base + cpu.y) & 0xffff;
+  bus.read((hi << 8) | ((lo + cpu.y) & 0xff));
+  return { addr, pageCrossed: false };
+}
+
+/**
+ * indirectIndexed_RMW: store/RMW 命令用。常に dummy read。
+ */
+export function indirectIndexed_RMW(cpu: Cpu, bus: Bus): Operand {
+  const zp = bus.read(cpu.pc);
+  cpu.pc = (cpu.pc + 1) & 0xffff;
+  const lo = bus.read(zp);
+  const hi = bus.read((zp + 1) & 0xff);
+  const base = (lo | (hi << 8)) & 0xffff;
+  const addr = (base + cpu.y) & 0xffff;
+  bus.read((hi << 8) | ((lo + cpu.y) & 0xff));
+  return { addr, pageCrossed: false };
 }
 
 /**

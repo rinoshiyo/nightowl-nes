@@ -3,11 +3,14 @@ import {
   absolute,
   absoluteIndirect,
   absoluteX,
+  absoluteX_RMW,
   absoluteY,
+  absoluteY_RMW,
   immediate,
   implied,
   indexedIndirect,
   indirectIndexed,
+  indirectIndexed_RMW,
   type Operand,
   relative,
   zeroPage,
@@ -1076,7 +1079,7 @@ def(0xd1, {
 });
 def(0x91, {
   name: "STA",
-  mode: indirectIndexed,
+  mode: indirectIndexed_RMW,
   cycles: 6,
   exec: (cpu, bus, op) => {
     bus.write(op.addr, cpu.a);
@@ -1155,7 +1158,7 @@ def(0xd9, {
 });
 def(0x99, {
   name: "STA",
-  mode: absoluteY,
+  mode: absoluteY_RMW,
   cycles: 5,
   exec: (cpu, bus, op) => {
     bus.write(op.addr, cpu.a);
@@ -1393,7 +1396,7 @@ def(0xdd, {
 // STA absX (cycle 5, page cross ペナルティなし)
 def(0x9d, {
   name: "STA",
-  mode: absoluteX,
+  mode: absoluteX_RMW,
   cycles: 5,
   exec: (cpu, bus, op) => {
     bus.write(op.addr, cpu.a);
@@ -1402,10 +1405,10 @@ def(0x9d, {
 });
 
 // RMW absX (cycle 7, page cross ペナルティなし)
-def(0x1e, { name: "ASL", mode: absoluteX, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, aslValue) });
-def(0x5e, { name: "LSR", mode: absoluteX, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, lsrValue) });
-def(0x3e, { name: "ROL", mode: absoluteX, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, rolValue) });
-def(0x7e, { name: "ROR", mode: absoluteX, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, rorValue) });
+def(0x1e, { name: "ASL", mode: absoluteX_RMW, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, aslValue) });
+def(0x5e, { name: "LSR", mode: absoluteX_RMW, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, lsrValue) });
+def(0x3e, { name: "ROL", mode: absoluteX_RMW, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, rolValue) });
+def(0x7e, { name: "ROR", mode: absoluteX_RMW, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, rorValue) });
 def(0xfe, {
   name: "INC",
   mode: absoluteX,
@@ -1518,10 +1521,10 @@ function execDcp(cpu: Cpu, bus: Bus, op: Operand): number {
 def(0xc3, { name: "*DCP", mode: indexedIndirect, cycles: 8, exec: execDcp });
 def(0xc7, { name: "*DCP", mode: zeroPage, cycles: 5, exec: execDcp });
 def(0xcf, { name: "*DCP", mode: absolute, cycles: 6, exec: execDcp });
-def(0xd3, { name: "*DCP", mode: indirectIndexed, cycles: 8, exec: execDcp });
+def(0xd3, { name: "*DCP", mode: indirectIndexed_RMW, cycles: 8, exec: execDcp });
 def(0xd7, { name: "*DCP", mode: zeroPageX, cycles: 6, exec: execDcp });
-def(0xdb, { name: "*DCP", mode: absoluteY, cycles: 7, exec: execDcp });
-def(0xdf, { name: "*DCP", mode: absoluteX, cycles: 7, exec: execDcp });
+def(0xdb, { name: "*DCP", mode: absoluteY_RMW, cycles: 7, exec: execDcp });
+def(0xdf, { name: "*DCP", mode: absoluteX_RMW, cycles: 7, exec: execDcp });
 
 // ---- illegal ISB (INC + SBC 合成) ----
 // メモリ値を INC し、結果で A から SBC する。C/Z/N/V フラグは SBC の結果で更新。
@@ -1536,10 +1539,10 @@ function execIsb(cpu: Cpu, bus: Bus, op: Operand): number {
 def(0xe3, { name: "*ISB", mode: indexedIndirect, cycles: 8, exec: execIsb });
 def(0xe7, { name: "*ISB", mode: zeroPage, cycles: 5, exec: execIsb });
 def(0xef, { name: "*ISB", mode: absolute, cycles: 6, exec: execIsb });
-def(0xf3, { name: "*ISB", mode: indirectIndexed, cycles: 8, exec: execIsb });
+def(0xf3, { name: "*ISB", mode: indirectIndexed_RMW, cycles: 8, exec: execIsb });
 def(0xf7, { name: "*ISB", mode: zeroPageX, cycles: 6, exec: execIsb });
-def(0xfb, { name: "*ISB", mode: absoluteY, cycles: 7, exec: execIsb });
-def(0xff, { name: "*ISB", mode: absoluteX, cycles: 7, exec: execIsb });
+def(0xfb, { name: "*ISB", mode: absoluteY_RMW, cycles: 7, exec: execIsb });
+def(0xff, { name: "*ISB", mode: absoluteX_RMW, cycles: 7, exec: execIsb });
 
 // ---- illegal SLO (ASL + ORA 合成) ----
 // メモリ値を ASL し、結果で A と ORA する。C フラグは ASL で設定、N/Z は ORA 結果で更新。
@@ -1555,10 +1558,10 @@ function execSlo(cpu: Cpu, bus: Bus, op: Operand): number {
 def(0x03, { name: "*SLO", mode: indexedIndirect, cycles: 8, exec: execSlo });
 def(0x07, { name: "*SLO", mode: zeroPage, cycles: 5, exec: execSlo });
 def(0x0f, { name: "*SLO", mode: absolute, cycles: 6, exec: execSlo });
-def(0x13, { name: "*SLO", mode: indirectIndexed, cycles: 8, exec: execSlo });
+def(0x13, { name: "*SLO", mode: indirectIndexed_RMW, cycles: 8, exec: execSlo });
 def(0x17, { name: "*SLO", mode: zeroPageX, cycles: 6, exec: execSlo });
-def(0x1b, { name: "*SLO", mode: absoluteY, cycles: 7, exec: execSlo });
-def(0x1f, { name: "*SLO", mode: absoluteX, cycles: 7, exec: execSlo });
+def(0x1b, { name: "*SLO", mode: absoluteY_RMW, cycles: 7, exec: execSlo });
+def(0x1f, { name: "*SLO", mode: absoluteX_RMW, cycles: 7, exec: execSlo });
 
 // ---- illegal RLA (ROL + AND 合成) ----
 // メモリ値を ROL し、結果で A と AND する。C フラグは ROL で設定、N/Z は AND 結果で更新。
@@ -1574,10 +1577,10 @@ function execRla(cpu: Cpu, bus: Bus, op: Operand): number {
 def(0x23, { name: "*RLA", mode: indexedIndirect, cycles: 8, exec: execRla });
 def(0x27, { name: "*RLA", mode: zeroPage, cycles: 5, exec: execRla });
 def(0x2f, { name: "*RLA", mode: absolute, cycles: 6, exec: execRla });
-def(0x33, { name: "*RLA", mode: indirectIndexed, cycles: 8, exec: execRla });
+def(0x33, { name: "*RLA", mode: indirectIndexed_RMW, cycles: 8, exec: execRla });
 def(0x37, { name: "*RLA", mode: zeroPageX, cycles: 6, exec: execRla });
-def(0x3b, { name: "*RLA", mode: absoluteY, cycles: 7, exec: execRla });
-def(0x3f, { name: "*RLA", mode: absoluteX, cycles: 7, exec: execRla });
+def(0x3b, { name: "*RLA", mode: absoluteY_RMW, cycles: 7, exec: execRla });
+def(0x3f, { name: "*RLA", mode: absoluteX_RMW, cycles: 7, exec: execRla });
 
 // ---- illegal SRE (LSR + EOR 合成) ----
 // メモリ値を LSR し、結果で A と EOR する。C フラグは LSR で設定、N/Z は EOR 結果で更新。
@@ -1593,10 +1596,10 @@ function execSre(cpu: Cpu, bus: Bus, op: Operand): number {
 def(0x43, { name: "*SRE", mode: indexedIndirect, cycles: 8, exec: execSre });
 def(0x47, { name: "*SRE", mode: zeroPage, cycles: 5, exec: execSre });
 def(0x4f, { name: "*SRE", mode: absolute, cycles: 6, exec: execSre });
-def(0x53, { name: "*SRE", mode: indirectIndexed, cycles: 8, exec: execSre });
+def(0x53, { name: "*SRE", mode: indirectIndexed_RMW, cycles: 8, exec: execSre });
 def(0x57, { name: "*SRE", mode: zeroPageX, cycles: 6, exec: execSre });
-def(0x5b, { name: "*SRE", mode: absoluteY, cycles: 7, exec: execSre });
-def(0x5f, { name: "*SRE", mode: absoluteX, cycles: 7, exec: execSre });
+def(0x5b, { name: "*SRE", mode: absoluteY_RMW, cycles: 7, exec: execSre });
+def(0x5f, { name: "*SRE", mode: absoluteX_RMW, cycles: 7, exec: execSre });
 
 // ---- illegal RRA (ROR + ADC 合成) ----
 // メモリ値を ROR し、結果を A に ADC する。ROR で C が設定され、ADC がその C をキャリーインに使う。
@@ -1611,10 +1614,10 @@ function execRra(cpu: Cpu, bus: Bus, op: Operand): number {
 def(0x63, { name: "*RRA", mode: indexedIndirect, cycles: 8, exec: execRra });
 def(0x67, { name: "*RRA", mode: zeroPage, cycles: 5, exec: execRra });
 def(0x6f, { name: "*RRA", mode: absolute, cycles: 6, exec: execRra });
-def(0x73, { name: "*RRA", mode: indirectIndexed, cycles: 8, exec: execRra });
+def(0x73, { name: "*RRA", mode: indirectIndexed_RMW, cycles: 8, exec: execRra });
 def(0x77, { name: "*RRA", mode: zeroPageX, cycles: 6, exec: execRra });
-def(0x7b, { name: "*RRA", mode: absoluteY, cycles: 7, exec: execRra });
-def(0x7f, { name: "*RRA", mode: absoluteX, cycles: 7, exec: execRra });
+def(0x7b, { name: "*RRA", mode: absoluteY_RMW, cycles: 7, exec: execRra });
+def(0x7f, { name: "*RRA", mode: absoluteX_RMW, cycles: 7, exec: execRra });
 
 // ---- illegal SHY/SHX (unstable store) ----
 // SHY ($9C abs,X): Y AND (addr_hi+1) → memory
