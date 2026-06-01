@@ -135,6 +135,61 @@ describe("PRG RAM — NROM/UxROM/CNROM は非搭載", () => {
   });
 });
 
+describe("PRG RAM — setPrgRam の境界ケース", () => {
+  it("setPrgRam に大きいデータを渡しても 8KB に切り詰められる", () => {
+    const mapper = new MapperMmc1(makeCart(1));
+    const big = new Uint8Array(0x4000);
+    big[0] = 0x11;
+    big[0x1fff] = 0x22;
+    big[0x2000] = 0x33;
+    mapper.setPrgRam(big);
+    expect(mapper.readPrgRam(0x6000)).toBe(0x11);
+    expect(mapper.readPrgRam(0x7fff)).toBe(0x22);
+    const ram = mapper.getPrgRam()!;
+    expect(ram.length).toBe(0x2000);
+  });
+
+  it("setPrgRam に小さいデータを渡すとデータ部分のみ上書きされる", () => {
+    const mapper = new MapperMmc1(makeCart(1));
+    mapper.writePrgRam(0x7fff, 0xff);
+    const small = new Uint8Array(16);
+    small[0] = 0xaa;
+    mapper.setPrgRam(small);
+    expect(mapper.readPrgRam(0x6000)).toBe(0xaa);
+    expect(mapper.readPrgRam(0x6010)).toBe(0);
+    // $7FFF は small の範囲外なので前の値が残る
+    expect(mapper.readPrgRam(0x7fff)).toBe(0xff);
+  });
+
+  it("MMC3: setPrgRam の round-trip で全バイトが保持される", () => {
+    const cart: Cart = {
+      header: {
+        prgRomSize: 0x20000,
+        chrRomSize: 0,
+        mapper: 4,
+        mirroring: "vertical",
+        hasBattery: true,
+        hasTrainer: false,
+        fourScreen: false,
+      },
+      prgRom: new Uint8Array(0x20000),
+      chrRom: new Uint8Array(0),
+      trainer: null,
+    };
+    const mapper1 = new MapperMmc3(cart);
+    for (let i = 0; i < 0x2000; i++) {
+      mapper1.writePrgRam(0x6000 + i, (i * 7 + 3) & 0xff);
+    }
+    const saved = mapper1.getPrgRam()!;
+
+    const mapper2 = new MapperMmc3(cart);
+    mapper2.setPrgRam(new Uint8Array(saved));
+    for (let i = 0; i < 0x2000; i++) {
+      expect(mapper2.readPrgRam(0x6000 + i)).toBe((i * 7 + 3) & 0xff);
+    }
+  });
+});
+
 describe("PRG RAM — NesBus dispatch", () => {
   it("$6000-$7FFF が mapper.readPrgRam/writePrgRam に dispatch される", () => {
     const cart = makeCart(1);
