@@ -2,14 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import type { Cart } from "../src/core/cart.ts";
 import { createMapper } from "../src/core/mappers/index.ts";
+import { MapperCnrom } from "../src/core/mappers/cnrom.ts";
 import { MapperNrom } from "../src/core/mappers/nrom.ts";
 import { MapperUxrom } from "../src/core/mappers/uxrom.ts";
 
-function makeCart(mapper: number): Cart {
+function makeCart(mapper: number, chrSize = 0): Cart {
   return {
     header: {
       prgRomSize: 0x8000,
-      chrRomSize: 0,
+      chrRomSize: chrSize,
       mapper,
       mirroring: "vertical",
       hasBattery: false,
@@ -17,7 +18,7 @@ function makeCart(mapper: number): Cart {
       fourScreen: false,
     },
     prgRom: new Uint8Array(0x8000),
-    chrRom: new Uint8Array(0),
+    chrRom: new Uint8Array(chrSize),
     trainer: null,
   };
 }
@@ -31,6 +32,11 @@ describe("createMapper", () => {
   it("mapper 2 で MapperUxrom を返す", () => {
     const mapper = createMapper(makeCart(2));
     expect(mapper).toBeInstanceOf(MapperUxrom);
+  });
+
+  it("mapper 3 で MapperCnrom を返す", () => {
+    const mapper = createMapper(makeCart(3, 0x2000));
+    expect(mapper).toBeInstanceOf(MapperCnrom);
   });
 
   it("未サポート mapper で Error を throw", () => {
