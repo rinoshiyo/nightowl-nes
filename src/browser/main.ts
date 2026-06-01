@@ -1,6 +1,7 @@
 import { parseINes } from "../core/cart.ts";
 import { NesConsole } from "../core/console.ts";
 import { Button } from "../core/controller.ts";
+import { SCREEN_W, VISIBLE_LINES } from "../core/ppu.ts";
 import { NesAudio } from "./audio.ts";
 import { Renderer } from "./renderer.ts";
 import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData, deleteSaveData } from "./save-manager.ts";
@@ -19,6 +20,7 @@ const romInput = getEl<HTMLInputElement>("rom-input");
 const status = getEl<HTMLDivElement>("status");
 const saveInfo = getEl<HTMLDivElement>("save-info");
 const deleteBtn = getEl<HTMLButtonElement>("delete-save");
+const helpSection = getEl<HTMLDivElement>("help-section");
 
 const renderer = new Renderer(canvas);
 const audio = new NesAudio();
@@ -124,6 +126,7 @@ romInput.addEventListener("change", () => {
 const dropOverlay = getEl<HTMLDivElement>("drop-overlay");
 
 document.addEventListener("dragover", (e) => {
+  if (!e.dataTransfer?.types.includes("Files")) return;
   e.preventDefault();
   dropOverlay.classList.add("visible");
 });
@@ -170,9 +173,26 @@ const KEY_MAP_2P: ReadonlyMap<string, Button> = new Map([
   ["g", Button.Select],
 ]);
 
+function toggleFullscreen(): void {
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    canvas.requestFullscreen().catch(() => {});
+  }
+}
+
 document.addEventListener("keydown", (e) => {
-  if (!nes) return;
   const key = e.key.toLowerCase();
+
+  if (key === "f" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (document.activeElement === document.body || document.activeElement === canvas) {
+      e.preventDefault();
+      toggleFullscreen();
+      return;
+    }
+  }
+
+  if (!nes) return;
   const btn1 = KEY_MAP_1P.get(key);
   if (btn1 !== undefined) {
     e.preventDefault();
@@ -255,8 +275,10 @@ const fullscreenBtn = getEl<HTMLButtonElement>("fullscreen-btn");
 
 function applyScale(scale: ScreenScale): void {
   currentScale = scale;
-  canvas.style.width = `${256 * scale}px`;
-  canvas.style.height = `${240 * scale}px`;
+  const w = SCREEN_W * scale;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${VISIBLE_LINES * scale}px`;
+  helpSection.style.width = `${w}px`;
   scaleBtn.textContent = `${scale}x`;
 }
 
@@ -265,25 +287,7 @@ scaleBtn.addEventListener("click", () => {
   applyScale(next as ScreenScale);
 });
 
-fullscreenBtn.addEventListener("click", () => {
-  if (document.fullscreenElement) {
-    document.exitFullscreen();
-  } else {
-    canvas.requestFullscreen().catch(() => {});
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() === "f" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    if (document.activeElement === document.body || document.activeElement === canvas) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        canvas.requestFullscreen().catch(() => {});
-      }
-    }
-  }
-});
+fullscreenBtn.addEventListener("click", toggleFullscreen);
 
 // --- G3: 操作ヘルプ表示 ---
 

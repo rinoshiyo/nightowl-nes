@@ -8,9 +8,14 @@ describe("formatErrorMessage", () => {
     expect(msg).toContain("NROM");
   });
 
-  it("Mapper 番号なしのエラーを汎用メッセージにする", () => {
-    const msg = formatErrorMessage("Mapper not found");
+  it("Unsupported mapper で番号なしの場合は汎用メッセージ", () => {
+    const msg = formatErrorMessage("Unsupported mapper");
     expect(msg).toBe("このROMのMapperは未対応です");
+  });
+
+  it("Mapper を含むが Unsupported mapper でないエラーはそのまま返す", () => {
+    const msg = formatErrorMessage("Mapper 4: bank index out of range");
+    expect(msg).toBe("Mapper 4: bank index out of range");
   });
 
   it("magic mismatch を日本語化する", () => {
@@ -23,9 +28,14 @@ describe("formatErrorMessage", () => {
     expect(msg).toBe("ファイルが小さすぎます（NES ヘッダを読み取れません）");
   });
 
-  it("PRG ROM overflows を日本語化する", () => {
-    const msg = formatErrorMessage("PRG ROM overflows file");
+  it("PRG ROM truncated を日本語化する", () => {
+    const msg = formatErrorMessage("iNES: PRG ROM truncated (expected 32768, got 16384)");
     expect(msg).toBe("ファイルが壊れています（PRG ROM サイズがファイルサイズを超えています）");
+  });
+
+  it("CHR ROM truncated を日本語化する", () => {
+    const msg = formatErrorMessage("iNES: CHR ROM truncated (expected 8192, got 4096)");
+    expect(msg).toBe("ファイルが壊れています（CHR ROM サイズがファイルサイズを超えています）");
   });
 
   it("未知のエラーはそのまま返す", () => {

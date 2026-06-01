@@ -75,7 +75,7 @@
     /* G3: キーバインド・操作ヘルプ */
     .help-section {
       margin-top: 1rem;
-      width: 512px;
+      width: 512px; /* JS の applyScale() で動的に更新 */
     }
     .help-toggle {
       background: none;
@@ -175,7 +175,7 @@
   <div id="save-info"><button id="delete-save">セーブ削除</button></div>
 
   <!-- G3: 操作ヘルプ -->
-  <div class="help-section">
+  <div class="help-section" id="help-section">
     <button class="help-toggle" id="help-toggle">操作ヘルプ ▼</button>
     <div class="help-content" id="help-content">
       <div class="keybinds">

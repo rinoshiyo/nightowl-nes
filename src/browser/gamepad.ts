@@ -1,12 +1,12 @@
 import { Button } from "../core/controller.ts";
 
 /** 標準 Gamepad ボタンインデックスから NES ボタンへのマッピング */
-const BUTTON_MAP: ReadonlyMap<number, Button> = new Map([
+const BUTTON_MAP: readonly [number, Button][] = [
   [0, Button.B],       // Cross / A
   [1, Button.A],       // Circle / B
   [8, Button.Select],  // Share / Back
   [9, Button.Start],   // Start / Menu
-]);
+];
 
 export interface GamepadButtonState {
   pressed: boolean;
@@ -26,7 +26,10 @@ const DEADZONE = 0.5;
 
 /** ゲームパッドの状態を読み取り、コントローラに反映する */
 export function applyGamepadState(gp: GamepadState, ctrl: ControllerActions): void {
-  for (const [gpIndex, nesBtn] of BUTTON_MAP) {
+  for (let i = 0; i < BUTTON_MAP.length; i++) {
+    const entry = BUTTON_MAP[i];
+    if (!entry) continue;
+    const [gpIndex, nesBtn] = entry;
     const pressed = gp.buttons[gpIndex]?.pressed ?? false;
     if (pressed) ctrl.press(nesBtn);
     else ctrl.release(nesBtn);
@@ -47,8 +50,8 @@ export function applyGamepadState(gp: GamepadState, ctrl: ControllerActions): vo
   const dDown = gp.buttons[13]?.pressed ?? false;
   const dLeft = gp.buttons[14]?.pressed ?? false;
   const dRight = gp.buttons[15]?.pressed ?? false;
-  if (dUp) ctrl.press(Button.Up);
-  if (dDown) ctrl.press(Button.Down);
-  if (dLeft) ctrl.press(Button.Left);
-  if (dRight) ctrl.press(Button.Right);
+  if (dUp) ctrl.press(Button.Up); else ctrl.release(Button.Up);
+  if (dDown) ctrl.press(Button.Down); else ctrl.release(Button.Down);
+  if (dLeft) ctrl.press(Button.Left); else ctrl.release(Button.Left);
+  if (dRight) ctrl.press(Button.Right); else ctrl.release(Button.Right);
 }

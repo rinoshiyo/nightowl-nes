@@ -114,6 +114,16 @@ describe("applyGamepadState", () => {
     expect(ctrl.pressed.has(Button.Left)).toBe(true);
   });
 
+  it("D-pad ボタンが離されると release が呼ばれる", () => {
+    const ctrl = createTracker();
+    const gp = makeGamepad();
+    applyGamepadState(gp, ctrl);
+    expect(ctrl.released.has(Button.Up)).toBe(true);
+    expect(ctrl.released.has(Button.Down)).toBe(true);
+    expect(ctrl.released.has(Button.Left)).toBe(true);
+    expect(ctrl.released.has(Button.Right)).toBe(true);
+  });
+
   it("何も押されていない時は全ボタン release", () => {
     const ctrl = createTracker();
     const gp = makeGamepad();
