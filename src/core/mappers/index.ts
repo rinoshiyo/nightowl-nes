@@ -17,3 +17,4 @@ export { MapperJalecoSs8806 } from "./jaleco-ss8806.ts";
 export { MapperNamco163 } from "./namco163.ts";
 export { MapperSunsoftFme7 } from "./sunsoft-fme7.ts";
 export { MapperVrc6 } from "./vrc6.ts";
+export { MapperVrc7 } from "./vrc7.ts";
