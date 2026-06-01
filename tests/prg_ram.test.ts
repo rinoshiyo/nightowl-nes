@@ -112,7 +112,7 @@ describe("PRG RAM — MMC3", () => {
   });
 });
 
-describe("PRG RAM — NROM は搭載、UxROM/CNROM は非搭載", () => {
+describe("PRG RAM — NROM/UxROM/CNROM 搭載", () => {
   it("NROM: PRG RAM 読み書き可能", () => {
     const mapper = new MapperNrom(makeCart(0));
     expect(mapper.readPrgRam(0x6000)).toBe(0);
