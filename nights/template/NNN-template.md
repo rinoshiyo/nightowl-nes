@@ -31,16 +31,17 @@
 ## 実装ステップ
 
 1. `git checkout main && git pull`
-2. `git checkout -b night/NNN-<topic>`
-3. 最初の commit 後に `git push -u origin night/NNN-<topic>` → `gh pr create --draft --base main --title "夜 NNN: <題目>"` (PR が SSOT)
+2. `gh issue create --title "夜 NNN: <題目>" --label night --body "<DoD>"` (Issue = scope SSOT)
+3. `git checkout -b night/NNN-<topic>`
 4. G1 に対応する src/* / tests/* を作成 → `bun test` + `bunx tsc --noEmit` + `bunx eslint` で都度確認
 5. G1 を commit (`feat(<scope>): <題目>`)
-6. G2 / G3 / ... を同様に
-7. `bun test` 全 pass / `bunx tsc --noEmit` 警告ゼロ / `bunx eslint src tests` 警告ゼロ
-8. `git mv nights/pending/NNN-<topic>.md nights/done/NNN-<topic>.md` を同じブランチで commit
-9. `gh pr ready` で draft 解除 (auto-merge はまだ打たない)
-10. `gh pr merge --auto --merge --delete-branch`
-11. CI 緑 → main 自動反映を `gh pr view <PR#> --json state,mergedAt` で確認
+6. 最初の commit 後に `git push -u origin night/NNN-<topic>` → `gh pr create --draft --base main --title "夜 NNN: <題目>" --body "Closes #NNN"`
+7. G2 / G3 / ... を同様に
+8. `bun test` 全 pass / `bunx tsc --noEmit` 警告ゼロ / `bunx eslint src tests` 警告ゼロ
+9. `git mv nights/pending/NNN-<topic>.md nights/done/NNN-<topic>.md` を同じブランチで commit
+10. `gh pr ready` で draft 解除 (auto-merge はまだ打たない)
+11. `gh pr merge --auto --merge --delete-branch`
+12. CI 緑 → main 自動反映 → Issue 自動 close を `gh issue view <#> --json state` で確認
 
 ## 検証チャンネル (transcript 出力ルール)
 
@@ -51,14 +52,10 @@
 - auto-merge 設定: `⏳ AUTO-MERGE ARMED: CI 緑判定待ち`
 - main merge 確認: `🎯 GOAL CONDITION MET: night NNN merged`
 
-## PR body テンプレ
+## PR body テンプレ (GitHub Flow: DoD は Issue 側に持つ)
 
 ```markdown
-## ゴール
-nights/pending/NNN-<topic>.md の DoD 全項目達成
-
-## DoD チェック
-- [x] <DoD 項目を全部チェック付きで列挙>
+Closes #NNN
 
 ## サブゴール達成状況
 - [x] G1: <内容>

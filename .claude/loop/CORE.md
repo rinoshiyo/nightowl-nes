@@ -6,7 +6,9 @@
 
 ## 自走モデル
 
-- **1 夜 = 1 つの夜 md = 1 本の PR = 1 つの /clear リセット境界** (所要目安 3-5 時間、 DoD 20-40 項目)
+**GitHub Flow** (Issue → Branch → PR → Merge) で運用する。**Issue = scope SSOT** (何をやるか・DoD)、**PR = delivery SSOT** (何をやったか・diff + レビュー)。
+
+- **1 夜 = 1 つの夜 md = 1 Issue = 1 本の PR = 1 つの /clear リセット境界** (所要目安 3-5 時間、 DoD 20-40 項目)
 - **各夜は有限の /goal** (`or stop after N turns`、 N=80 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
 - 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達。 pending 枯渇では停止しない — `finish-night.sh` は常に `/goal` を書き、 fresh session が起動時の作法 (step 2) で pending 空を検知し seed する
 - 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
@@ -27,9 +29,9 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 
 ノールック auto-merge を避けるため、 PR 作成後にレビュー往復を回す。 **`code-review` skill はメインが直接呼ぶ** — skill は内部で finder 7 angle + 各 finding の verifier を `Agent` tool で spawn する設計のため、 **sub-agent から呼ぶとネスト不可 (subagents cannot spawn subagents) で機能しない**。 メインには `Agent` tool があるので正規に動く。 GitHub Actions / 外部 API を使わず Anthropic 枠で完結 (追加課金ゼロ)。
 
-### 責務と名義の分離 (PR-as-SSOT・Why: これがレビュー観点の土台)
+### 責務と名義の分離 (PR = delivery SSOT・Why: これがレビュー観点の土台)
 
-1 つのメイン Claude が **投稿時に名義を演じ分ける**。 朝石井が「誰が指摘し・誰が裁定したか」を PR だけ (PR-as-SSOT) で追えるようにする:
+1 つのメイン Claude が **投稿時に名義を演じ分ける**。 朝石井が「誰が指摘し・誰が裁定したか」を PR (delivery SSOT) で追えるようにする:
 
 | 立場 | 名義 | 投稿経路 | 投稿するもの |
 |---|---|---|---|
@@ -94,7 +96,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 立ち止まらずそのまま以下を行う。「次どうする？」「他にある？」等の質問は自走を止める違反行為。
 この後 Stop hook → helper が `/clear` して次の夜へ連鎖する:
 
-1. **handoff を PR に書く (PR が SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を該当夜の PR description かコメントに書く。 `tmp/handoff/` のローカル md は gitignore で push されず二重管理になるため使わない
+1. **handoff を PR に書く (PR = delivery SSOT)**: 「達成内容 / 困った点 / 朝レビュー向けメモ / 次の夜の前提条件」 を該当夜の PR description かコメントに書く。 `tmp/handoff/` のローカル md は gitignore で push されず二重管理になるため使わない
 2. **`scripts/finish-night.sh` を呼ぶ** (残りの機械的手順を atomic に実行):
    ```bash
    bash scripts/finish-night.sh [--night NNN]
@@ -104,17 +106,19 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 
 ## 起動時の作法
 
-0. **open PR を確認** (`gh pr list --state open --json number,title,isDraft,mergeStateStatus,headRefName`)。open PR があれば PR description / コメント (SSOT) を読み中断作業か判定。**判定基準**: draft = レビュー隔離中 (再開対象) / 非 draft の open は中身を見る — CI 実行中 (`BLOCKED`) なら「正常な in-flight」(loop-helper が merge 待ち中。中断扱いして再開しない) / CLEAN のまま open なら loop-helper が止まった可能性で最優先再開。**open PR があれば `git checkout <headRefName>` してから step 5 で再開**
+0. **open Issue / PR を確認**。`gh issue list -s open -l night` で open Issue、`gh pr list --state open` で open PR を確認。**判定基準**: open PR あり → PR description / コメントを読み中断作業か判定 (draft = レビュー隔離中 / BLOCKED = 正常 in-flight / CLEAN open = 最優先再開)。open Issue あり + PR なし → scope は決まっている、実装途中で中断した状態 (step 5 から再開)。**open PR があれば `git checkout <headRefName>` してから step 7 で再開**
 1. `git checkout main && git pull` で main を最新化
-2. `nights/pending/` の最若番号の md を Read。**pending が空なら `loop-start` skill の seed 手順に従い夜 md を作成してから続行**
-3. `night/NNN-<topic>` ブランチを切る → 最初の commit を push してから **draft PR を立てる** (`gh pr create --draft`)。以降の状態は PR が SSOT
-4. 「## ゴール」セクションの /goal 条件を確認
-5. 実装。ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
-6. /goal 評価のため pass / fail を必ず transcript に出力
-7. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
-8. `gh pr ready` で draft を解除 (この時点では auto-merge を打たない)
-9. メインが `code-review --fix` を直呼びでレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --merge --delete-branch`
-10. CI 緑 → auto-merge 反映を見届けてセッション完了報告
+2. `nights/pending/` の最若番号の md を Read (open Issue がなく pending もなければ `loop-start` skill の seed 手順で夜 md を作成)
+3. **Issue 作成** (`gh issue create --title "夜 NNN: <topic>" --label night --body "<DoD チェックリスト>"`)。open Issue が既にあればスキップ。Issue が scope の SSOT
+4. **/goal 設定**。夜 md「## ゴール」セクションの条件で /goal を設定する。**loop-start の出口条件 = /goal が active であること。/goal なしで実装に入ることは許されない**
+5. `night/NNN-<topic>` ブランチを切る → 実装開始
+6. 最初の commit → push → **draft PR** (`gh pr create --draft --body "Closes #NNN"`)。以降の delivery 状態は PR が SSOT
+7. 実装続行。ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
+8. /goal 評価のため pass / fail を必ず transcript に出力
+9. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
+10. `gh pr ready` で draft を解除 (この時点では auto-merge を打たない)
+11. メインが `code-review --fix` を直呼びでレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --merge --delete-branch`
+12. CI 緑 → auto-merge 反映 → Issue 自動 close を見届けてセッション完了報告
 
 ## ブランチ運用 + PR フロー
 
@@ -140,7 +144,11 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 | `gh pr ready` / `gh pr edit --title\|--body` | ○ |
 | `gh pr edit --base` | ⚠ ask |
 | `gh pr delete` | ✗ hook で deny |
-| `gh repo delete` / `gh release delete` / `gh issue delete` | ✗ hook で deny |
+| `gh issue create` | ○ |
+| `gh issue edit --title\|--body\|--add-label` | ○ |
+| `gh issue close` | ⚠ ask |
+| `gh issue delete` | ✗ hook で deny |
+| `gh repo delete` / `gh release delete` | ✗ hook で deny |
 
 ### auto-merge の挙動
 
