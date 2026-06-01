@@ -50,10 +50,18 @@ errorClose.addEventListener("click", () => {
   errorOverlay.classList.remove("visible");
 });
 
-const FRAME_MS = 1000 / 60;
+const TARGET_FPS = 60;
+const FRAME_MS = 1000 / TARGET_FPS;
+const MAX_FRAME_SKIP = 3;
 let lastFrameTime = 0;
 const SAVE_INTERVAL_MS = 5000;
 let lastSaveTime = 0;
+
+// --- FPS カウンタ ---
+let fpsFrameCount = 0;
+let fpsLastTime = 0;
+let fpsDisplay = 0;
+const fpsCounter = getEl<HTMLDivElement>("fps-counter");
 
 function updateSaveUi(): void {
   if (!currentRomHash || !currentHasBattery) {
@@ -113,6 +121,8 @@ async function loadRom(file: File): Promise<void> {
   if (!running) {
     running = true;
     lastFrameTime = 0;
+    fpsLastTime = 0;
+    fpsFrameCount = 0;
     lastSaveTime = performance.now();
     requestAnimationFrame(gameLoop);
   }
@@ -260,11 +270,20 @@ function gameLoop(timestamp: number): void {
 
   pollGamepads();
 
+  if (lastFrameTime === 0) {
+    lastFrameTime = timestamp;
+    fpsLastTime = timestamp;
+  }
+
   const elapsed = timestamp - lastFrameTime;
   if (elapsed >= FRAME_MS) {
-    lastFrameTime = timestamp - (elapsed % FRAME_MS);
+    const framesToRun = Math.min(Math.floor(elapsed / FRAME_MS), MAX_FRAME_SKIP + 1);
+    lastFrameTime += framesToRun * FRAME_MS;
+
     try {
-      nes.stepFrame();
+      for (let i = 0; i < framesToRun; i++) {
+        nes.stepFrame();
+      }
       renderer.render(nes.ppu.framebuffer);
     } catch (e) {
       showError(e);
@@ -272,6 +291,17 @@ function gameLoop(timestamp: number): void {
       running = false;
       return;
     }
+
+    fpsFrameCount++;
+  }
+
+  // FPS カウンタ更新 (1 秒間隔)
+  const fpsDelta = timestamp - fpsLastTime;
+  if (fpsDelta >= 1000) {
+    fpsDisplay = Math.round(fpsFrameCount * 1000 / fpsDelta);
+    fpsCounter.textContent = `${fpsDisplay} FPS`;
+    fpsFrameCount = 0;
+    fpsLastTime = timestamp;
   }
 
   if (timestamp - lastSaveTime >= SAVE_INTERVAL_MS) {
