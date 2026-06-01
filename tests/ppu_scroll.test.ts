@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { Ppu } from "../src/core/ppu.ts";
 
 /**
+ * loopy t の値を v にコピーし、描画可能状態にする。
+ * 実機では pre-render scanline で vert(v)=vert(t)、
+ * visible scanline 開始時に hori(v)=hori(t) が行われる。
+ */
+function applyScroll(ppu: Ppu): void {
+  ppu.v = ppu.t;
+}
+
+/**
  * 1 スキャンライン (scanline 0) を描画するヘルパー。
  * scanline=0, dot=0 から開始し 341 dot 進める。
  */
@@ -109,7 +118,7 @@ describe("PPU ミラーリング write 経由検証", () => {
 
 describe("PPU X スクロール", () => {
   function setupScrollTest(ppu: Ppu): void {
-    ppu.ctrl = 0;
+    ppu.write(0, 0x00);
     ppu.mask = 0x08;
     ppu.mirroring = "vertical";
     ppu.palette[0] = 0x0F;
@@ -120,6 +129,7 @@ describe("PPU X スクロール", () => {
     const ppu = new Ppu();
     setupScrollTest(ppu);
     ppu.scrollX = 0;
+    applyScroll(ppu);
 
     ppu.chrRam[0] = 0xFF;
     ppu.chrRam[8] = 0x00;
@@ -136,6 +146,7 @@ describe("PPU X スクロール", () => {
     const ppu = new Ppu();
     setupScrollTest(ppu);
     ppu.scrollX = 8;
+    applyScroll(ppu);
 
     ppu.chrRam[0] = 0x00;
     ppu.chrRam[8] = 0x00;
@@ -155,6 +166,7 @@ describe("PPU X スクロール", () => {
     const ppu = new Ppu();
     setupScrollTest(ppu);
     ppu.scrollX = 3;
+    applyScroll(ppu);
 
     ppu.chrRam[0] = 0xFF;
     ppu.chrRam[8] = 0x00;
@@ -179,6 +191,7 @@ describe("PPU X スクロール", () => {
     const ppu = new Ppu();
     setupScrollTest(ppu);
     ppu.scrollX = 248;
+    applyScroll(ppu);
 
     ppu.chrRam[0] = 0xFF;
     ppu.chrRam[8] = 0x00;
@@ -200,11 +213,12 @@ describe("PPU X スクロール", () => {
 describe("PPU Y スクロール", () => {
   it("scrollY=8 で 2 行目のタイルが画面最上段に表示される", () => {
     const ppu = new Ppu();
-    ppu.ctrl = 0;
+    ppu.write(0, 0x00);
     ppu.mask = 0x08;
     ppu.mirroring = "vertical";
     ppu.scrollX = 0;
     ppu.scrollY = 8;
+    applyScroll(ppu);
 
     ppu.chrRam[0] = 0x00;
     ppu.chrRam[8] = 0x00;
@@ -223,11 +237,12 @@ describe("PPU Y スクロール", () => {
 
   it("scrollY で fineY が正しく反映される", () => {
     const ppu = new Ppu();
-    ppu.ctrl = 0;
+    ppu.write(0, 0x00);
     ppu.mask = 0x08;
     ppu.mirroring = "vertical";
     ppu.scrollX = 0;
     ppu.scrollY = 2;
+    applyScroll(ppu);
 
     ppu.chrRam[2] = 0xFF;
     ppu.chrRam[10] = 0x00;
@@ -244,11 +259,12 @@ describe("PPU Y スクロール", () => {
 
   it("scrollY=240 で垂直方向の NT 切替が起きる", () => {
     const ppu = new Ppu();
-    ppu.ctrl = 0;
+    ppu.write(0, 0x00);
     ppu.mask = 0x08;
     ppu.mirroring = "horizontal";
     ppu.scrollX = 0;
     ppu.scrollY = 240;
+    applyScroll(ppu);
 
     ppu.chrRam[16] = 0xFF;
     ppu.chrRam[24] = 0x00;
@@ -267,11 +283,12 @@ describe("PPU Y スクロール", () => {
 describe("PPU X+Y 複合スクロール", () => {
   it("scrollX=128, scrollY=16 で正しいタイルが描画される", () => {
     const ppu = new Ppu();
-    ppu.ctrl = 0;
+    ppu.write(0, 0x00);
     ppu.mask = 0x08;
     ppu.mirroring = "vertical";
     ppu.scrollX = 128;
     ppu.scrollY = 16;
+    applyScroll(ppu);
 
     const tileCol = 16;
     const tileRow = 2;
@@ -291,11 +308,12 @@ describe("PPU X+Y 複合スクロール", () => {
 
   it("scrollX=255 で画面右端が正しく隣 NT から描画される", () => {
     const ppu = new Ppu();
-    ppu.ctrl = 0;
+    ppu.write(0, 0x00);
     ppu.mask = 0x08;
     ppu.mirroring = "vertical";
     ppu.scrollX = 255;
     ppu.scrollY = 0;
+    applyScroll(ppu);
 
     ppu.chrRam[0] = 0xFF;
     ppu.chrRam[8] = 0xFF;
@@ -314,11 +332,12 @@ describe("PPU X+Y 複合スクロール", () => {
 
   it("scrollY=232 + scanline=7 でタイル行29→0への wrap が起きる", () => {
     const ppu = new Ppu();
-    ppu.ctrl = 0;
+    ppu.write(0, 0x00);
     ppu.mask = 0x08;
     ppu.mirroring = "horizontal";
     ppu.scrollX = 0;
     ppu.scrollY = 232;
+    applyScroll(ppu);
 
     const tileIdx = 3;
     ppu.vram[29 * 32] = tileIdx;
@@ -338,11 +357,12 @@ describe("PPU X+Y 複合スクロール", () => {
 describe("PPU PPUCTRL ベース NT 選択", () => {
   it("PPUCTRL bit0-1 = 1 で NT $2400 がベースになる", () => {
     const ppu = new Ppu();
-    ppu.ctrl = 0x01;
+    ppu.write(0, 0x01);
     ppu.mask = 0x08;
     ppu.mirroring = "vertical";
     ppu.scrollX = 0;
     ppu.scrollY = 0;
+    applyScroll(ppu);
 
     ppu.chrRam[16] = 0xFF;
     ppu.chrRam[24] = 0x00;
@@ -359,11 +379,12 @@ describe("PPU PPUCTRL ベース NT 選択", () => {
 
   it("PPUCTRL bit0-1 = 2 で NT $2800 がベースになる", () => {
     const ppu = new Ppu();
-    ppu.ctrl = 0x02;
+    ppu.write(0, 0x02);
     ppu.mask = 0x08;
     ppu.mirroring = "vertical";
     ppu.scrollX = 0;
     ppu.scrollY = 0;
+    applyScroll(ppu);
 
     ppu.chrRam[16] = 0xFF;
     ppu.chrRam[24] = 0x00;

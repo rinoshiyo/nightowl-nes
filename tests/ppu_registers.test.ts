@@ -16,13 +16,15 @@ describe("PPUSTATUS ($2002)", () => {
     expect(ppu.status & 0x80).toBe(0);
   });
 
-  it("read 後に write toggle がリセットされる", () => {
+  it("read 後に w (write toggle) がリセットされる", () => {
     const ppu = new Ppu();
     ppu.write(5, 0x10);
-    expect(ppu.scrollX).toBe(0x10);
+    expect(ppu.w).toBe(true);
     ppu.read(2);
+    expect(ppu.w).toBe(false);
     ppu.write(5, 0x20);
-    expect(ppu.scrollX).toBe(0x20);
+    expect(Ppu.coarseX(ppu.t)).toBe(0x20 >> 3);
+    expect(ppu.x).toBe(0x20 & 0x07);
   });
 });
 
@@ -54,36 +56,39 @@ describe("OAMDATA ($2004)", () => {
 });
 
 describe("PPUSCROLL ($2005) ダブルライト", () => {
-  it("1st write = scrollX, 2nd write = scrollY", () => {
+  it("1st write → coarse X/fine X が loopy t/x に反映される", () => {
     const ppu = new Ppu();
     ppu.write(5, 0x10);
     ppu.write(5, 0x20);
-    expect(ppu.scrollX).toBe(0x10);
-    expect(ppu.scrollY).toBe(0x20);
+    expect(Ppu.coarseX(ppu.t)).toBe(0x10 >> 3);
+    expect(ppu.x).toBe(0x10 & 0x07);
+    expect(Ppu.coarseY(ppu.t)).toBe(0x20 >> 3);
+    expect(Ppu.fineY(ppu.t)).toBe(0x20 & 0x07);
   });
 
-  it("3rd write は再び scrollX になる (toggle)", () => {
+  it("3rd write は再び 1st write (w toggle リセット)", () => {
     const ppu = new Ppu();
     ppu.write(5, 0x10);
     ppu.write(5, 0x20);
     ppu.write(5, 0x30);
-    expect(ppu.scrollX).toBe(0x30);
+    expect(Ppu.coarseX(ppu.t)).toBe(0x30 >> 3);
+    expect(ppu.x).toBe(0x30 & 0x07);
   });
 });
 
 describe("PPUADDR ($2006) ダブルライト", () => {
-  it("hi → lo で vramAddr を組み立てる", () => {
+  it("hi → lo で v (VRAM address) を組み立てる", () => {
     const ppu = new Ppu();
     ppu.write(6, 0x21);
     ppu.write(6, 0x08);
-    expect(ppu.vramAddr).toBe(0x2108);
+    expect(ppu.v).toBe(0x2108);
   });
 
   it("上位 2bit はマスクされる (14bit address)", () => {
     const ppu = new Ppu();
     ppu.write(6, 0xff);
     ppu.write(6, 0xff);
-    expect(ppu.vramAddr).toBe(0x3fff);
+    expect(ppu.v).toBe(0x3fff);
   });
 });
 
@@ -100,7 +105,7 @@ describe("PPUDATA ($2007) read/write", () => {
     expect(ppu.read(7)).toBe(0x42);
   });
 
-  it("read 後に vramAddr がインクリメントされる (increment=1)", () => {
+  it("read 後に v がインクリメントされる (increment=1)", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
 
@@ -125,7 +130,7 @@ describe("PPUDATA ($2007) read/write", () => {
     ppu.write(7, 0xaa);
     ppu.write(7, 0xbb);
 
-    expect(ppu.vramAddr).toBe(0x2040);
+    expect(ppu.v).toBe(0x2040);
   });
 
   it("パレット ($3F00+) は即時読み出し (バッファ遅延なし)", () => {
