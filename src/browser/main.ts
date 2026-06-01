@@ -1,9 +1,13 @@
 import { parseINes } from "../core/cart.ts";
 import { NesConsole } from "../core/console.ts";
 import { Button } from "../core/controller.ts";
+import { SCREEN_W, VISIBLE_LINES } from "../core/ppu.ts";
 import { NesAudio } from "./audio.ts";
 import { Renderer } from "./renderer.ts";
 import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData, deleteSaveData } from "./save-manager.ts";
+import { formatErrorMessage } from "./error-messages.ts";
+import { applyGamepadState } from "./gamepad.ts";
+import { isNesFile } from "./drag-drop.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -16,6 +20,7 @@ const romInput = getEl<HTMLInputElement>("rom-input");
 const status = getEl<HTMLDivElement>("status");
 const saveInfo = getEl<HTMLDivElement>("save-info");
 const deleteBtn = getEl<HTMLButtonElement>("delete-save");
+const helpSection = getEl<HTMLDivElement>("help-section");
 
 const renderer = new Renderer(canvas);
 const audio = new NesAudio();
@@ -24,6 +29,24 @@ let running = false;
 let currentRomHash: string | null = null;
 let currentHasBattery = false;
 let saveDisabled = false;
+
+// --- G5: エラー表示の改善 ---
+
+const errorOverlay = getEl<HTMLDivElement>("error-overlay");
+const errorMessage = getEl<HTMLDivElement>("error-message");
+const errorClose = getEl<HTMLButtonElement>("error-close");
+
+function showError(e: unknown): void {
+  const msg = e instanceof Error ? e.message : String(e);
+  const friendly = formatErrorMessage(msg);
+  errorMessage.textContent = friendly;
+  errorOverlay.classList.add("visible");
+  status.textContent = `エラー: ${friendly}`;
+}
+
+errorClose.addEventListener("click", () => {
+  errorOverlay.classList.remove("visible");
+});
 
 const FRAME_MS = 1000 / 60;
 let lastFrameTime = 0;
@@ -94,7 +117,37 @@ romInput.addEventListener("change", () => {
   const file = romInput.files?.[0];
   if (!file) return;
   loadRom(file).catch((e) => {
-    status.textContent = `エラー: ${e instanceof Error ? e.message : String(e)}`;
+    showError(e);
+  });
+});
+
+// --- G1: ドラッグ&ドロップ ---
+
+const dropOverlay = getEl<HTMLDivElement>("drop-overlay");
+
+document.addEventListener("dragover", (e) => {
+  if (!e.dataTransfer?.types.includes("Files")) return;
+  e.preventDefault();
+  dropOverlay.classList.add("visible");
+});
+
+document.addEventListener("dragleave", (e) => {
+  if (e.relatedTarget === null) {
+    dropOverlay.classList.remove("visible");
+  }
+});
+
+document.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropOverlay.classList.remove("visible");
+  const file = e.dataTransfer?.files[0];
+  if (!file) return;
+  if (!isNesFile(file.name)) {
+    showError(new Error(".nes ファイルのみ対応しています"));
+    return;
+  }
+  loadRom(file).catch((err) => {
+    showError(err);
   });
 });
 
@@ -120,9 +173,26 @@ const KEY_MAP_2P: ReadonlyMap<string, Button> = new Map([
   ["g", Button.Select],
 ]);
 
+function toggleFullscreen(): void {
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    canvas.requestFullscreen().catch(() => {});
+  }
+}
+
 document.addEventListener("keydown", (e) => {
-  if (!nes) return;
   const key = e.key.toLowerCase();
+
+  if (key === "f" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (document.activeElement === document.body || document.activeElement === canvas) {
+      e.preventDefault();
+      toggleFullscreen();
+      return;
+    }
+  }
+
+  if (!nes) return;
   const btn1 = KEY_MAP_1P.get(key);
   if (btn1 !== undefined) {
     e.preventDefault();
@@ -152,11 +222,26 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
+// --- G2: Gamepad API ---
+
+function pollGamepads(): void {
+  if (!nes) return;
+  const gamepads = navigator.getGamepads();
+  for (let gi = 0; gi < gamepads.length; gi++) {
+    const gp = gamepads[gi];
+    if (!gp) continue;
+    const ctrl = gi === 0 ? nes.controller1 : nes.controller2;
+    applyGamepadState(gp, ctrl);
+  }
+}
+
 function gameLoop(timestamp: number): void {
   if (!nes) {
     running = false;
     return;
   }
+
+  pollGamepads();
 
   const elapsed = timestamp - lastFrameTime;
   if (elapsed >= FRAME_MS) {
@@ -165,7 +250,8 @@ function gameLoop(timestamp: number): void {
       nes.stepFrame();
       renderer.render(nes.ppu.framebuffer);
     } catch (e) {
-      status.textContent = `エラー: ${e instanceof Error ? e.message : String(e)}`;
+      showError(e);
+      audio.stop();
       running = false;
       return;
     }
@@ -180,6 +266,39 @@ function gameLoop(timestamp: number): void {
 }
 
 window.addEventListener("beforeunload", flushSave);
+
+// --- G4: 画面サイズ切替 ---
+
+type ScreenScale = 1 | 2 | 3;
+let currentScale: ScreenScale = 2;
+const scaleBtn = getEl<HTMLButtonElement>("scale-btn");
+const fullscreenBtn = getEl<HTMLButtonElement>("fullscreen-btn");
+
+function applyScale(scale: ScreenScale): void {
+  currentScale = scale;
+  const w = SCREEN_W * scale;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${VISIBLE_LINES * scale}px`;
+  helpSection.style.width = `${w}px`;
+  scaleBtn.textContent = `${scale}x`;
+}
+
+scaleBtn.addEventListener("click", () => {
+  const next = currentScale === 1 ? 2 : currentScale === 2 ? 3 : 1;
+  applyScale(next as ScreenScale);
+});
+
+fullscreenBtn.addEventListener("click", toggleFullscreen);
+
+// --- G3: 操作ヘルプ表示 ---
+
+const helpToggle = getEl<HTMLButtonElement>("help-toggle");
+const helpContent = getEl<HTMLDivElement>("help-content");
+
+helpToggle.addEventListener("click", () => {
+  const visible = helpContent.classList.toggle("visible");
+  helpToggle.textContent = visible ? "操作ヘルプ ▲" : "操作ヘルプ ▼";
+});
 
 deleteBtn.addEventListener("click", () => {
   if (!currentRomHash) return;
