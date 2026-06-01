@@ -187,6 +187,27 @@ describe("MapperAxrom PRG RAM / IRQ", () => {
   });
 });
 
+describe("MapperAxrom 初期状態", () => {
+  it("初期状態でバンク 0 が選択されている", () => {
+    const mapper = new MapperAxrom(makeAxromCart(8));
+    expect(mapper.readPrg(0x8000)).toBe(0);
+    expect(mapper.readPrg(0xc000)).toBe(0 | 0x80);
+  });
+
+  it("初期状態で reset すると single-lower が通知される", () => {
+    const mapper = new MapperAxrom(makeAxromCart(4));
+    const cb = vi.fn<(m: Mirroring) => void>();
+    mapper.onMirroringChange = cb;
+    mapper.reset();
+    expect(cb).toHaveBeenCalledWith("single-lower");
+  });
+
+  it("初期状態は irqPending = false", () => {
+    const mapper = new MapperAxrom(makeAxromCart(4));
+    expect(mapper.irqPending).toBe(false);
+  });
+});
+
 describe("MapperAxrom エッジケース", () => {
   it("1 バンク構成で正しく動作", () => {
     const mapper = new MapperAxrom(makeAxromCart(1));
