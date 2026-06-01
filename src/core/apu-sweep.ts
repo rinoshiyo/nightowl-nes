@@ -6,6 +6,8 @@
  * 仕様参照: https://www.nesdev.org/wiki/APU_Sweep
  */
 
+import type { SweepState } from "./state.ts";
+
 export class SweepUnit {
   enabled = false;
   period = 0;
@@ -51,5 +53,25 @@ export class SweepUnit {
     }
 
     return newPeriod;
+  }
+
+  serialize(): SweepState {
+    return {
+      enabled: this.enabled,
+      period: this.period,
+      negate: this.negate,
+      shift: this.shift,
+      reload: this.reload,
+      divider: this.divider,
+    };
+  }
+
+  deserialize(state: SweepState): void {
+    this.enabled = state.enabled;
+    this.period = state.period;
+    this.negate = state.negate;
+    this.shift = state.shift;
+    this.reload = state.reload;
+    this.divider = state.divider;
   }
 }

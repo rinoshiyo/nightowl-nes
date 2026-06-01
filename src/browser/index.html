@@ -117,6 +117,54 @@
       color: #f8f8f2;
     }
 
+    /* ステートセーブ/ロード */
+    .state-controls {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 0.3rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .state-controls .slot-group {
+      display: flex;
+      gap: 0.2rem;
+      align-items: center;
+    }
+    .state-controls .slot-label {
+      font-size: 0.7rem;
+      color: #6272a4;
+      margin-right: 0.2rem;
+    }
+    .state-controls button {
+      padding: 0.25rem 0.5rem;
+      background: #44475a;
+      color: #f8f8f2;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 0.7rem;
+    }
+    .state-controls button:hover { background: #6272a4; }
+    .state-controls button.save-btn { background: #50fa7b33; }
+    .state-controls button.save-btn:hover { background: #50fa7b66; }
+    .state-controls button.load-btn { background: #8be9fd33; }
+    .state-controls button.load-btn:hover { background: #8be9fd66; }
+    .state-controls button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .state-controls button:disabled:hover {
+      background: #44475a;
+    }
+    #state-status {
+      font-size: 0.7rem;
+      color: #50fa7b;
+      min-height: 1em;
+      margin-top: 0.2rem;
+    }
+    .state-slot-active { border: 1px solid #50fa7b !important; }
+
     /* G1: ドラッグ&ドロップオーバーレイ */
     #drop-overlay {
       display: none;
@@ -181,6 +229,31 @@
   <div id="status">ROM を読み込んでください（ファイル選択またはドラッグ&ドロップ）</div>
   <div id="save-info"><button id="delete-save">セーブ削除</button></div>
 
+  <!-- ステートセーブ/ロード -->
+  <div class="state-controls" id="state-controls" style="display:none">
+    <div class="slot-group" data-slot="1">
+      <span class="slot-label">1:</span>
+      <button class="save-btn" data-action="save" data-slot="1" title="F5: セーブ">💾</button>
+      <button class="load-btn" data-action="load" data-slot="1" title="F7: ロード" disabled>📂</button>
+    </div>
+    <div class="slot-group" data-slot="2">
+      <span class="slot-label">2:</span>
+      <button class="save-btn" data-action="save" data-slot="2" title="Shift+F5: セーブ">💾</button>
+      <button class="load-btn" data-action="load" data-slot="2" title="Shift+F7: ロード" disabled>📂</button>
+    </div>
+    <div class="slot-group" data-slot="3">
+      <span class="slot-label">3:</span>
+      <button class="save-btn" data-action="save" data-slot="3">💾</button>
+      <button class="load-btn" data-action="load" data-slot="3" disabled>📂</button>
+    </div>
+    <div class="slot-group" data-slot="4">
+      <span class="slot-label">4:</span>
+      <button class="save-btn" data-action="save" data-slot="4">💾</button>
+      <button class="load-btn" data-action="load" data-slot="4" disabled>📂</button>
+    </div>
+  </div>
+  <div id="state-status"></div>
+
   <!-- G3: 操作ヘルプ -->
   <div class="help-section" id="help-section">
     <button class="help-toggle" id="help-toggle">操作ヘルプ ▼</button>
@@ -209,6 +282,10 @@
         <table>
           <tr><th colspan="2">その他</th></tr>
           <tr><td>フルスクリーン</td><td><kbd>F</kbd></td></tr>
+          <tr><td>セーブ (Slot 1)</td><td><kbd>F5</kbd></td></tr>
+          <tr><td>ロード (Slot 1)</td><td><kbd>F7</kbd></td></tr>
+          <tr><td>セーブ (Slot 2)</td><td><kbd>Shift+F5</kbd></td></tr>
+          <tr><td>ロード (Slot 2)</td><td><kbd>Shift+F7</kbd></td></tr>
         </table>
       </div>
     </div>

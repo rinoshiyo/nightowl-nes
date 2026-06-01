@@ -9,6 +9,7 @@
 
 import { Envelope } from "./apu-envelope.ts";
 import { LENGTH_TABLE } from "./apu-length.ts";
+import type { NoiseState } from "./state.ts";
 
 /** NTSC タイマー周期テーブル ($400E 下位 4bit → CPU cycle 数) */
 const NOISE_PERIOD_TABLE: readonly number[] = [
@@ -91,5 +92,29 @@ export class NoiseChannel {
       this.lengthCounter = LENGTH_TABLE[(value >> 3) & 0x1f]!;
     }
     this.envelope.start = true;
+  }
+
+  serialize(): NoiseState {
+    return {
+      shiftRegister: this.shiftRegister,
+      mode: this.mode,
+      timerPeriod: this.timerPeriod,
+      timerValue: this.timerValue,
+      lengthCounter: this.lengthCounter,
+      lengthHalt: this.lengthHalt,
+      enabled: this.enabled,
+      envelope: this.envelope.serialize(),
+    };
+  }
+
+  deserialize(state: NoiseState): void {
+    this.shiftRegister = state.shiftRegister;
+    this.mode = state.mode;
+    this.timerPeriod = state.timerPeriod;
+    this.timerValue = state.timerValue;
+    this.lengthCounter = state.lengthCounter;
+    this.lengthHalt = state.lengthHalt;
+    this.enabled = state.enabled;
+    this.envelope.deserialize(state.envelope);
   }
 }

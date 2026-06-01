@@ -5,6 +5,8 @@
  * 仕様参照: https://www.nesdev.org/wiki/APU_DMC
  */
 
+import type { DmcState } from "./state.ts";
+
 /** NTSC タイマー周期テーブル (CPU サイクル単位、16 エントリ) */
 const DMC_RATE_TABLE: readonly number[] = [
   428, 380, 340, 320, 286, 254, 226, 214,
@@ -165,5 +167,43 @@ export class DmcChannel {
   /** 出力 (0-127) */
   output(): number {
     return this.outputLevel;
+  }
+
+  serialize(): DmcState {
+    return {
+      timerPeriod: this.timerPeriod,
+      timerValue: this.timerValue,
+      outputLevel: this.outputLevel,
+      sampleBuffer: this.sampleBuffer,
+      sampleBufferEmpty: this.sampleBufferEmpty,
+      shiftRegister: this.shiftRegister,
+      bitsRemaining: this.bitsRemaining,
+      silenceFlag: this.silenceFlag,
+      sampleAddress: this.sampleAddress,
+      sampleLength: this.sampleLength,
+      currentAddress: this.currentAddress,
+      bytesRemaining: this.bytesRemaining,
+      loop: this.loop,
+      irqEnabled: this.irqEnabled,
+      irqFlag: this.irqFlag,
+    };
+  }
+
+  deserialize(state: DmcState): void {
+    this.timerPeriod = state.timerPeriod;
+    this.timerValue = state.timerValue;
+    this.outputLevel = state.outputLevel;
+    this.sampleBuffer = state.sampleBuffer;
+    this.sampleBufferEmpty = state.sampleBufferEmpty;
+    this.shiftRegister = state.shiftRegister;
+    this.bitsRemaining = state.bitsRemaining;
+    this.silenceFlag = state.silenceFlag;
+    this.sampleAddress = state.sampleAddress;
+    this.sampleLength = state.sampleLength;
+    this.currentAddress = state.currentAddress;
+    this.bytesRemaining = state.bytesRemaining;
+    this.loop = state.loop;
+    this.irqEnabled = state.irqEnabled;
+    this.irqFlag = state.irqFlag;
   }
 }

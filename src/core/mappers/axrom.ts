@@ -27,6 +27,7 @@ export class MapperAxrom implements Mapper {
   private readonly prgRam = new Uint8Array(PRG_RAM_SIZE);
   private readonly bankMask: number;
   private bankOffset = 0;
+  private lastMirroring: Mirroring = "single-lower";
 
   constructor(cart: Cart) {
     this.prgRom = cart.prgRom;
@@ -41,8 +42,8 @@ export class MapperAxrom implements Mapper {
   writePrg(_addr: number, value: number): void {
     this.bankOffset = (value & this.bankMask) * PRG_BANK_SIZE;
 
-    const mirroring: Mirroring = (value & 0x10) !== 0 ? "single-upper" : "single-lower";
-    this.onMirroringChange?.(mirroring);
+    this.lastMirroring = (value & 0x10) !== 0 ? "single-upper" : "single-lower";
+    this.onMirroringChange?.(this.lastMirroring);
   }
 
   readChr(addr: number): number {
@@ -66,8 +67,34 @@ export class MapperAxrom implements Mapper {
 
   reset(): void {
     this.bankOffset = 0;
+    this.lastMirroring = "single-lower";
     this.onMirroringChange?.("single-lower");
   }
 
   clockIrqCounter(): void {}
+
+  mapperId(): number { return 7; }
+
+  serializeMapper(): Record<string, unknown> {
+    return {
+      bankOffset: this.bankOffset,
+      lastMirroring: this.lastMirroring,
+      chrRam: Array.from(this.chrRam),
+      prgRam: Array.from(this.prgRam),
+    };
+  }
+
+  deserializeMapper(data: Record<string, unknown>): void {
+    this.bankOffset = data["bankOffset"] as number;
+    if (typeof data["lastMirroring"] === "string") {
+      this.lastMirroring = data["lastMirroring"] as Mirroring;
+    }
+    if (Array.isArray(data["chrRam"])) {
+      this.chrRam.set(data["chrRam"] as number[]);
+    }
+    if (Array.isArray(data["prgRam"])) {
+      this.prgRam.set(data["prgRam"] as number[]);
+    }
+    this.onMirroringChange?.(this.lastMirroring);
+  }
 }

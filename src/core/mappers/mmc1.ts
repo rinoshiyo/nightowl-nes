@@ -169,6 +169,37 @@ export class MapperMmc1 implements Mapper {
   reset(): void {}
   clockIrqCounter(): void {}
 
+  mapperId(): number { return 1; }
+
+  serializeMapper(): Record<string, unknown> {
+    return {
+      shiftRegister: this.shiftRegister,
+      shiftCount: this.shiftCount,
+      control: this.control,
+      chrBank0: this.chrBank0,
+      chrBank1: this.chrBank1,
+      prgBank: this.prgBank,
+      prgRam: Array.from(this.prgRam),
+      chrRam: this.useChrRam ? Array.from(this.chrData) : undefined,
+    };
+  }
+
+  deserializeMapper(data: Record<string, unknown>): void {
+    this.shiftRegister = data["shiftRegister"] as number;
+    this.shiftCount = data["shiftCount"] as number;
+    this.control = data["control"] as number;
+    this.chrBank0 = data["chrBank0"] as number;
+    this.chrBank1 = data["chrBank1"] as number;
+    this.prgBank = data["prgBank"] as number;
+    if (Array.isArray(data["prgRam"])) {
+      this.prgRam.set(data["prgRam"] as number[]);
+    }
+    if (this.useChrRam && Array.isArray(data["chrRam"])) {
+      this.chrData.set((data["chrRam"] as number[]).slice(0, CHR_RAM_SIZE));
+    }
+    this.applyMirroring();
+  }
+
   /** control レジスタ bit 0-1 から mirroring モードを通知 */
   private applyMirroring(): void {
     if (!this.onMirroringChange) return;

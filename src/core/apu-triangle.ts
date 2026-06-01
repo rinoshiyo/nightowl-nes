@@ -7,6 +7,7 @@
  */
 
 import { LENGTH_TABLE } from "./apu-length.ts";
+import type { TriangleState } from "./state.ts";
 
 /** 三角波シーケンステーブル (32 ステップ: 15→0, 0→15) */
 const TRIANGLE_SEQUENCE = [
@@ -95,5 +96,31 @@ export class TriangleChannel {
     }
 
     this.linearCounterReloadFlag = true;
+  }
+
+  serialize(): TriangleState {
+    return {
+      linearCounter: this.linearCounter,
+      linearCounterReload: this.linearCounterReload,
+      linearCounterReloadFlag: this.linearCounterReloadFlag,
+      controlFlag: this.controlFlag,
+      timerPeriod: this.timerPeriod,
+      timerValue: this.timerValue,
+      sequencerPos: this.sequencerPos,
+      lengthCounter: this.lengthCounter,
+      enabled: this.enabled,
+    };
+  }
+
+  deserialize(state: TriangleState): void {
+    this.linearCounter = state.linearCounter;
+    this.linearCounterReload = state.linearCounterReload;
+    this.linearCounterReloadFlag = state.linearCounterReloadFlag;
+    this.controlFlag = state.controlFlag;
+    this.timerPeriod = state.timerPeriod;
+    this.timerValue = state.timerValue;
+    this.sequencerPos = state.sequencerPos;
+    this.lengthCounter = state.lengthCounter;
+    this.enabled = state.enabled;
   }
 }

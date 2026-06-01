@@ -3,7 +3,7 @@
  */
 
 import type { Cpu } from "./cpu/index.ts";
-import { createCpu } from "./cpu/index.ts";
+import { createCpu, serializeCpu } from "./cpu/index.ts";
 import { CpuFlags } from "./cpu/flags.ts";
 import { cpuStep } from "./cpu/step.ts";
 import { Apu } from "./apu.ts";
@@ -13,6 +13,8 @@ import type { Mapper } from "./mappers/index.ts";
 import { createMapper } from "./mappers/index.ts";
 import { NesBus } from "./nes-bus.ts";
 import { Ppu } from "./ppu.ts";
+import type { NesState } from "./state.ts";
+import { STATE_VERSION } from "./state.ts";
 
 const PPU_TICKS_PER_CPU_CYCLE = 3;
 
@@ -92,5 +94,33 @@ export class NesConsole {
     while (!this.ppu.frameComplete) {
       this.step();
     }
+  }
+
+  saveState(): NesState {
+    return {
+      version: STATE_VERSION,
+      cpu: serializeCpu(this.cpu),
+      ppu: this.ppu.serialize(),
+      apu: this.apu.serialize(),
+      bus: this.bus.serialize(),
+      mapper: {
+        id: this.mapper.mapperId(),
+        data: this.mapper.serializeMapper(),
+      },
+    };
+  }
+
+  loadState(state: NesState): void {
+    if (state.version !== STATE_VERSION) {
+      throw new Error(`ステートバージョン不一致: 期待=${STATE_VERSION}, 実際=${state.version}`);
+    }
+    if (state.mapper.id !== this.mapper.mapperId()) {
+      throw new Error(`Mapper 不一致: 期待=${this.mapper.mapperId()}, 実際=${state.mapper.id}`);
+    }
+    Object.assign(this.cpu, state.cpu);
+    this.ppu.deserialize(state.ppu);
+    this.apu.deserialize(state.apu);
+    this.bus.deserialize(state.bus);
+    this.mapper.deserializeMapper(state.mapper.data);
   }
 }

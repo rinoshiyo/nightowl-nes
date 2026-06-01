@@ -39,6 +39,12 @@ export interface Mapper {
   irqPending: boolean;
   /** scanline ごとの IRQ カウンタ clocking (PPU が呼び出す)。未使用 mapper は空実装 */
   clockIrqCounter(): void;
+  /** mapper 番号を返す */
+  mapperId(): number;
+  /** mapper 固有の状態をシリアライズ */
+  serializeMapper(): Record<string, unknown>;
+  /** mapper 固有の状態をデシリアライズ */
+  deserializeMapper(data: Record<string, unknown>): void;
 }
 
 export function createMapper(cart: Cart): Mapper {

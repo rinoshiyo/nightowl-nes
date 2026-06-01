@@ -4,7 +4,7 @@ import { Button } from "../core/controller.ts";
 import { SCREEN_W, VISIBLE_LINES } from "../core/ppu.ts";
 import { NesAudio } from "./audio.ts";
 import { Renderer } from "./renderer.ts";
-import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData, deleteSaveData } from "./save-manager.ts";
+import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData, deleteSaveData, saveState, loadState, hasState } from "./save-manager.ts";
 import { formatErrorMessage } from "./error-messages.ts";
 import { applyGamepadState } from "./gamepad.ts";
 import { isNesFile } from "./drag-drop.ts";
@@ -21,6 +21,8 @@ const status = getEl<HTMLDivElement>("status");
 const saveInfo = getEl<HTMLDivElement>("save-info");
 const deleteBtn = getEl<HTMLButtonElement>("delete-save");
 const helpSection = getEl<HTMLDivElement>("help-section");
+const stateControls = getEl<HTMLDivElement>("state-controls");
+const stateStatus = getEl<HTMLDivElement>("state-status");
 
 const renderer = new Renderer(canvas);
 const audio = new NesAudio();
@@ -104,6 +106,9 @@ async function loadRom(file: File): Promise<void> {
   }
   status.textContent = statusText;
   updateSaveUi();
+
+  stateControls.style.display = "flex";
+  updateStateButtons();
 
   if (!running) {
     running = true;
@@ -190,6 +195,18 @@ document.addEventListener("keydown", (e) => {
       toggleFullscreen();
       return;
     }
+  }
+
+  // ステートセーブ/ロード キーバインド
+  if (e.key === "F5") {
+    e.preventDefault();
+    doSaveState(e.shiftKey ? 2 : 1);
+    return;
+  }
+  if (e.key === "F7") {
+    e.preventDefault();
+    doLoadState(e.shiftKey ? 2 : 1);
+    return;
   }
 
   if (!nes) return;
@@ -306,4 +323,58 @@ deleteBtn.addEventListener("click", () => {
   deleteSaveData(currentRomHash);
   saveDisabled = true;
   updateSaveUi();
+});
+
+// --- ステートセーブ/ロード ---
+
+const SLOT_COUNT = 4;
+
+function updateStateButtons(): void {
+  if (!currentRomHash) return;
+  for (let slot = 1; slot <= SLOT_COUNT; slot++) {
+    const loadBtn = stateControls.querySelector<HTMLButtonElement>(`button[data-action="load"][data-slot="${slot}"]`);
+    if (loadBtn) {
+      loadBtn.disabled = !hasState(currentRomHash, slot);
+    }
+  }
+}
+
+function doSaveState(slot: number): void {
+  if (!nes || !currentRomHash) return;
+  const state = nes.saveState();
+  const ok = saveState(currentRomHash, slot, state);
+  updateStateButtons();
+  stateStatus.textContent = ok
+    ? `💾 スロット ${slot} にセーブしました`
+    : `⚠ スロット ${slot} のセーブに失敗しました (容量不足)`;
+  setTimeout(() => { stateStatus.textContent = ""; }, 3000);
+}
+
+function doLoadState(slot: number): void {
+  if (!nes || !currentRomHash) return;
+  const state = loadState(currentRomHash, slot);
+  if (!state) {
+    stateStatus.textContent = `⚠ スロット ${slot} にデータがありません`;
+    setTimeout(() => { stateStatus.textContent = ""; }, 2000);
+    return;
+  }
+  try {
+    nes.loadState(state);
+    stateStatus.textContent = `📂 スロット ${slot} からロードしました`;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    stateStatus.textContent = `⚠ ロード失敗: ${msg}`;
+  }
+  setTimeout(() => { stateStatus.textContent = ""; }, 2000);
+}
+
+stateControls.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-action]");
+  if (!btn) return;
+  const slot = parseInt(btn.dataset["slot"] ?? "1", 10);
+  if (btn.dataset["action"] === "save") {
+    doSaveState(slot);
+  } else if (btn.dataset["action"] === "load") {
+    doLoadState(slot);
+  }
 });
