@@ -114,4 +114,27 @@ describe("NesBus Cart", () => {
     expect(bus.read(0xfffc)).toBe(0xfc);
     expect(bus.read(0xfffd)).toBe(0xc0);
   });
+
+  it("PPU write-only レジスタ ($2000) の read は open bus (IO latch)", () => {
+    const ppu = new Ppu();
+    const bus = new NesBus(ppu, createMapper(makeDummyCart()), new Controller(), new Apu());
+    bus.write(0x2000, 0xab);
+    expect(bus.read(0x2000)).toBe(0xab);
+  });
+
+  it("PPU $2002 read は open bus の下位 5 bit を含む", () => {
+    const ppu = new Ppu();
+    const bus = new NesBus(ppu, createMapper(makeDummyCart()), new Controller(), new Apu());
+    bus.write(0x2000, 0x1f);
+    ppu.status = 0xa0;
+    const val = bus.read(0x2002);
+    expect(val).toBe(0xbf);
+  });
+
+  it("PPU ミラー ($2008-$3FFF) 経由でも open bus が動作する", () => {
+    const ppu = new Ppu();
+    const bus = new NesBus(ppu, createMapper(makeDummyCart()), new Controller(), new Apu());
+    bus.write(0x2008, 0x55);
+    expect(bus.read(0x2008)).toBe(0x55);
+  });
 });

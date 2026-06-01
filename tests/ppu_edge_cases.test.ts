@@ -146,9 +146,9 @@ describe("パレットミラーリング", () => {
     ppu.palette[0x00] = 0x0f;
     // ppuRead($3F10) → mirrorPalette → index 0 → 0x0f
     expect(ppu.ppuRead(0x3f10)).toBe(0x0f);
-    expect(ppu.ppuRead(0x3f14)).toBe(ppu.palette[0x04]);
-    expect(ppu.ppuRead(0x3f18)).toBe(ppu.palette[0x08]);
-    expect(ppu.ppuRead(0x3f1c)).toBe(ppu.palette[0x0c]);
+    expect(ppu.ppuRead(0x3f14)).toBe(ppu.palette[0x04] ?? 0);
+    expect(ppu.ppuRead(0x3f18)).toBe(ppu.palette[0x08] ?? 0);
+    expect(ppu.ppuRead(0x3f1c)).toBe(ppu.palette[0x0c] ?? 0);
   });
 
   it("パレットアドレスは $3F20 以上で折り返す ($3FFF まで)", () => {
