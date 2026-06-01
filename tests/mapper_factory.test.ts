@@ -18,6 +18,7 @@ import { MapperBandaiFcg } from "../src/core/mappers/bandai-fcg.ts";
 import { MapperJalecoSs8806 } from "../src/core/mappers/jaleco-ss8806.ts";
 import { MapperNamco163 } from "../src/core/mappers/namco163.ts";
 import { MapperMmc5 } from "../src/core/mappers/mmc5.ts";
+import { MapperVrc6 } from "../src/core/mappers/vrc6.ts";
 
 function makeCart(mapper: number, chrSize = 0): Cart {
   return {
@@ -115,6 +116,18 @@ describe("createMapper", () => {
   it("mapper 5 で MapperMmc5 を返す", () => {
     const mapper = createMapper(makeCart(5));
     expect(mapper).toBeInstanceOf(MapperMmc5);
+  });
+
+  it("mapper 24 で MapperVrc6 (VRC6a) を返す", () => {
+    const mapper = createMapper(makeCart(24));
+    expect(mapper).toBeInstanceOf(MapperVrc6);
+    expect(mapper.mapperId()).toBe(24);
+  });
+
+  it("mapper 26 で MapperVrc6 (VRC6b) を返す", () => {
+    const mapper = createMapper(makeCart(26));
+    expect(mapper).toBeInstanceOf(MapperVrc6);
+    expect(mapper.mapperId()).toBe(26);
   });
 
   it("未サポート mapper で Error を throw", () => {
