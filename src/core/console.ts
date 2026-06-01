@@ -72,26 +72,30 @@ export class NesConsole {
     const cycles = cpuStep(this.cpu, this.bus);
     let totalCycles = cycles;
 
-    if (this.bus.dmaCycles > 0) {
-      totalCycles += this.bus.dmaCycles;
+    const dma = this.bus.dmaCycles;
+    if (dma > 0) {
+      totalCycles += dma;
       this.bus.dmaCycles = 0;
     }
 
+    const ppu = this.ppu;
+    const apu = this.apu;
     const ppuTicks = totalCycles * PPU_TICKS_PER_CPU_CYCLE;
     for (let i = 0; i < ppuTicks; i++) {
-      this.ppu.tick();
+      ppu.tick();
     }
     for (let i = 0; i < totalCycles; i++) {
-      this.apu.tick();
+      apu.tick();
     }
-    this.cpu.irqPending = this.apu.frameIrqFlag || this.apu.dmc.irqFlag || this.mapper.irqPending;
+    this.cpu.irqPending = apu.frameIrqFlag || apu.dmc.irqFlag || this.mapper.irqPending;
     return totalCycles;
   }
 
   /** 1 フレーム分実行 (frameComplete になるまで step を繰り返す) */
   stepFrame(): void {
-    this.ppu.frameComplete = false;
-    while (!this.ppu.frameComplete) {
+    const ppu = this.ppu;
+    ppu.frameComplete = false;
+    while (!ppu.frameComplete) {
       this.step();
     }
   }

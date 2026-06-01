@@ -32,10 +32,13 @@ export class NesBus implements Bus {
     addr &= 0xffff;
 
     if (addr < 0x2000) {
-      return this.ram[addr & 0x7ff] ?? 0;
+      return this.ram[addr & 0x7ff]!;
     }
     if (addr < 0x4000) {
       return this.ppu.read(addr & 0x7);
+    }
+    if (addr >= 0x8000) {
+      return this.mapper.readPrg(addr);
     }
     if (addr === 0x4015) {
       return this.apu.read(addr);
@@ -45,12 +48,6 @@ export class NesBus implements Bus {
     }
     if (addr === 0x4017) {
       return this.controller2.read();
-    }
-    if (addr < 0x4020) {
-      return 0;
-    }
-    if (addr >= 0x8000) {
-      return this.mapper.readPrg(addr);
     }
     if (addr >= 0x6000) {
       return this.mapper.readPrgRam(addr);
