@@ -230,4 +230,24 @@ describe("MapperAxrom エッジケース", () => {
     mapper.writePrg(0x8000, 0xe5);
     expect(mapper.readPrg(0x8000)).toBe(5);
   });
+
+  it("ミラーリングビット (bit 4) はバンク選択に干渉しない", () => {
+    const mapper = new MapperAxrom(makeAxromCart(8));
+    mapper.writePrg(0x8000, 0x03);
+    const withLower = mapper.readPrg(0x8000);
+    mapper.writePrg(0x8000, 0x13);
+    const withUpper = mapper.readPrg(0x8000);
+    expect(withLower).toBe(withUpper);
+    expect(withLower).toBe(3);
+  });
+
+  it("全バンクに順次切替してそれぞれ正しいデータが読める", () => {
+    const bankCount = 8;
+    const mapper = new MapperAxrom(makeAxromCart(bankCount));
+    for (let bank = 0; bank < bankCount; bank++) {
+      mapper.writePrg(0x8000, bank);
+      expect(mapper.readPrg(0x8000)).toBe(bank);
+      expect(mapper.readPrg(0xffff)).toBe(bank | 0xf0);
+    }
+  });
 });
