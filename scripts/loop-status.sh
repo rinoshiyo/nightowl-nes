@@ -7,10 +7,11 @@
 #
 # Emits a human/Claude-readable status block, then a final `SUGGESTED: <branch>`
 # line the skill keys off:
-#   resume-pr   open PR(s) exist -> inspect them first (PR-as-SSOT)
-#   autorun     pending night(s) exist -> start the /clear chain
-#   seed        no pending but done exists -> design & seed the next night first
-#   bootstrap   no pending and no done -> brand-new repo, design with a human
+#   resume-pr    open PR(s) exist -> inspect them first (delivery in progress)
+#   resume-issue open Issue exists but no PR -> scope decided, resume implementation
+#   autorun      pending night(s) exist -> create Issue and start the /clear chain
+#   seed         no pending but done exists -> design & seed the next night first
+#   bootstrap    no pending and no done -> brand-new repo, design with a human
 #
 # Domain-specific bits (nights/, nestest TRACE_LINES) live here rather than in
 # the skill body so the skill stays thin and these can be externalized to config
@@ -27,6 +28,9 @@ done_n=$(ls nights/done/*.md 2>/dev/null | wc -l | tr -d ' ')
 trace_lines=$(grep -oE 'TRACE_LINES *= *[0-9]+' tests/cpu_nestest_trace.test.ts 2>/dev/null | grep -oE '[0-9]+' | head -1)
 open_pr=$(gh pr list --state open --json number,isDraft,title \
   -q '.[] | "  #\(.number) draft=\(.isDraft) — \(.title)"' 2>/dev/null)
+open_issue=$(gh issue list --state open --label night --json number,title \
+  -q '.[] | "  #\(.number) — \(.title)"' 2>/dev/null)
+open_issue_n=$(echo "$open_issue" | grep -c '#' 2>/dev/null || echo 0)
 
 echo "=== loop status ==="
 echo "tmux pane     : $pane"
@@ -34,6 +38,12 @@ echo "pending nights: ${pending_n:-0}"
 [ -n "$pending_list" ] && printf '%s\n' "$pending_list" | sed 's/^/  - /'
 echo "done nights   : ${done_n:-0} (latest: ${done_latest:-none})"
 echo "nestest TRACE_LINES: ${trace_lines:-unknown}"
+if [ -n "$open_issue" ]; then
+  echo "open issues   : $open_issue_n"
+  printf '%s\n' "$open_issue"
+else
+  echo "open issues   : 0"
+fi
 if [ -n "$open_pr" ]; then
   echo "open PRs:"
   printf '%s\n' "$open_pr"
@@ -45,10 +55,13 @@ fi
 # so the /clear chain cannot run, though seeding nights still works.
 [ "$pane" = "NONE" ] && echo "WARNING: not in a tmux pane — the /clear chain cannot run (seed-only)."
 
-# Decide the suggested branch. Open PRs win (PR-as-SSOT: an in-flight or stalled
-# review must be resolved before starting new work).
+# Decide the suggested branch (GitHub Flow: Issue → Branch → PR → Merge).
+# Open PRs win (delivery in progress), then open Issues (scope decided, not yet
+# started or interrupted mid-implementation), then pending nights, then seed.
 if [ -n "$open_pr" ]; then
   suggested="resume-pr"
+elif [ -n "$open_issue" ]; then
+  suggested="resume-issue"
 elif [ "${pending_n:-0}" -gt 0 ]; then
   suggested="autorun"
 elif [ "${done_n:-0}" -gt 0 ]; then
