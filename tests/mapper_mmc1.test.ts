@@ -302,6 +302,23 @@ describe("MMC1 エッジケース", () => {
     expect(mapper.readChr(0x0000)).toBe(0xab);
   });
 
+  it("control 書込で onMirroringChange が通知される", () => {
+    const mapper = new MapperMmc1(makeMmc1Cart(4, 0));
+    const history: string[] = [];
+    mapper.onMirroringChange = (m) => history.push(m);
+
+    // control bit 0-1 = 0 → single-lower
+    writeShiftRegister(mapper, 0x8000, 0x0c);
+    // control bit 0-1 = 1 → single-upper
+    writeShiftRegister(mapper, 0x8000, 0x0d);
+    // control bit 0-1 = 2 → vertical
+    writeShiftRegister(mapper, 0x8000, 0x0e);
+    // control bit 0-1 = 3 → horizontal
+    writeShiftRegister(mapper, 0x8000, 0x0f);
+
+    expect(history).toEqual(["single-lower", "single-upper", "vertical", "horizontal"]);
+  });
+
   it("PRG mode 0/1 で奇数バンク番号は bit 0 無視 (32KB 単位)", () => {
     const mapper = new MapperMmc1(makeMmc1Cart(16, 0));
     writeShiftRegister(mapper, 0x8000, 0x00); // PRG mode 0
