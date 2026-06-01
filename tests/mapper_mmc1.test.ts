@@ -252,4 +252,30 @@ describe("MMC1 エッジケース", () => {
     expect(mapper.readPrg(0x8000)).toBe(1);
     expect(mapper.readPrg(0xc000)).toBe(1);
   });
+
+  it("PRG バンク番号が bankCount を超えた場合はマスクされる", () => {
+    // 8 バンク (128KB PRG)
+    const mapper = new MapperMmc1(makeMmc1Cart(8, 0));
+    // バンク 15 を指定 → 8 バンクなので 15 % 8 = 7
+    writeShiftRegister(mapper, 0xe000, 15);
+    expect(mapper.readPrg(0x8000)).toBe(7);
+  });
+
+  it("シフトレジスタの書き込みアドレスは転送先レジスタ決定にのみ影響", () => {
+    const mapper = new MapperMmc1(makeMmc1Cart(16, 0));
+    // $8000 で 2 回、$E000 で 3 回 → 最終回の $E000 がレジスタ決定
+    mapper.writePrg(0x8000, 1);
+    mapper.writePrg(0x8000, 0);
+    mapper.writePrg(0xe000, 1);
+    mapper.writePrg(0xe000, 0);
+    mapper.writePrg(0xe000, 0); // 5 回目 → $E000 → PRG bank レジスタ
+    // 書き込み値: bits = 1,0,1,0,0 → LSB first で 0b00101 = 5
+    expect(mapper.readPrg(0x8000)).toBe(5);
+  });
+
+  it("CHR RAM でアドレスが $1FFF でマスクされる", () => {
+    const mapper = new MapperMmc1(makeMmc1Cart(4, 0));
+    mapper.writeChr(0x2000, 0xab);
+    expect(mapper.readChr(0x0000)).toBe(0xab);
+  });
 });
