@@ -52,6 +52,9 @@ export class NesBus implements Bus {
     if (addr >= 0x6000) {
       return this.mapper.readPrgRam(addr);
     }
+    if (addr >= 0x4800 && this.mapper.readRegister) {
+      return this.mapper.readRegister(addr);
+    }
     return 0;
   }
 
@@ -86,6 +89,10 @@ export class NesBus implements Bus {
     }
     if (addr >= 0x6000) {
       this.mapper.writePrgRam(addr, v);
+      return;
+    }
+    if (addr >= 0x4800 && this.mapper.writeRegister) {
+      this.mapper.writeRegister(addr, v);
     }
   }
 

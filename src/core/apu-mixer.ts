@@ -91,13 +91,13 @@ export class ApuMixer {
     this.lpf = new LowPassFilter(sampleRate, 14000);
   }
 
-  /** 5 チャンネルの出力からフィルタ済みサンプルを返す */
-  process(pulse1: number, pulse2: number, tri: number, noise: number, dmc: number): number {
+  /** 5 チャンネル + 拡張音源の出力からフィルタ済みサンプルを返す */
+  process(pulse1: number, pulse2: number, tri: number, noise: number, dmc: number, expansion = 0): number {
     const pulseOut = PULSE_TABLE[pulse1 + pulse2]!;
     const tndIdx = 3 * tri + 2 * noise + dmc;
     const tndOut = TND_TABLE[tndIdx]!;
 
-    let s = pulseOut + tndOut;
+    let s = pulseOut + tndOut + expansion;
 
     s = this.hpf1.process(s);
     s = this.hpf2.process(s);
