@@ -72,13 +72,15 @@ mkdir -p .claude/state
 LOOP_TURNS="${LOOP_TURNS:-80}"
 
 # open な night Issue があれば具体的 goal、なければ汎用 goal
-ISSUE_JSON=$(gh issue list -s open -l night --json number,title -q '.[0]' 2>/dev/null || echo "")
+# sort:created-asc で最若番号を取得 (gh のデフォルトは newest-first)
+ISSUE_JSON=$(gh issue list -s open -l night --search 'sort:created-asc' --json number,title -q '.[0]' 2>/dev/null || echo "")
+GOAL_SUFFIX="実装→レビュー→merge を完了せよ。達成判定: transcript に「🎯 GOAL CONDITION MET」が出現したこと。scope: この 1 Issue のみ。他の Issue・夜には着手しない。or stop after ${LOOP_TURNS} turns"
 if [ -n "$ISSUE_JSON" ] && [ "$ISSUE_JSON" != "null" ]; then
   ISSUE_NUM=$(echo "$ISSUE_JSON" | jq -r .number)
   ISSUE_TITLE=$(echo "$ISSUE_JSON" | jq -r .title)
-  GOAL_TEXT="Issue #${ISSUE_NUM} (${ISSUE_TITLE}) のみを対象に実装→レビュー→merge を完了せよ。達成判定: transcript に「🎯 GOAL CONDITION MET」が出現したこと。scope: この 1 Issue のみ。他の Issue・夜には着手しない。or stop after ${LOOP_TURNS} turns"
+  GOAL_TEXT="Issue #${ISSUE_NUM} (${ISSUE_TITLE}) のみを対象に${GOAL_SUFFIX}"
 else
-  GOAL_TEXT="次の夜の Issue を1つ作成し、その Issue のみを対象に実装→レビュー→merge を完了せよ。達成判定: transcript に「🎯 GOAL CONDITION MET」が出現したこと。scope: この 1 Issue のみ。他の Issue・夜には着手しない。or stop after ${LOOP_TURNS} turns"
+  GOAL_TEXT="次の夜の Issue を1つ作成し、その Issue のみを対象に${GOAL_SUFFIX}"
 fi
 printf '/goal %s' "$GOAL_TEXT" > ".claude/state/loop-next.${PANE}.txt"
 ```

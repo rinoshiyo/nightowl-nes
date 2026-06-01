@@ -84,7 +84,7 @@ run_one() {
 }
 
 run_one "single-line-ascii"  "next goal simple"
-run_one "realistic-goal"     "次の pending 夜を CLAUDE.md 自走連鎖プロトコルに従い実装→PR→code-reviewレビュー→triage→全PASSなら auto-merge arm、or stop after 50 turns"
+run_one "realistic-goal"     "次の夜の Issue を1つ作成し、その Issue のみを対象に実装→レビュー→merge を完了せよ。達成判定: transcript に「🎯 GOAL CONDITION MET」が出現したこと。scope: この 1 Issue のみ。他の Issue・夜には着手しない。or stop after 50 turns"
 run_one "ja-emoji-arrow"     "次の pending 夜を実装→PR→auto-merge ✨"
 run_one "specialchars"       'a"b'"'"'c\d$e`f(g)h'
 run_one "dash-start"         "-foo --bar"
