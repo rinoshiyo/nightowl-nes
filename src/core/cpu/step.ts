@@ -4,11 +4,11 @@ import { CpuFlags } from "./flags.ts";
 import { OPCODES } from "./opcodes.ts";
 
 const NMI_VECTOR = 0xfffa;
-const NMI_CYCLES = 7;
+const IRQ_VECTOR = 0xfffe;
+const INTERRUPT_CYCLES = 7;
 
-/** NMI 割り込みを処理: PC と P をスタックに push し、NMI ベクタへジャンプ */
-function handleNmi(cpu: Cpu, bus: Bus): number {
-  cpu.nmiPending = false;
+/** 割り込み共通処理: PC と P をスタックに push し、指定ベクタへジャンプ */
+function handleInterrupt(cpu: Cpu, bus: Bus, vector: number): number {
   const pc = cpu.pc;
   bus.write(0x0100 | cpu.sp, (pc >> 8) & 0xff);
   cpu.sp = (cpu.sp - 1) & 0xff;
@@ -17,20 +17,24 @@ function handleNmi(cpu: Cpu, bus: Bus): number {
   bus.write(0x0100 | cpu.sp, (cpu.p & ~CpuFlags.B) | CpuFlags.U);
   cpu.sp = (cpu.sp - 1) & 0xff;
   cpu.p |= CpuFlags.I;
-  const lo = bus.read(NMI_VECTOR);
-  const hi = bus.read(NMI_VECTOR + 1);
+  const lo = bus.read(vector);
+  const hi = bus.read(vector + 1);
   cpu.pc = (hi << 8) | lo;
-  cpu.cycles += NMI_CYCLES;
-  return NMI_CYCLES;
+  cpu.cycles += INTERRUPT_CYCLES;
+  return INTERRUPT_CYCLES;
 }
 
 /**
  * 1 命令を fetch → decode → execute し、 消費した CPU サイクル数を返す。
- * NMI 保留中は先に NMI を処理する。
+ * NMI 保留中は先に NMI を処理し、次に IRQ を確認する。
  */
 export function cpuStep(cpu: Cpu, bus: Bus): number {
   if (cpu.nmiPending) {
-    return handleNmi(cpu, bus);
+    cpu.nmiPending = false;
+    return handleInterrupt(cpu, bus, NMI_VECTOR);
+  }
+  if (cpu.irqPending && (cpu.p & CpuFlags.I) === 0) {
+    return handleInterrupt(cpu, bus, IRQ_VECTOR);
   }
 
   const opcode = bus.read(cpu.pc);

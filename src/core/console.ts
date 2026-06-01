@@ -37,6 +37,9 @@ export class NesConsole {
     this.ppu.onNmi = () => {
       this.cpu.nmiPending = true;
     };
+    this.apu.onIrq = () => {
+      this.cpu.irqPending = true;
+    };
     this.reset();
   }
 
@@ -49,7 +52,10 @@ export class NesConsole {
     this.cpu.p = (this.cpu.p | CpuFlags.I) & 0xff;
     this.cpu.cycles = 7;
     this.cpu.nmiPending = false;
+    this.cpu.irqPending = false;
     this.bus.dmaCycles = 0;
+    this.apu.frameIrqFlag = false;
+    this.apu.dmc.irqFlag = false;
     this.ppu.reset();
   }
 
@@ -70,6 +76,7 @@ export class NesConsole {
     for (let i = 0; i < totalCycles; i++) {
       this.apu.tick();
     }
+    this.cpu.irqPending = this.apu.frameIrqFlag || this.apu.dmc.irqFlag;
     return totalCycles;
   }
 

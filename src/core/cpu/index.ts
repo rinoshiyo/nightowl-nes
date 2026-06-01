@@ -19,6 +19,8 @@ export interface Cpu {
   cycles: number;
   /** NMI 保留フラグ (PPU VBlank 開始時にセット) */
   nmiPending: boolean;
+  /** IRQ 保留フラグ (APU 等の IRQ ソースがアサート中に true) */
+  irqPending: boolean;
 }
 
 /**
@@ -38,6 +40,7 @@ export function createCpu(overrides?: Partial<Cpu>): Cpu {
     p: CpuFlags.I | CpuFlags.U,
     cycles: 0,
     nmiPending: false,
+    irqPending: false,
     ...overrides,
   };
 }
