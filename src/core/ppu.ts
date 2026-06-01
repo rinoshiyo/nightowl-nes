@@ -288,7 +288,12 @@ export class Ppu {
 
     if (this.scanline < VISIBLE_LINES) {
       this.tickVisible();
-      if (renderEnabled) this.tickScrollVisible();
+      if (renderEnabled) {
+        this.tickScrollVisible();
+        if (this.dot === 260 && this.mapper) {
+          this.mapper.clockIrqCounter();
+        }
+      }
     } else if (this.scanline === VBLANK_LINE && this.dot === 1) {
       this.status |= 0x80;
       if ((this.ctrl & 0x80) !== 0 && this.onNmi) {
@@ -298,7 +303,12 @@ export class Ppu {
       if (this.dot === 1) {
         this.status &= 0x1f;
       }
-      if (renderEnabled) this.tickScrollPreRender();
+      if (renderEnabled) {
+        this.tickScrollPreRender();
+        if (this.dot === 260 && this.mapper) {
+          this.mapper.clockIrqCounter();
+        }
+      }
     }
 
     this.dot++;

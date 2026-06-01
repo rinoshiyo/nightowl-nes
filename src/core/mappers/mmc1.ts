@@ -17,6 +17,8 @@ const CHR_BANK_SIZE = 0x1000; // 4KB
 const CHR_RAM_SIZE = 0x2000;  // 8KB
 
 export class MapperMmc1 implements Mapper {
+  irqPending = false;
+
   private readonly prgRom: Uint8Array;
   private readonly chrData: Uint8Array;
   private readonly useChrRam: boolean;
@@ -144,6 +146,8 @@ export class MapperMmc1 implements Mapper {
     if (!this.useChrRam) return;
     this.chrData[addr & 0x1fff] = value;
   }
+
+  clockIrqCounter(): void {}
 
   /** 内部レジスタへの書き込み (アドレスの bit 13-14 でレジスタ選択) */
   private writeInternalRegister(addr: number, value: number): void {

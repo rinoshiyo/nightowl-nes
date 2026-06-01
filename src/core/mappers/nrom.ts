@@ -13,6 +13,8 @@ import type { Mapper } from "./mapper.ts";
 const CHR_RAM_SIZE = 0x2000;
 
 export class MapperNrom implements Mapper {
+  irqPending = false;
+
   private readonly prgRom: Uint8Array;
   private readonly prgMask: number;
   private readonly chrData: Uint8Array;
@@ -47,4 +49,6 @@ export class MapperNrom implements Mapper {
       this.chrData[addr & 0x1fff] = value;
     }
   }
+
+  clockIrqCounter(): void {}
 }

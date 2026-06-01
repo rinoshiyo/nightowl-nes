@@ -11,6 +11,7 @@ import { MapperNrom } from "./nrom.ts";
 import { MapperMmc1 } from "./mmc1.ts";
 import { MapperUxrom } from "./uxrom.ts";
 import { MapperCnrom } from "./cnrom.ts";
+import { MapperMmc3 } from "./mmc3.ts";
 
 export interface Mapper {
   /** CPU アドレス空間 $8000-$FFFF の読み出し */
@@ -21,6 +22,10 @@ export interface Mapper {
   readChr(addr: number): number;
   /** PPU アドレス空間 $0000-$1FFF への書き込み (CHR RAM 時のみ有効) */
   writeChr(addr: number, value: number): void;
+  /** IRQ 保留フラグ (MMC3 等の scanline カウンタ用。未使用 mapper は常に false) */
+  irqPending: boolean;
+  /** scanline ごとの IRQ カウンタ clocking (PPU が呼び出す)。未使用 mapper は空実装 */
+  clockIrqCounter(): void;
 }
 
 export function createMapper(cart: Cart): Mapper {
@@ -33,6 +38,8 @@ export function createMapper(cart: Cart): Mapper {
       return new MapperUxrom(cart);
     case 3:
       return new MapperCnrom(cart);
+    case 4:
+      return new MapperMmc3(cart);
     default:
       throw new Error(`Unsupported mapper: ${cart.header.mapper}`);
   }

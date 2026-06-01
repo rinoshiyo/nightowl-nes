@@ -11,6 +11,7 @@ import type { Cart } from "./cart.ts";
 import { Controller } from "./controller.ts";
 import type { Mapper } from "./mappers/index.ts";
 import { createMapper } from "./mappers/index.ts";
+import { MapperMmc3 } from "./mappers/index.ts";
 import { NesBus } from "./nes-bus.ts";
 import { Ppu } from "./ppu.ts";
 
@@ -40,6 +41,11 @@ export class NesConsole {
     this.apu.onIrq = () => {
       this.cpu.irqPending = true;
     };
+    if (this.mapper instanceof MapperMmc3) {
+      this.mapper.onMirroringChange = (m) => {
+        this.ppu.mirroring = m;
+      };
+    }
     this.reset();
   }
 
@@ -76,7 +82,7 @@ export class NesConsole {
     for (let i = 0; i < totalCycles; i++) {
       this.apu.tick();
     }
-    this.cpu.irqPending = this.apu.frameIrqFlag || this.apu.dmc.irqFlag;
+    this.cpu.irqPending = this.apu.frameIrqFlag || this.apu.dmc.irqFlag || this.mapper.irqPending;
     return totalCycles;
   }
 

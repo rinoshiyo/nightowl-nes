@@ -13,6 +13,8 @@ import type { Mapper } from "./mapper.ts";
 const CHR_BANK_SIZE = 0x2000;
 
 export class MapperCnrom implements Mapper {
+  irqPending = false;
+
   private readonly prgRom: Uint8Array;
   private readonly prgMask: number;
   private readonly chrRom: Uint8Array;
@@ -42,4 +44,6 @@ export class MapperCnrom implements Mapper {
   writeChr(_addr: number, _value: number): void {
     // CNROM: CHR ROM は読み取り専用
   }
+
+  clockIrqCounter(): void {}
 }
