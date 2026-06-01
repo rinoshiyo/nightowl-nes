@@ -5,6 +5,7 @@ import { NesAudio } from "./audio.ts";
 import { Renderer } from "./renderer.ts";
 import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData, deleteSaveData } from "./save-manager.ts";
 import { formatErrorMessage } from "./error-messages.ts";
+import { applyGamepadState } from "./gamepad.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -202,13 +203,6 @@ document.addEventListener("keyup", (e) => {
 
 // --- G2: Gamepad API ---
 
-const GAMEPAD_MAP: readonly Button[] = [
-  Button.B,       // 0: B (Cross / A)
-  Button.A,       // 1: A (Circle / B)
-  Button.Select,  // 8: Select (Share / Back)
-  Button.Start,   // 9: Start
-];
-
 function pollGamepads(): void {
   if (!nes) return;
   const gamepads = navigator.getGamepads();
@@ -216,36 +210,7 @@ function pollGamepads(): void {
     const gp = gamepads[gi];
     if (!gp) continue;
     const ctrl = gi === 0 ? nes.controller1 : nes.controller2;
-
-    for (let bi = 0; bi < GAMEPAD_MAP.length; bi++) {
-      const nesBtn = GAMEPAD_MAP[bi];
-      if (nesBtn === undefined) continue;
-      const gpIndex = bi < 2 ? bi : bi + 6;
-      const pressed = gp.buttons[gpIndex]?.pressed ?? false;
-      if (pressed) ctrl.press(nesBtn);
-      else ctrl.release(nesBtn);
-    }
-
-    const axes0 = gp.axes[0] ?? 0;
-    const axes1 = gp.axes[1] ?? 0;
-    const DEADZONE = 0.5;
-
-    if (axes0 < -DEADZONE) { ctrl.press(Button.Left); ctrl.release(Button.Right); }
-    else if (axes0 > DEADZONE) { ctrl.press(Button.Right); ctrl.release(Button.Left); }
-    else { ctrl.release(Button.Left); ctrl.release(Button.Right); }
-
-    if (axes1 < -DEADZONE) { ctrl.press(Button.Up); ctrl.release(Button.Down); }
-    else if (axes1 > DEADZONE) { ctrl.press(Button.Down); ctrl.release(Button.Up); }
-    else { ctrl.release(Button.Up); ctrl.release(Button.Down); }
-
-    const dUp = gp.buttons[12]?.pressed ?? false;
-    const dDown = gp.buttons[13]?.pressed ?? false;
-    const dLeft = gp.buttons[14]?.pressed ?? false;
-    const dRight = gp.buttons[15]?.pressed ?? false;
-    if (dUp) ctrl.press(Button.Up);
-    if (dDown) ctrl.press(Button.Down);
-    if (dLeft) ctrl.press(Button.Left);
-    if (dRight) ctrl.press(Button.Right);
+    applyGamepadState(gp, ctrl);
   }
 }
 
