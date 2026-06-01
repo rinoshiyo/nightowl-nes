@@ -50,6 +50,9 @@ export class NesConsole {
     if (this.mapper.audioOutput) {
       this.apu.expansionAudioCallback = () => this.mapper.audioOutput!();
     }
+    if ("ciram" in this.mapper) {
+      (this.mapper as { ciram: Uint8Array }).ciram = this.ppu.vram;
+    }
     this.reset();
   }
 

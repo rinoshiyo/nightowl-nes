@@ -261,11 +261,26 @@ describe("MapperMmc5", () => {
       expect(m.readNametable!(0x2000)).toBe(0xcd);
     });
 
-    it("CIRAM source (0,1) は PPU に委譲 (undefined)", () => {
+    it("CIRAM source (0,1) — ciram 未設定時は PPU に委譲 (undefined)", () => {
       const m = new MapperMmc5(makeCart());
       m.writeRegister!(0x5105, 0x00); // NT0 = source 0 (CIRAM page 0)
 
       expect(m.readNametable!(0x2000)).toBeUndefined();
+    });
+
+    it("CIRAM source (0,1) — ciram 設定時は直接読む", () => {
+      const m = new MapperMmc5(makeCart());
+      const ciram = new Uint8Array(0x1000);
+      ciram[0x000] = 0x11; // CIRAM page 0, offset 0
+      ciram[0x400] = 0x22; // CIRAM page 1, offset 0
+      m.ciram = ciram;
+
+      // NT0 = CIRAM page 0, NT1 = CIRAM page 1
+      m.writeRegister!(0x5105, 0x01 | (0x01 << 2)); // NT0=page0(0), NT1=page1(1)
+      m.writeRegister!(0x5105, 0x04); // NT0=source0, NT1=source1
+
+      expect(m.readNametable!(0x2000)).toBe(0x11); // NT0 → CIRAM page 0
+      expect(m.readNametable!(0x2400)).toBe(0x22); // NT1 → CIRAM page 1
     });
 
     it("writeNametable は fill mode で書き込みを無視", () => {

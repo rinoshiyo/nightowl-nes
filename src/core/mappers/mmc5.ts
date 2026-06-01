@@ -44,6 +44,9 @@ export class MapperMmc5 implements Mapper {
   private readonly useChrRam: boolean;
   private readonly exRam = new Uint8Array(EXRAM_SIZE);
 
+  /** PPU CIRAM (VRAM) への参照 — NesConsole が設定 */
+  ciram: Uint8Array | null = null;
+
   private readonly prgBankCount8k: number;
   private readonly chrBankCount1k: number;
 
@@ -404,9 +407,11 @@ export class MapperMmc5 implements Mapper {
 
     switch (source) {
       case 0: // CIRAM ページ 0
-        return undefined; // PPU の通常処理に委譲
+        if (this.ciram) return this.ciram[offset] ?? 0;
+        return undefined;
       case 1: // CIRAM ページ 1
-        return undefined; // PPU の通常処理に委譲
+        if (this.ciram) return this.ciram[0x400 + offset] ?? 0;
+        return undefined;
       case 2: // ExRAM
         if (this.exRamMode <= 1) {
           return this.exRam[offset] ?? 0;
@@ -438,7 +443,12 @@ export class MapperMmc5 implements Mapper {
       // Fill mode — 書き込みは無視
       return true;
     }
-    // CIRAM (0,1) は PPU に委譲
+    // CIRAM ページ 0 または 1
+    if (this.ciram) {
+      const ciramOffset = (source === 1 ? 0x400 : 0) + (addr & 0x03ff);
+      this.ciram[ciramOffset] = value;
+      return true;
+    }
     return false;
   }
 
