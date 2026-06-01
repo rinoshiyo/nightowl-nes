@@ -472,8 +472,8 @@ export class Ppu {
 
   /** スキャンラインごとのスプライト評価 (OAM から最大 8 スプライトを secondary OAM に選出) */
   private evaluateSprites(): void {
-    const spriteHeight = 8;
-    const ptBase = (this.ctrl & 0x08) !== 0 ? 0x1000 : 0;
+    const tall = (this.ctrl & 0x20) !== 0;
+    const spriteHeight = tall ? 16 : 8;
     const oam = this.oam;
     const scanline = this.scanline;
     let count = 0;
@@ -496,8 +496,25 @@ export class Ppu {
         this.secOam[secBase + 2] = attr;
         this.secOam[secBase + 3] = oam[oamBase + 3]!;
 
-        const sprFineY = (attr & 0x80) !== 0 ? 7 - row : row;
-        const patAddr = ptBase + tileIdx * 16 + sprFineY;
+        const flipV = (attr & 0x80) !== 0;
+
+        let patAddr: number;
+        if (tall) {
+          // 8×16: bit0 がパターンテーブル選択、bit1-7 がタイル番号
+          const ptBase = (tileIdx & 0x01) * 0x1000;
+          const baseTile = tileIdx & 0xFE;
+          let fineY = flipV ? 15 - row : row;
+          // 上タイル (row 0-7) / 下タイル (row 8-15)
+          const tileOffset = fineY >= 8 ? 1 : 0;
+          fineY = fineY & 0x07;
+          patAddr = ptBase + (baseTile + tileOffset) * 16 + fineY;
+        } else {
+          // 8×8: PPUCTRL bit3 がパターンテーブル選択
+          const ptBase = (this.ctrl & 0x08) !== 0 ? 0x1000 : 0;
+          const sprFineY = flipV ? 7 - row : row;
+          patAddr = ptBase + tileIdx * 16 + sprFineY;
+        }
+
         this.sprPatternLo[count] = this.ppuRead(patAddr);
         this.sprPatternHi[count] = this.ppuRead(patAddr + 8);
 
