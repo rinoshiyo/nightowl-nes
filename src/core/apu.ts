@@ -13,12 +13,34 @@ import { TriangleChannel } from "./apu-triangle.ts";
 
 const CPU_CLOCK = 1789773;
 
+/** フレームカウンタのステップアクション (ビットフラグ) */
+const ACT_Q = 1;  // quarter frame (エンベロープ・linear カウンタ)
+const ACT_H = 2;  // half frame (長さカウンタ・スウィープ)
+const ACT_I = 4;  // IRQ (4-step モードのみ)
+const ACT_R = 8;  // カウンタリセット
+
 /**
- * フレームカウンタの step タイミング (CPU cycle 単位、+1 delay 込み)。
+ * フレームカウンタのステップ定義。
+ * cycle: 発火する CPU cycle 数、action: ビットフラグ。
+ * 最終エントリは action=0 でカウンタリセットのみ。
  * 仕様参照: https://www.nesdev.org/wiki/APU_Frame_Counter
  */
-const FRAME_4STEP = [7457, 14913, 22371, 29829, 29830] as const;
-const FRAME_5STEP = [7457, 14913, 22371, 29829, 37281, 37282] as const;
+const FRAME_4STEP: readonly { cycle: number; action: number }[] = [
+  { cycle: 7457,  action: ACT_Q },
+  { cycle: 14913, action: ACT_Q | ACT_H },
+  { cycle: 22371, action: ACT_Q },
+  { cycle: 29829, action: ACT_Q | ACT_H | ACT_I },
+  { cycle: 29830, action: ACT_R },
+];
+
+const FRAME_5STEP: readonly { cycle: number; action: number }[] = [
+  { cycle: 7457,  action: ACT_Q },
+  { cycle: 14913, action: ACT_Q | ACT_H },
+  { cycle: 22371, action: ACT_Q },
+  { cycle: 29829, action: 0 },
+  { cycle: 37281, action: ACT_Q | ACT_H },
+  { cycle: 37282, action: ACT_R },
+];
 
 export class Apu {
   readonly pulse1 = new PulseChannel(1);
@@ -216,60 +238,24 @@ export class Apu {
   private tickFrameCounter(): void {
     this.frameCycle++;
     const steps = this.frameMode === 0 ? FRAME_4STEP : FRAME_5STEP;
-    const threshold = steps[this.frameStep];
-    if (threshold === undefined || this.frameCycle < threshold) return;
+    const step = steps[this.frameStep];
+    if (step === undefined || this.frameCycle < step.cycle) return;
 
-    if (this.frameMode === 0) {
-      // 4-step: 0=Q, 1=Q+H, 2=Q, 3=Q+H+IRQ
-      switch (this.frameStep) {
-        case 0:
-          this.clockQuarterFrame();
-          break;
-        case 1:
-          this.clockQuarterFrame();
-          this.clockHalfFrame();
-          break;
-        case 2:
-          this.clockQuarterFrame();
-          break;
-        case 3:
-          this.clockQuarterFrame();
-          this.clockHalfFrame();
-          if (!this.frameIrqInhibit) {
-            this.frameIrqFlag = true;
-            this.onIrq?.();
-          }
-          break;
-        case 4:
-          this.frameCycle = 0;
-          this.frameStep = 0;
-          return;
-      }
-    } else {
-      // 5-step: 0=Q, 1=Q+H, 2=Q, 3=nothing, 4=Q+H
-      switch (this.frameStep) {
-        case 0:
-          this.clockQuarterFrame();
-          break;
-        case 1:
-          this.clockQuarterFrame();
-          this.clockHalfFrame();
-          break;
-        case 2:
-          this.clockQuarterFrame();
-          break;
-        case 3:
-          break;
-        case 4:
-          this.clockQuarterFrame();
-          this.clockHalfFrame();
-          break;
-        case 5:
-          this.frameCycle = 0;
-          this.frameStep = 0;
-          return;
-      }
+    const act = step.action;
+
+    if (act & ACT_Q) this.clockQuarterFrame();
+    if (act & ACT_H) this.clockHalfFrame();
+    if ((act & ACT_I) && !this.frameIrqInhibit) {
+      this.frameIrqFlag = true;
+      this.onIrq?.();
     }
+
+    if (act & ACT_R) {
+      this.frameCycle = 0;
+      this.frameStep = 0;
+      return;
+    }
+
     this.frameStep++;
   }
 

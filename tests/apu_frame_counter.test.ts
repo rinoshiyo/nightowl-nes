@@ -120,7 +120,6 @@ describe("APU フレームカウンタ", () => {
     });
 
     it("step 2 (cycle 22371): quarter frame のみ発火する", () => {
-      const lengthAfterStep1 = apu.pulse1.lengthCounter;
       tickN(apu, 14913); // step 1 まで進める
       const lengthAfterHalf = apu.pulse1.lengthCounter;
 
