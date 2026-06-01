@@ -547,7 +547,9 @@ export class Ppu {
     if (addr >= 0x3f00) {
       // パレット read 時はネームテーブルの値をバッファに入れる
       this.readBuffer = this.vram[this.mirrorNametable(addr)] ?? 0;
-      return this.palette[Ppu.mirrorPalette(addr)] ?? 0;
+      // NES パレット RAM は 6 bit 幅。bits 7-6 は open bus (現在の IO latch)
+      const palVal = this.palette[Ppu.mirrorPalette(addr)] ?? 0;
+      return (palVal & 0x3f) | (this.ioLatch & 0xc0);
     }
 
     if (addr < 0x2000) {

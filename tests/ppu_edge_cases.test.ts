@@ -236,6 +236,45 @@ describe("$2007 read バッファ", () => {
     expect(val).toBe(0x0f);
   });
 
+  it("パレット read の bits 7-6 は open bus (IO latch) から来る", () => {
+    const ppu = new Ppu();
+    // IO latch に bits 7-6 が立った値をセット
+    ppu.write(0, 0xc0);
+    // パレットに 6 bit 値をセット
+    ppu.write(6, 0x3f);
+    ppu.write(6, 0x01);
+    ppu.write(7, 0x15);
+    // アドレスを戻して read (直前の write(7, 0x15) で latch = 0x15)
+    // ioLatch の bits 7-6 = 0x00
+    ppu.write(6, 0x3f);
+    ppu.write(6, 0x01);
+    const val = ppu.read(7);
+    // palette[1] = 0x15、bits 5-0 = 0x15、bits 7-6 = ioLatch & 0xc0 = 0x00
+    expect(val).toBe(0x15);
+
+    // 今度は bits 7-6 が立った状態で read
+    ppu.write(0, 0xc0); // ioLatch = 0xc0
+    ppu.write(6, 0x3f);
+    ppu.write(6, 0x01); // ioLatch = 0x01
+    // ioLatch = 0x01 → bits 7-6 = 0x00
+    const val2 = ppu.read(7);
+    expect(val2).toBe(0x15); // palette bits 5-0 = 0x15, open bus bits 7-6 = 0x00
+
+    // ioLatch に bits 7-6 をセットした状態
+    ppu.ioLatch = 0xc0;
+    ppu.write(6, 0x3f);
+    ppu.write(6, 0x01);
+    // write(6, 0x01) で ioLatch = 0x01 → bits 7-6 = 0x00... write が latch を更新するので
+    // 明示的に latch をセットしてから直接 readVram 相当の動作をテスト
+    ppu.ioLatch = 0xc0;
+    // v は $3F02 ($3F01 + 1 increment from previous read)
+    // v を直接セット
+    ppu.v = 0x3f01;
+    const val3 = ppu.read(7);
+    // palette[1] = 0x15 (bits 5-0)、open bus bits 7-6 = 0xc0
+    expect(val3).toBe(0xc0 | 0x15);
+  });
+
   it("パレット read 時にバッファにネームテーブルの値が入る", () => {
     const ppu = new Ppu();
     // ネームテーブル $2F00 に値を入れる (ミラー先)
