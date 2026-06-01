@@ -296,6 +296,14 @@ export class Apu {
     this.mixer.reset(this.sampleRateStep);
   }
 
+  /** パワーオン初期化: 全チャンネル無効化 + フレームカウンタ初期化 */
+  powerOn(): void {
+    this.write(0x4015, 0x00);
+    this.write(0x4017, 0x00);
+    this.frameIrqFlag = false;
+    this.dmc.irqFlag = false;
+  }
+
   /** バッファからサンプルを読み出して output 配列を埋める。読み出し分だけ進む */
   readSamples(output: Float32Array): number {
     let written = 0;
