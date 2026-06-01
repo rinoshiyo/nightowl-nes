@@ -2,7 +2,15 @@
  * PPU (Picture Processing Unit)。
  *
  * レジスタ I/O ($2000-$2007) + スキャンライン描画エンジン。
- * 仕様参照: https://www.nesdev.org/wiki/PPU_rendering
+ * loopy レジスタ (v/t/x/w) ベースのスクロール実装。
+ * 仕様参照: https://www.nesdev.org/wiki/PPU_scrolling
+ *
+ * loopy v/t bit layout (15 bit):
+ *   yyy NN YYYYY XXXXX
+ *   ||| || ||||| +++++-- coarse X scroll (0-31)
+ *   ||| || +++++------- coarse Y scroll (0-29)
+ *   ||| ++------------ nametable select (2 bit)
+ *   +++--------------- fine Y scroll (0-7)
  */
 
 import type { Mirroring } from "./cart.ts";
@@ -35,16 +43,15 @@ export class Ppu {
   /** $2003 OAMADDR */
   oamAddr = 0;
 
-  /** ダブルライト toggle (false = 1st write, true = 2nd write) */
-  private writeToggle = false;
-  /** PPUSCROLL X (1st write) */
-  scrollX = 0;
-  /** PPUSCROLL Y (2nd write) */
-  scrollY = 0;
-  /** PPUADDR 組み立て用 (hi byte → lo byte) */
-  private addrHi = 0;
-  /** PPUDATA 用 VRAM アドレス (14bit) */
-  vramAddr = 0;
+  /** loopy v — current VRAM address (15 bit) */
+  v = 0;
+  /** loopy t — temporary VRAM address (15 bit) */
+  t = 0;
+  /** loopy x — fine X scroll (3 bit) */
+  x = 0;
+  /** loopy w — write toggle (false = 1st write, true = 2nd write) */
+  w = false;
+
   /** PPUDATA read バッファ (パレット以外は 1 read 遅延) */
   private readBuffer = 0;
 
@@ -76,6 +83,10 @@ export class Ppu {
   /** 背景カラーインデックス (0=透明) — sprite 0 hit / priority 判定用 */
   private bgColorIdx = 0;
 
+  /** scanline 開始時の v 水平成分 (coarseX + NT X bit) — 描画用 */
+  private slInitCoarseX = 0;
+  private slInitNtX = 0;
+
   /** secondary OAM (スキャンラインごとの最大 8 スプライト × 4 バイト) */
   private readonly secOam = new Uint8Array(32);
   /** スプライトパターンキャッシュ (evaluateSprites で fetch 済み) */
@@ -92,11 +103,10 @@ export class Ppu {
     this.mask = 0;
     this.status = 0;
     this.oamAddr = 0;
-    this.writeToggle = false;
-    this.scrollX = 0;
-    this.scrollY = 0;
-    this.addrHi = 0;
-    this.vramAddr = 0;
+    this.v = 0;
+    this.t = 0;
+    this.x = 0;
+    this.w = false;
     this.readBuffer = 0;
     this.dot = 0;
     this.scanline = 0;
@@ -107,12 +117,102 @@ export class Ppu {
     this.bgPatternHi = 0;
     this.bgPatternFineY = -1;
     this.bgFetchedCol = -1;
-    this.slTileRow = 0;
-    this.slFineY = 0;
-    this.slNtSelectY = 0;
     this.bgColorIdx = 0;
+    this.slInitCoarseX = 0;
+    this.slInitNtX = 0;
     this.spriteCount = 0;
     this.sprite0InLine = false;
+  }
+
+  // --- loopy ヘルパー (v/t の bit field 操作) ---
+
+  /** v/t から coarse X を取得 (bit 0-4) */
+  static coarseX(reg: number): number { return reg & 0x1f; }
+  /** v/t から coarse Y を取得 (bit 5-9) */
+  static coarseY(reg: number): number { return (reg >> 5) & 0x1f; }
+  /** v/t から NT 選択を取得 (bit 10-11) */
+  static ntSelect(reg: number): number { return (reg >> 10) & 0x03; }
+  /** v/t から fine Y を取得 (bit 12-14) */
+  static fineY(reg: number): number { return (reg >> 12) & 0x07; }
+
+  /** v/t に coarse X を設定 */
+  static setCoarseX(reg: number, val: number): number {
+    return (reg & ~0x1f) | (val & 0x1f);
+  }
+  /** v/t に coarse Y を設定 */
+  static setCoarseY(reg: number, val: number): number {
+    return (reg & ~0x03e0) | ((val & 0x1f) << 5);
+  }
+  /** v/t に fine Y を設定 */
+  static setFineY(reg: number, val: number): number {
+    return (reg & ~0x7000) | ((val & 0x07) << 12);
+  }
+
+  /** hori(v) = hori(t): coarse X + NT X bit をコピー */
+  private copyHorizontal(): void {
+    this.v = (this.v & ~0x041f) | (this.t & 0x041f);
+  }
+
+  /** vert(v) = vert(t): coarse Y + fine Y + NT Y bit をコピー */
+  private copyVertical(): void {
+    this.v = (this.v & ~0x7be0) | (this.t & 0x7be0);
+  }
+
+  /** coarse X increment */
+  private incrementCoarseX(): void {
+    if ((this.v & 0x1f) === 31) {
+      this.v &= ~0x1f;
+      this.v ^= 0x0400;
+    } else {
+      this.v++;
+    }
+  }
+
+  /** Y increment (fine Y → coarse Y → NT Y 切替) */
+  private incrementY(): void {
+    if ((this.v & 0x7000) !== 0x7000) {
+      this.v += 0x1000;
+    } else {
+      this.v &= ~0x7000;
+      let y = (this.v & 0x03e0) >> 5;
+      if (y === 29) {
+        y = 0;
+        this.v ^= 0x0800;
+      } else if (y === 31) {
+        y = 0;
+      } else {
+        y++;
+      }
+      this.v = (this.v & ~0x03e0) | (y << 5);
+    }
+  }
+
+  // --- 後方互換ヘルパー (テスト用に loopy レジスタ経由でスクロール値を設定) ---
+
+  /** loopy t/x から scrollX 相当の値を取得 */
+  get scrollX(): number {
+    return (Ppu.coarseX(this.t) << 3) | this.x;
+  }
+  /** scrollX 相当の値を loopy t/x に設定 */
+  set scrollX(val: number) {
+    this.t = Ppu.setCoarseX(this.t, val >> 3);
+    this.x = val & 0x07;
+  }
+
+  /** loopy t から scrollY 相当の値を取得 */
+  get scrollY(): number {
+    return (Ppu.coarseY(this.t) << 3) | Ppu.fineY(this.t);
+  }
+  /** scrollY 相当の値を loopy t に設定 (240 以上で NT Y フリップ) */
+  set scrollY(val: number) {
+    let coarseY = val >> 3;
+    const fineY = val & 0x07;
+    if (coarseY >= 30) {
+      coarseY -= 30;
+      this.t ^= 0x0800;
+    }
+    this.t = Ppu.setCoarseY(this.t, coarseY);
+    this.t = Ppu.setFineY(this.t, fineY);
   }
 
   /** $2000-$2007 の read (addr は 0-7 にマスク済みで渡される想定) */
@@ -121,7 +221,7 @@ export class Ppu {
       case 2: {
         const val = this.status;
         this.status &= 0x7f;
-        this.writeToggle = false;
+        this.w = false;
         return val;
       }
       case 4:
@@ -138,6 +238,8 @@ export class Ppu {
     switch (reg) {
       case 0:
         this.ctrl = value;
+        // NT 選択 bit (bit 0-1) を t の bit 10-11 に反映
+        this.t = (this.t & ~0x0c00) | ((value & 0x03) << 10);
         break;
       case 1:
         this.mask = value;
@@ -150,20 +252,27 @@ export class Ppu {
         this.oamAddr = (this.oamAddr + 1) & 0xff;
         break;
       case 5:
-        if (!this.writeToggle) {
-          this.scrollX = value;
+        if (!this.w) {
+          // 1st write: fine X → x, coarse X → t
+          this.x = value & 0x07;
+          this.t = Ppu.setCoarseX(this.t, value >> 3);
         } else {
-          this.scrollY = value;
+          // 2nd write: fine Y → t[12:14], coarse Y → t[5:9]
+          this.t = Ppu.setFineY(this.t, value & 0x07);
+          this.t = Ppu.setCoarseY(this.t, value >> 3);
         }
-        this.writeToggle = !this.writeToggle;
+        this.w = !this.w;
         break;
       case 6:
-        if (!this.writeToggle) {
-          this.addrHi = value & 0x3f;
+        if (!this.w) {
+          // 1st write: hi byte → t (bit 8-14、bit 15 クリア)
+          this.t = (this.t & 0x00ff) | ((value & 0x3f) << 8);
         } else {
-          this.vramAddr = ((this.addrHi << 8) | value) & 0x3fff;
+          // 2nd write: lo byte → t、t → v
+          this.t = (this.t & 0xff00) | value;
+          this.v = this.t;
         }
-        this.writeToggle = !this.writeToggle;
+        this.w = !this.w;
         break;
       case 7:
         this.writeVram(value);
@@ -173,15 +282,21 @@ export class Ppu {
 
   /** PPU を 1 ドット進める */
   tick(): void {
+    const renderEnabled = (this.mask & 0x18) !== 0;
+
     if (this.scanline < VISIBLE_LINES) {
       this.tickVisible();
+      if (renderEnabled) this.tickScrollVisible();
     } else if (this.scanline === VBLANK_LINE && this.dot === 1) {
       this.status |= 0x80;
       if ((this.ctrl & 0x80) !== 0 && this.onNmi) {
         this.onNmi();
       }
-    } else if (this.scanline === PRE_RENDER_LINE && this.dot === 1) {
-      this.status &= 0x1f;
+    } else if (this.scanline === PRE_RENDER_LINE) {
+      if (this.dot === 1) {
+        this.status &= 0x1f;
+      }
+      if (renderEnabled) this.tickScrollPreRender();
     }
 
     this.dot++;
@@ -195,68 +310,80 @@ export class Ppu {
     }
   }
 
-  /** 現在フェッチ済みの背景タイル列 (globalX >> 3 の値。再フェッチ判定用) */
-  private bgFetchedCol = -1;
+  /** 可視スキャンライン (0-239) のスクロール更新 */
+  private tickScrollVisible(): void {
+    const dot = this.dot;
+    if (dot >= 1 && dot <= 256) {
+      if (dot === 256) {
+        this.incrementY();
+      } else if ((dot & 0x07) === 0) {
+        this.incrementCoarseX();
+      }
+    }
+    if (dot === 257) {
+      this.copyHorizontal();
+    }
+  }
 
-  /** スキャンラインごとの Y スクロール派生値 (scanline 内で不変) */
-  private slTileRow = 0;
-  private slFineY = 0;
-  private slNtSelectY = 0;
+  /** pre-render scanline のスクロール更新 */
+  private tickScrollPreRender(): void {
+    const dot = this.dot;
+    if (dot >= 280 && dot <= 304) {
+      this.copyVertical();
+    }
+  }
+
+  /** 現在フェッチ済みの背景タイル列 (再フェッチ判定用) */
+  private bgFetchedCol = -1;
 
   /** 可視ライン (0-239) の描画処理 */
   private tickVisible(): void {
     const dot = this.dot;
 
+    if (dot === 0) {
+      this.slInitCoarseX = Ppu.coarseX(this.v);
+      this.slInitNtX = (Ppu.ntSelect(this.v) & 1);
+      this.bgFetchedCol = -1;
+    }
     if (dot === 1) {
       this.evaluateSprites();
-      this.bgFetchedCol = -1;
-      this.computeScanlineScrollY();
     }
 
     if (dot < 1 || dot > SCREEN_W) return;
 
-    const x = dot - 1;
-    const fbIdx = this.scanline * SCREEN_W + x;
-    this.renderBgPixel(x, fbIdx);
-    this.renderSpritePixel(x, fbIdx);
+    const screenX = dot - 1;
+    const fbIdx = this.scanline * SCREEN_W + screenX;
+    this.renderBgPixel(screenX, fbIdx);
+    this.renderSpritePixel(screenX, fbIdx);
   }
 
-  /** スキャンラインごとに Y スクロール派生値を事前計算 */
-  private computeScanlineScrollY(): void {
-    const globalY = this.scrollY + this.scanline;
-    let tileRow = globalY >> 3;
-    let ntSelectY = 0;
-    if (tileRow >= 30) {
-      tileRow -= 30;
-      ntSelectY = 1;
-    }
-    if (tileRow >= 30) {
-      tileRow -= 30;
-      ntSelectY = 0;
-    }
-    this.slTileRow = tileRow;
-    this.slFineY = globalY & 7;
-    this.slNtSelectY = ntSelectY;
-  }
-
-  /** 背景ピクセルを framebuffer に出力 (スクロール適用) */
-  private renderBgPixel(x: number, fbIdx: number): void {
+  /**
+   * 背景ピクセルを framebuffer に出力。
+   * scanline 開始時の水平スクロール値 + screenX + fine X からタイル位置を計算。
+   * v の coarseX increment は状態管理用で、描画には初期値を使う。
+   */
+  private renderBgPixel(screenX: number, fbIdx: number): void {
     if ((this.mask & 0x08) === 0) {
       this.framebuffer[fbIdx] = this.palette[0] ?? 0;
       this.bgColorIdx = 0;
       return;
     }
 
-    const globalX = (this.scrollX + x) & 0x1ff;
-    const tileCol = (globalX >> 3) & 0x1f;
-    const fineX = globalX & 7;
-    const ntSelectX = (globalX >> 8) & 1;
+    const totalX = this.slInitCoarseX * 8 + this.x + screenX;
+    const tileCol = (totalX >> 3) & 0x1f;
+    const ntXFlip = (totalX >> 8) & 1;
+    const fineX = totalX & 0x07;
 
-    const col = (ntSelectX << 5) | tileCol;
-    if (col !== this.bgFetchedCol || this.slFineY !== this.bgPatternFineY) {
-      this.bgFetchedCol = col;
-      this.bgPatternFineY = this.slFineY;
-      this.fetchBgTile(tileCol, this.slTileRow, this.slFineY, ntSelectX, this.slNtSelectY);
+    const ntY = (Ppu.ntSelect(this.v) >> 1) & 1;
+    const ntSelect = (ntY << 1) | (this.slInitNtX ^ ntXFlip);
+    const coarseY = Ppu.coarseY(this.v);
+    const fineY = Ppu.fineY(this.v);
+
+    const fetchKey = (ntSelect << 15) | (coarseY << 10) | (tileCol << 5) | fineY;
+    if (fetchKey !== this.bgFetchedCol) {
+      this.bgFetchedCol = fetchKey;
+      this.bgPatternFineY = fineY;
+      this.fetchBgTileLoopy(tileCol, coarseY, fineY, ntSelect);
     }
 
     const bitPos = 7 - fineX;
@@ -269,18 +396,15 @@ export class Ppu {
     this.framebuffer[fbIdx] = this.palette[palAddr] ?? 0;
   }
 
-  /** 背景タイル fetch (スクロール対応: タイル座標 + NT 選択を受け取る) */
-  private fetchBgTile(tileCol: number, tileRow: number, fineY: number, ntSelectX: number, ntSelectY: number): void {
-    const baseNt = this.ctrl & 0x03;
-    const ntIndex = baseNt ^ ntSelectX ^ (ntSelectY << 1);
-    const ntBase = 0x2000 + (ntIndex << 10);
-
-    const ntAddr = ntBase + tileRow * 32 + tileCol;
+  /** 背景タイル fetch (loopy ベース) */
+  private fetchBgTileLoopy(coarseX: number, coarseY: number, fineY: number, ntSelect: number): void {
+    const ntBase = 0x2000 + (ntSelect << 10);
+    const ntAddr = ntBase + coarseY * 32 + coarseX;
     this.bgNametable = this.ppuRead(ntAddr);
 
-    const atAddr = ntBase + 0x03c0 + ((tileRow >> 2) << 3) + (tileCol >> 2);
+    const atAddr = ntBase + 0x03c0 + ((coarseY >> 2) << 3) + (coarseX >> 2);
     const atByte = this.ppuRead(atAddr);
-    const atShift = ((tileRow & 2) << 1) | (tileCol & 2);
+    const atShift = ((coarseY & 2) << 1) | (coarseX & 2);
     this.bgAttribute = (atByte >> atShift) & 0x03;
 
     const ptBase = (this.ctrl & 0x10) !== 0 ? 0x1000 : 0;
@@ -312,8 +436,8 @@ export class Ppu {
         this.secOam[base + 2] = attr;
         this.secOam[base + 3] = this.oam[i * 4 + 3] ?? 0;
 
-        const fineY = (attr & 0x80) !== 0 ? 7 - row : row;
-        const patAddr = ptBase + tileIdx * 16 + fineY;
+        const sprFineY = (attr & 0x80) !== 0 ? 7 - row : row;
+        const patAddr = ptBase + tileIdx * 16 + sprFineY;
         this.sprPatternLo[idx] = this.ppuRead(patAddr);
         this.sprPatternHi[idx] = this.ppuRead(patAddr + 8);
 
@@ -326,7 +450,7 @@ export class Ppu {
   }
 
   /** スプライトピクセルを framebuffer に合成 */
-  private renderSpritePixel(x: number, fbIdx: number): void {
+  private renderSpritePixel(screenX: number, fbIdx: number): void {
     if ((this.mask & 0x10) === 0) return;
 
     const bgOpaque = this.bgColorIdx !== 0;
@@ -336,19 +460,19 @@ export class Ppu {
       const attr = this.secOam[base + 2] ?? 0;
       const sprX = this.secOam[base + 3] ?? 0;
 
-      const col = x - sprX;
+      const col = screenX - sprX;
       if (col < 0 || col >= 8) continue;
 
-      const fineX = (attr & 0x40) !== 0 ? col : 7 - col;
-      const lo = ((this.sprPatternLo[i] ?? 0) >> fineX) & 1;
-      const hi = ((this.sprPatternHi[i] ?? 0) >> fineX) & 1;
+      const sprFineX = (attr & 0x40) !== 0 ? col : 7 - col;
+      const lo = ((this.sprPatternLo[i] ?? 0) >> sprFineX) & 1;
+      const hi = ((this.sprPatternHi[i] ?? 0) >> sprFineX) & 1;
       const colorIdx = (hi << 1) | lo;
 
       if (colorIdx === 0) continue;
 
       const palAddr = 0x10 + ((attr & 0x03) << 2) + colorIdx;
 
-      if (this.sprite0InLine && i === 0 && bgOpaque && x < 255) {
+      if (this.sprite0InLine && i === 0 && bgOpaque && screenX < 255) {
         this.status |= 0x40;
       }
 
@@ -373,7 +497,7 @@ export class Ppu {
   }
 
   private readVram(): number {
-    const addr = this.vramAddr & 0x3fff;
+    const addr = this.v & 0x3fff;
     this.incrementVramAddr();
 
     if (addr >= 0x3f00) {
@@ -395,7 +519,7 @@ export class Ppu {
   }
 
   private writeVram(value: number): void {
-    const addr = this.vramAddr & 0x3fff;
+    const addr = this.v & 0x3fff;
     this.incrementVramAddr();
 
     if (addr >= 0x3f00) {
@@ -416,7 +540,7 @@ export class Ppu {
   }
 
   private incrementVramAddr(): void {
-    this.vramAddr = (this.vramAddr + ((this.ctrl & 0x04) !== 0 ? 32 : 1)) & 0x3fff;
+    this.v = (this.v + ((this.ctrl & 0x04) !== 0 ? 32 : 1)) & 0x7fff;
   }
 
   /** ネームテーブルミラーリング (VRAM 2KB 内オフセットを返す) */

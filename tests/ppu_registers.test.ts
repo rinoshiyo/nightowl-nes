@@ -72,18 +72,18 @@ describe("PPUSCROLL ($2005) ダブルライト", () => {
 });
 
 describe("PPUADDR ($2006) ダブルライト", () => {
-  it("hi → lo で vramAddr を組み立てる", () => {
+  it("hi → lo で v (VRAM address) を組み立てる", () => {
     const ppu = new Ppu();
     ppu.write(6, 0x21);
     ppu.write(6, 0x08);
-    expect(ppu.vramAddr).toBe(0x2108);
+    expect(ppu.v).toBe(0x2108);
   });
 
   it("上位 2bit はマスクされる (14bit address)", () => {
     const ppu = new Ppu();
     ppu.write(6, 0xff);
     ppu.write(6, 0xff);
-    expect(ppu.vramAddr).toBe(0x3fff);
+    expect(ppu.v).toBe(0x3fff);
   });
 });
 
@@ -100,7 +100,7 @@ describe("PPUDATA ($2007) read/write", () => {
     expect(ppu.read(7)).toBe(0x42);
   });
 
-  it("read 後に vramAddr がインクリメントされる (increment=1)", () => {
+  it("read 後に v がインクリメントされる (increment=1)", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
 
@@ -125,7 +125,7 @@ describe("PPUDATA ($2007) read/write", () => {
     ppu.write(7, 0xaa);
     ppu.write(7, 0xbb);
 
-    expect(ppu.vramAddr).toBe(0x2040);
+    expect(ppu.v).toBe(0x2040);
   });
 
   it("パレット ($3F00+) は即時読み出し (バッファ遅延なし)", () => {
