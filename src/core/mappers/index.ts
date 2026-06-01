@@ -5,3 +5,4 @@ export { MapperMmc1 } from "./mmc1.ts";
 export { MapperUxrom } from "./uxrom.ts";
 export { MapperCnrom } from "./cnrom.ts";
 export { MapperMmc3 } from "./mmc3.ts";
+export { MapperAxrom } from "./axrom.ts";
