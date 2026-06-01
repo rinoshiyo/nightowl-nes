@@ -25,6 +25,43 @@ let currentRomHash: string | null = null;
 let currentHasBattery = false;
 let saveDisabled = false;
 
+// --- G5: エラー表示の改善 ---
+
+const errorOverlay = getEl<HTMLDivElement>("error-overlay");
+const errorMessage = getEl<HTMLDivElement>("error-message");
+const errorClose = getEl<HTMLButtonElement>("error-close");
+
+function showError(e: unknown): void {
+  const msg = e instanceof Error ? e.message : String(e);
+  const friendly = formatErrorMessage(msg);
+  errorMessage.textContent = friendly;
+  errorOverlay.classList.add("visible");
+  status.textContent = `エラー: ${friendly}`;
+}
+
+function formatErrorMessage(msg: string): string {
+  if (msg.includes("Unsupported mapper") || msg.includes("Mapper")) {
+    const match = msg.match(/\d+/);
+    return match
+      ? `Mapper ${match[0]} は未対応です。対応済み: 0 (NROM), 1 (MMC1), 2 (UxROM), 3 (CNROM), 4 (MMC3), 7 (AxROM)`
+      : `このROMのMapperは未対応です`;
+  }
+  if (msg.includes("magic mismatch")) {
+    return "有効な NES ファイルではありません（iNES ヘッダが見つかりません）";
+  }
+  if (msg.includes("header too short")) {
+    return "ファイルが小さすぎます（NES ヘッダを読み取れません）";
+  }
+  if (msg.includes("PRG ROM overflows")) {
+    return "ファイルが壊れています（PRG ROM サイズがファイルサイズを超えています）";
+  }
+  return msg;
+}
+
+errorClose.addEventListener("click", () => {
+  errorOverlay.classList.remove("visible");
+});
+
 const FRAME_MS = 1000 / 60;
 let lastFrameTime = 0;
 const SAVE_INTERVAL_MS = 5000;
@@ -94,7 +131,36 @@ romInput.addEventListener("change", () => {
   const file = romInput.files?.[0];
   if (!file) return;
   loadRom(file).catch((e) => {
-    status.textContent = `エラー: ${e instanceof Error ? e.message : String(e)}`;
+    showError(e);
+  });
+});
+
+// --- G1: ドラッグ&ドロップ ---
+
+const dropOverlay = getEl<HTMLDivElement>("drop-overlay");
+
+document.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropOverlay.classList.add("visible");
+});
+
+document.addEventListener("dragleave", (e) => {
+  if (e.relatedTarget === null) {
+    dropOverlay.classList.remove("visible");
+  }
+});
+
+document.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropOverlay.classList.remove("visible");
+  const file = e.dataTransfer?.files[0];
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith(".nes")) {
+    showError(new Error(".nes ファイルのみ対応しています"));
+    return;
+  }
+  loadRom(file).catch((err) => {
+    showError(err);
   });
 });
 
@@ -152,11 +218,62 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
+// --- G2: Gamepad API ---
+
+const GAMEPAD_MAP: readonly Button[] = [
+  Button.B,       // 0: B (Cross / A)
+  Button.A,       // 1: A (Circle / B)
+  Button.Select,  // 8: Select (Share / Back)
+  Button.Start,   // 9: Start
+];
+
+function pollGamepads(): void {
+  if (!nes) return;
+  const gamepads = navigator.getGamepads();
+  for (let gi = 0; gi < gamepads.length; gi++) {
+    const gp = gamepads[gi];
+    if (!gp) continue;
+    const ctrl = gi === 0 ? nes.controller1 : nes.controller2;
+
+    for (let bi = 0; bi < GAMEPAD_MAP.length; bi++) {
+      const nesBtn = GAMEPAD_MAP[bi];
+      if (nesBtn === undefined) continue;
+      const gpIndex = bi < 2 ? bi : bi + 6;
+      const pressed = gp.buttons[gpIndex]?.pressed ?? false;
+      if (pressed) ctrl.press(nesBtn);
+      else ctrl.release(nesBtn);
+    }
+
+    const axes0 = gp.axes[0] ?? 0;
+    const axes1 = gp.axes[1] ?? 0;
+    const DEADZONE = 0.5;
+
+    if (axes0 < -DEADZONE) { ctrl.press(Button.Left); ctrl.release(Button.Right); }
+    else if (axes0 > DEADZONE) { ctrl.press(Button.Right); ctrl.release(Button.Left); }
+    else { ctrl.release(Button.Left); ctrl.release(Button.Right); }
+
+    if (axes1 < -DEADZONE) { ctrl.press(Button.Up); ctrl.release(Button.Down); }
+    else if (axes1 > DEADZONE) { ctrl.press(Button.Down); ctrl.release(Button.Up); }
+    else { ctrl.release(Button.Up); ctrl.release(Button.Down); }
+
+    const dUp = gp.buttons[12]?.pressed ?? false;
+    const dDown = gp.buttons[13]?.pressed ?? false;
+    const dLeft = gp.buttons[14]?.pressed ?? false;
+    const dRight = gp.buttons[15]?.pressed ?? false;
+    if (dUp) ctrl.press(Button.Up);
+    if (dDown) ctrl.press(Button.Down);
+    if (dLeft) ctrl.press(Button.Left);
+    if (dRight) ctrl.press(Button.Right);
+  }
+}
+
 function gameLoop(timestamp: number): void {
   if (!nes) {
     running = false;
     return;
   }
+
+  pollGamepads();
 
   const elapsed = timestamp - lastFrameTime;
   if (elapsed >= FRAME_MS) {
@@ -165,7 +282,7 @@ function gameLoop(timestamp: number): void {
       nes.stepFrame();
       renderer.render(nes.ppu.framebuffer);
     } catch (e) {
-      status.textContent = `エラー: ${e instanceof Error ? e.message : String(e)}`;
+      showError(e);
       running = false;
       return;
     }
@@ -180,6 +297,55 @@ function gameLoop(timestamp: number): void {
 }
 
 window.addEventListener("beforeunload", flushSave);
+
+// --- G4: 画面サイズ切替 ---
+
+type ScreenScale = 1 | 2 | 3;
+let currentScale: ScreenScale = 2;
+const scaleBtn = getEl<HTMLButtonElement>("scale-btn");
+const fullscreenBtn = getEl<HTMLButtonElement>("fullscreen-btn");
+
+function applyScale(scale: ScreenScale): void {
+  currentScale = scale;
+  canvas.style.width = `${256 * scale}px`;
+  canvas.style.height = `${240 * scale}px`;
+  scaleBtn.textContent = `${scale}x`;
+}
+
+scaleBtn.addEventListener("click", () => {
+  const next = currentScale === 1 ? 2 : currentScale === 2 ? 3 : 1;
+  applyScale(next as ScreenScale);
+});
+
+fullscreenBtn.addEventListener("click", () => {
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    canvas.requestFullscreen().catch(() => {});
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() === "f" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (document.activeElement === document.body || document.activeElement === canvas) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        canvas.requestFullscreen().catch(() => {});
+      }
+    }
+  }
+});
+
+// --- G3: 操作ヘルプ表示 ---
+
+const helpToggle = getEl<HTMLButtonElement>("help-toggle");
+const helpContent = getEl<HTMLDivElement>("help-content");
+
+helpToggle.addEventListener("click", () => {
+  const visible = helpContent.classList.toggle("visible");
+  helpToggle.textContent = visible ? "操作ヘルプ ▲" : "操作ヘルプ ▼";
+});
 
 deleteBtn.addEventListener("click", () => {
   if (!currentRomHash) return;
