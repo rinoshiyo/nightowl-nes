@@ -386,6 +386,94 @@ describe("APU フレームカウンタ", () => {
     });
   });
 
+  describe("quarter/half frame の正確なカウント (1 周期分)", () => {
+    it("4-step モード: 1 周期で quarter 4 回、half 2 回", () => {
+      let quarterCount = 0;
+      let halfCount = 0;
+
+      // envelope.tick() 呼び出しをスパイ
+      apu.write(0x4015, 0x01);
+      apu.write(0x4000, 0x30); // halt=true, constant, vol=0
+      apu.write(0x4003, 0x08); // 長さカウンタ 254
+      apu.write(0x4017, 0x00); // 4-step
+
+      const origEnvTick = apu.pulse1.envelope.tick.bind(apu.pulse1.envelope);
+      apu.pulse1.envelope.tick = () => { quarterCount++; origEnvTick(); };
+      const origLenTick = apu.pulse1.tickLength.bind(apu.pulse1);
+      apu.pulse1.tickLength = () => { halfCount++; origLenTick(); };
+
+      tickN(apu, 29830); // 1 周期
+      expect(quarterCount).toBe(4);
+      expect(halfCount).toBe(2);
+    });
+
+    it("5-step モード: 1 周期で quarter 4 回 + 即時分 1 回、half 2 回 + 即時分 1 回", () => {
+      let quarterCount = 0;
+      let halfCount = 0;
+
+      apu.write(0x4015, 0x01);
+      apu.write(0x4000, 0x30);
+      apu.write(0x4003, 0x08);
+
+      const origEnvTick = apu.pulse1.envelope.tick.bind(apu.pulse1.envelope);
+      apu.pulse1.envelope.tick = () => { quarterCount++; origEnvTick(); };
+      const origLenTick = apu.pulse1.tickLength.bind(apu.pulse1);
+      apu.pulse1.tickLength = () => { halfCount++; origLenTick(); };
+
+      apu.write(0x4017, 0x80); // 5-step → 即時 quarter+half
+      expect(quarterCount).toBe(1);
+      expect(halfCount).toBe(1);
+
+      tickN(apu, 37282); // 1 周期
+      // 通常 step: quarter 4 回 (7457, 14913, 22371, 37281) + half 2 回 (14913, 37281)
+      expect(quarterCount).toBe(5); // 即時 1 + 通常 4
+      expect(halfCount).toBe(3);    // 即時 1 + 通常 2
+    });
+  });
+
+  describe("複数周期にわたるタイミング安定性", () => {
+    it("4-step モード: 3 周期分の IRQ 発火タイミングが安定している", () => {
+      const irqCycles: number[] = [];
+      let totalCycles = 0;
+
+      apu.onIrq = () => { irqCycles.push(totalCycles); };
+      apu.write(0x4017, 0x00); // 4-step, IRQ enabled
+
+      // 3 周期分 = 29830 * 3 cycles
+      for (let i = 0; i < 29830 * 3; i++) {
+        totalCycles++;
+        apu.tick();
+      }
+
+      expect(irqCycles).toEqual([29829, 29830 + 29829, 29830 * 2 + 29829]);
+    });
+
+    it("5-step モード: 2 周期分の half frame タイミングが安定している", () => {
+      apu.write(0x4015, 0x01);
+      apu.write(0x4000, 0x00); // halt=false
+      apu.write(0x4003, 0x08); // 長さカウンタ 254
+      apu.write(0x4017, 0x80); // 5-step → 即時 half (254→253)
+
+      let length = apu.pulse1.lengthCounter; // 253
+      const halfCycles: number[] = [];
+      let totalCycles = 0;
+
+      // tick ごとに長さカウンタの変化を監視
+      for (let i = 0; i < 37282 * 2; i++) {
+        totalCycles++;
+        apu.tick();
+        if (apu.pulse1.lengthCounter < length) {
+          halfCycles.push(totalCycles);
+          length = apu.pulse1.lengthCounter;
+        }
+      }
+
+      // 1 周期目: 14913, 37281
+      // 2 周期目: 37282+14913, 37282+37281
+      expect(halfCycles).toEqual([14913, 37281, 37282 + 14913, 37282 + 37281]);
+    });
+  });
+
   describe("DMC IRQ との共存", () => {
     it("$4015 read で DMC IRQ フラグは bit7 に反映される", () => {
       apu.dmc.irqFlag = true;
