@@ -247,7 +247,7 @@ export class Ppu {
         break;
       }
       case 4:
-        val = this.oam[this.oamAddr] ?? 0;
+        val = this.oam[this.oamAddr]!;
         break;
       case 7:
         val = this.readVram();
@@ -422,7 +422,7 @@ export class Ppu {
    */
   private renderBgPixel(screenX: number, fbIdx: number): void {
     if ((this.mask & 0x08) === 0) {
-      this.framebuffer[fbIdx] = this.palette[0] ?? 0;
+      this.framebuffer[fbIdx] = this.palette[0]!;
       this.bgColorIdx = 0;
       return;
     }
@@ -434,8 +434,8 @@ export class Ppu {
 
     const ntY = (Ppu.ntSelect(this.v) >> 1) & 1;
     const ntSelect = (ntY << 1) | (this.slInitNtX ^ ntXFlip);
-    const coarseY = Ppu.coarseY(this.v);
-    const fineY = Ppu.fineY(this.v);
+    const coarseY = (this.v >> 5) & 0x1f;
+    const fineY = (this.v >> 12) & 0x07;
 
     const fetchKey = (ntSelect << 15) | (coarseY << 10) | (tileCol << 5) | fineY;
     if (fetchKey !== this.bgFetchedCol) {
@@ -450,7 +450,7 @@ export class Ppu {
     this.bgColorIdx = colorIdx;
 
     const palAddr = colorIdx === 0 ? 0 : (this.bgAttribute << 2) | colorIdx;
-    this.framebuffer[fbIdx] = this.palette[palAddr] ?? 0;
+    this.framebuffer[fbIdx] = this.palette[palAddr]!;
   }
 
   /** 背景タイル fetch (loopy ベース) */
@@ -474,55 +474,67 @@ export class Ppu {
   private evaluateSprites(): void {
     const spriteHeight = 8;
     const ptBase = (this.ctrl & 0x08) !== 0 ? 0x1000 : 0;
-    this.spriteCount = 0;
+    const oam = this.oam;
+    const scanline = this.scanline;
+    let count = 0;
+
     this.sprite0InLine = false;
 
     for (let i = 0; i < 64; i++) {
-      const y = this.oam[i * 4] ?? 0;
-      const row = this.scanline - y - 1;
+      const oamBase = i << 2;
+      const y = oam[oamBase]!;
+      const row = scanline - y - 1;
       if (row < 0 || row >= spriteHeight) continue;
 
-      if (this.spriteCount < 8) {
+      if (count < 8) {
         if (i === 0) this.sprite0InLine = true;
-        const idx = this.spriteCount;
-        const base = idx * 4;
-        const tileIdx = this.oam[i * 4 + 1] ?? 0;
-        const attr = this.oam[i * 4 + 2] ?? 0;
-        this.secOam[base] = y;
-        this.secOam[base + 1] = tileIdx;
-        this.secOam[base + 2] = attr;
-        this.secOam[base + 3] = this.oam[i * 4 + 3] ?? 0;
+        const secBase = count << 2;
+        const tileIdx = oam[oamBase + 1]!;
+        const attr = oam[oamBase + 2]!;
+        this.secOam[secBase] = y;
+        this.secOam[secBase + 1] = tileIdx;
+        this.secOam[secBase + 2] = attr;
+        this.secOam[secBase + 3] = oam[oamBase + 3]!;
 
         const sprFineY = (attr & 0x80) !== 0 ? 7 - row : row;
         const patAddr = ptBase + tileIdx * 16 + sprFineY;
-        this.sprPatternLo[idx] = this.ppuRead(patAddr);
-        this.sprPatternHi[idx] = this.ppuRead(patAddr + 8);
+        this.sprPatternLo[count] = this.ppuRead(patAddr);
+        this.sprPatternHi[count] = this.ppuRead(patAddr + 8);
 
-        this.spriteCount++;
+        count++;
       } else {
         this.status |= 0x20;
         break;
       }
     }
+    this.spriteCount = count;
   }
 
   /** スプライトピクセルを framebuffer に合成 */
   private renderSpritePixel(screenX: number, fbIdx: number): void {
     if ((this.mask & 0x10) === 0) return;
 
-    const bgOpaque = this.bgColorIdx !== 0;
+    const count = this.spriteCount;
+    if (count === 0) return;
 
-    for (let i = this.spriteCount - 1; i >= 0; i--) {
-      const base = i * 4;
-      const attr = this.secOam[base + 2] ?? 0;
-      const sprX = this.secOam[base + 3] ?? 0;
+    const bgOpaque = this.bgColorIdx !== 0;
+    const secOam = this.secOam;
+    const sprLoArr = this.sprPatternLo;
+    const sprHiArr = this.sprPatternHi;
+    const pal = this.palette;
+    const fb = this.framebuffer;
+
+    for (let i = count - 1; i >= 0; i--) {
+      const base = i << 2;
+      const sprX = secOam[base + 3]!;
 
       const col = screenX - sprX;
       if (col < 0 || col >= 8) continue;
 
+      const attr = secOam[base + 2]!;
       const sprFineX = (attr & 0x40) !== 0 ? col : 7 - col;
-      const lo = ((this.sprPatternLo[i] ?? 0) >> sprFineX) & 1;
-      const hi = ((this.sprPatternHi[i] ?? 0) >> sprFineX) & 1;
+      const lo = (sprLoArr[i]! >> sprFineX) & 1;
+      const hi = (sprHiArr[i]! >> sprFineX) & 1;
       const colorIdx = (hi << 1) | lo;
 
       if (colorIdx === 0) continue;
@@ -533,9 +545,8 @@ export class Ppu {
         this.status |= 0x40;
       }
 
-      const behindBg = (attr & 0x20) !== 0;
-      if (!behindBg || !bgOpaque) {
-        this.framebuffer[fbIdx] = this.palette[palAddr] ?? 0;
+      if ((attr & 0x20) === 0 || !bgOpaque) {
+        fb[fbIdx] = pal[palAddr]!;
       }
     }
   }
@@ -545,12 +556,12 @@ export class Ppu {
     addr &= 0x3fff;
     if (addr < 0x2000) {
       if (this.mapper) return this.mapper.readChr(addr);
-      return this.chrRam[addr] ?? 0;
+      return this.chrRam[addr & 0x1fff]!;
     }
     if (addr < 0x3f00) {
-      return this.vram[this.mirrorNametable(addr)] ?? 0;
+      return this.vram[this.mirrorNametable(addr)]!;
     }
-    return this.palette[Ppu.mirrorPalette(addr)] ?? 0;
+    return this.palette[Ppu.mirrorPalette(addr)]!;
   }
 
   /** パレットアドレスミラーリング ($3F10→$3F00, $3F14→$3F04, $3F18→$3F08, $3F1C→$3F0C) */
@@ -566,10 +577,8 @@ export class Ppu {
     this.incrementVramAddr();
 
     if (addr >= 0x3f00) {
-      // パレット read 時はネームテーブルの値をバッファに入れる
-      this.readBuffer = this.vram[this.mirrorNametable(addr)] ?? 0;
-      // NES パレット RAM は 6 bit 幅。bits 7-6 は open bus (現在の IO latch)
-      const palVal = this.palette[Ppu.mirrorPalette(addr)] ?? 0;
+      this.readBuffer = this.vram[this.mirrorNametable(addr)]!;
+      const palVal = this.palette[Ppu.mirrorPalette(addr)]!;
       return (palVal & 0x3f) | (this.ioLatch & 0xc0);
     }
 
@@ -577,12 +586,12 @@ export class Ppu {
       const buffered = this.readBuffer;
       this.readBuffer = this.mapper
         ? this.mapper.readChr(addr)
-        : (this.chrRam[addr & 0x1fff] ?? 0);
+        : this.chrRam[addr & 0x1fff]!;
       return buffered;
     }
 
     const buffered = this.readBuffer;
-    this.readBuffer = this.vram[this.mirrorNametable(addr)] ?? 0;
+    this.readBuffer = this.vram[this.mirrorNametable(addr)]!;
     return buffered;
   }
 

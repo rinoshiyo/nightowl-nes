@@ -71,3 +71,19 @@ export const NES_PALETTE: readonly [r: number, g: number, b: number][] = [
   [0x00, 0x00, 0x00], // 0x3E
   [0x00, 0x00, 0x00], // 0x3F
 ] as const;
+
+/**
+ * RGBA packed Uint32Array パレット (リトルエンディアン前提)。
+ * Renderer が ImageData の Uint32Array ビューに直接書き込む用。
+ * alpha は常に 0xFF。
+ */
+function buildRgba32Palette(): Uint32Array {
+  const table = new Uint32Array(64);
+  for (let i = 0; i < 64; i++) {
+    const rgb = NES_PALETTE[i]!;
+    table[i] = (0xff << 24) | (rgb[2] << 16) | (rgb[1] << 8) | rgb[0];
+  }
+  return table;
+}
+
+export const NES_PALETTE_RGBA32 = buildRgba32Palette();
