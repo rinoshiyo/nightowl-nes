@@ -569,9 +569,17 @@ export class Ppu {
   /** ネームテーブルミラーリング (VRAM 2KB 内オフセットを返す) */
   private mirrorNametable(addr: number): number {
     const relative = (addr - 0x2000) & 0xfff;
-    if (this.mirroring === "vertical") {
-      return relative & 0x7ff;
+    switch (this.mirroring) {
+      case "vertical":
+        return relative & 0x7ff;
+      case "horizontal":
+        return ((relative & 0x800) >> 1) | (relative & 0x3ff);
+      case "single-lower":
+        return relative & 0x3ff;
+      case "single-upper":
+        return 0x400 | (relative & 0x3ff);
+      case "four-screen":
+        return relative;
     }
-    return ((relative & 0x800) >> 1) | (relative & 0x3ff);
   }
 }

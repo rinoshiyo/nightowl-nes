@@ -14,7 +14,7 @@ const PRG_BANK_SIZE = 16 * 1024;
 const CHR_BANK_SIZE = 8 * 1024;
 const TRAINER_SIZE = 512;
 
-export type Mirroring = "horizontal" | "vertical";
+export type Mirroring = "horizontal" | "vertical" | "single-lower" | "single-upper" | "four-screen";
 
 export interface INesHeader {
   /** PRG ROM サイズ (バイト) */
