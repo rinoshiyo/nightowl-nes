@@ -139,9 +139,9 @@ export class MapperSunsoftFme7 implements Mapper {
   /** トーン周期レジスタ (ch A/B/C × 12bit) */
   private readonly tonePeriod = new Uint16Array(3);
   /** トーンカウンタ */
-  private readonly toneCounter = new Uint16Array(3);
+  private readonly toneCounter = [0, 0, 0];
   /** トーン出力フリップフロップ (0 or 1) */
-  private readonly toneOutput = new Uint8Array(3);
+  private readonly toneOutput = [0, 0, 0];
 
   /** ノイズ周期レジスタ (5bit) */
   private noisePeriod = 0;
@@ -342,8 +342,8 @@ export class MapperSunsoftFme7 implements Mapper {
     // 拡張音源リセット
     this.audioRegAddr = 0;
     this.tonePeriod.fill(0);
-    this.toneCounter.fill(0);
-    this.toneOutput.fill(0);
+    this.toneCounter[0] = this.toneCounter[1] = this.toneCounter[2] = 0;
+    this.toneOutput[0] = this.toneOutput[1] = this.toneOutput[2] = 0;
     this.noisePeriod = 0;
     this.noiseCounter = 0;
     this.noiseLfsr = 1;
@@ -547,8 +547,8 @@ export class MapperSunsoftFme7 implements Mapper {
       irqPending: this.irqPending,
       audioRegAddr: this.audioRegAddr,
       tonePeriod: Array.from(this.tonePeriod),
-      toneCounter: Array.from(this.toneCounter),
-      toneOutput: Array.from(this.toneOutput),
+      toneCounter: [...this.toneCounter],
+      toneOutput: [...this.toneOutput],
       noisePeriod: this.noisePeriod,
       noiseCounter: this.noiseCounter,
       noiseLfsr: this.noiseLfsr,
@@ -581,8 +581,14 @@ export class MapperSunsoftFme7 implements Mapper {
     this.irqPending = data["irqPending"] as boolean;
     this.audioRegAddr = data["audioRegAddr"] as number;
     if (Array.isArray(data["tonePeriod"])) this.tonePeriod.set(data["tonePeriod"] as number[]);
-    if (Array.isArray(data["toneCounter"])) this.toneCounter.set(data["toneCounter"] as number[]);
-    if (Array.isArray(data["toneOutput"])) this.toneOutput.set(data["toneOutput"] as number[]);
+    if (Array.isArray(data["toneCounter"])) {
+      const tc = data["toneCounter"] as number[];
+      this.toneCounter[0] = tc[0] ?? 0; this.toneCounter[1] = tc[1] ?? 0; this.toneCounter[2] = tc[2] ?? 0;
+    }
+    if (Array.isArray(data["toneOutput"])) {
+      const to = data["toneOutput"] as number[];
+      this.toneOutput[0] = to[0] ?? 0; this.toneOutput[1] = to[1] ?? 0; this.toneOutput[2] = to[2] ?? 0;
+    }
     this.noisePeriod = data["noisePeriod"] as number;
     this.noiseCounter = data["noiseCounter"] as number;
     this.noiseLfsr = data["noiseLfsr"] as number;
