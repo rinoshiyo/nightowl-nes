@@ -566,7 +566,7 @@ export class Ppu {
     this.v = (this.v + ((this.ctrl & 0x04) !== 0 ? 32 : 1)) & 0x7fff;
   }
 
-  /** ネームテーブルミラーリング (VRAM 2KB 内オフセットを返す) */
+  /** ネームテーブルミラーリング (VRAM 内オフセットを返す) */
   private mirrorNametable(addr: number): number {
     const relative = (addr - 0x2000) & 0xfff;
     switch (this.mirroring) {

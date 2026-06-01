@@ -129,20 +129,15 @@ describe("PPU ミラーリング", () => {
       const ppu = new Ppu();
       ppu.mirroring = "four-screen";
 
-      // NES の VRAM は 2KB ($000-$7FF) なので、four-screen では
-      // $2000-$27FF は VRAM にマップされるが
-      // $2800-$2FFF は VRAM の外 (カートリッジ RAM が必要)。
-      // 現状の実装では vram[0x800-0xFFF] を使う (2KB 配列の外の書込は無視される可能性)
-      // ただし PPU.vram は 2KB (0x800) なので、four-screen の上位 2 NT は
-      // 実際のカートリッジでは追加 RAM が必要。
-      // ここでは下位 2KB 内のアドレスで独立性を検証。
-
       writeThenRead(ppu, 0x2000, 0xaa, 0x2000);
       writeThenRead(ppu, 0x2400, 0xbb, 0x2400);
+      writeThenRead(ppu, 0x2800, 0xcc, 0x2800);
+      writeThenRead(ppu, 0x2c00, 0xdd, 0x2c00);
 
-      // $2000 と $2400 は異なる
-      expect(ppu.vram[0]).toBe(0xaa);
+      expect(ppu.vram[0x000]).toBe(0xaa);
       expect(ppu.vram[0x400]).toBe(0xbb);
+      expect(ppu.vram[0x800]).toBe(0xcc);
+      expect(ppu.vram[0xc00]).toBe(0xdd);
     });
   });
 });

@@ -115,6 +115,22 @@ describe("NesConsole CPU-PPU 同期", () => {
     expect(nes.ppu.mirroring).toBe("single-upper");
   });
 
+  it("fourScreen カートでは onMirroringChange が null になる", () => {
+    const cart: Cart = {
+      header: {
+        prgRomSize: 0x8000, chrRomSize: 0, mapper: 0,
+        mirroring: "vertical", hasBattery: false, hasTrainer: false,
+        fourScreen: true,
+      },
+      prgRom: (() => { const r = new Uint8Array(0x8000); r[0x7ffc] = 0x00; r[0x7ffd] = 0x80; r[0] = 0xea; return r; })(),
+      chrRom: new Uint8Array(0),
+      trainer: null,
+    };
+    const nes = new NesConsole(cart);
+    expect(nes.ppu.mirroring).toBe("four-screen");
+    expect(nes.mapper.onMirroringChange).toBeNull();
+  });
+
   it("stepFrame() で 1 フレーム分実行される", () => {
     const prgRom = new Uint8Array(0x8000);
     prgRom.fill(0xea);
