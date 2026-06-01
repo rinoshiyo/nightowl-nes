@@ -411,7 +411,7 @@ describe("OAM DMA", () => {
       trainer: null,
     };
     const controller = new Controller();
-    const bus = new NesBus(ppu, createMapper(cart), controller, new Apu());
+    const bus = new NesBus(ppu, createMapper(cart), controller, new Controller(), new Apu());
 
     for (let i = 0; i < 256; i++) {
       bus.write(0x0200 + i, i);
@@ -447,7 +447,7 @@ describe("OAM DMA", () => {
       trainer: null,
     };
     const controller = new Controller();
-    const bus = new NesBus(ppu, createMapper(cart), controller, new Apu());
+    const bus = new NesBus(ppu, createMapper(cart), controller, new Controller(), new Apu());
 
     bus.write(0x4014, 0x02);
 

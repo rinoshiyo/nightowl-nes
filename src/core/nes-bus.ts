@@ -23,6 +23,7 @@ export class NesBus implements Bus {
     private readonly ppu: Ppu,
     private readonly mapper: Mapper,
     private readonly controller1: Controller,
+    private readonly controller2: Controller,
     private readonly apu: Apu,
   ) {}
 
@@ -40,6 +41,9 @@ export class NesBus implements Bus {
     }
     if (addr === 0x4016) {
       return this.controller1.read();
+    }
+    if (addr === 0x4017) {
+      return this.controller2.read();
     }
     if (addr < 0x4020) {
       return 0;
@@ -71,6 +75,7 @@ export class NesBus implements Bus {
     }
     if (addr === 0x4016) {
       this.controller1.write(v);
+      this.controller2.write(v);
       return;
     }
     if (addr < 0x4018) {

@@ -23,6 +23,7 @@ export class NesConsole {
   readonly apu: Apu;
   readonly mapper: Mapper;
   readonly controller1: Controller;
+  readonly controller2: Controller;
 
   constructor(cart: Cart) {
     this.mapper = createMapper(cart);
@@ -31,7 +32,8 @@ export class NesConsole {
     this.ppu.mapper = this.mapper;
     this.apu = new Apu();
     this.controller1 = new Controller();
-    this.bus = new NesBus(this.ppu, this.mapper, this.controller1, this.apu);
+    this.controller2 = new Controller();
+    this.bus = new NesBus(this.ppu, this.mapper, this.controller1, this.controller2, this.apu);
     this.apu.dmc.readSample = (addr) => this.bus.read(addr);
     this.cpu = createCpu();
     this.ppu.onNmi = () => {

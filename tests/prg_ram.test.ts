@@ -197,7 +197,7 @@ describe("PRG RAM — NesBus dispatch", () => {
     const ppu = new Ppu();
     const controller = new Controller();
     const apu = new Apu();
-    const bus = new NesBus(ppu, mapper, controller, apu);
+    const bus = new NesBus(ppu, mapper, controller, new Controller(), apu);
 
     bus.write(0x6000, 0x12);
     bus.write(0x7fff, 0x34);
@@ -211,7 +211,7 @@ describe("PRG RAM — NesBus dispatch", () => {
     const ppu = new Ppu();
     const controller = new Controller();
     const apu = new Apu();
-    const bus = new NesBus(ppu, mapper, controller, apu);
+    const bus = new NesBus(ppu, mapper, controller, new Controller(), apu);
 
     for (let i = 0; i < 256; i++) {
       bus.write(0x6000 + i, i);
