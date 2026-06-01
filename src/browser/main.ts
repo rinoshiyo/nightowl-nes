@@ -119,18 +119,23 @@ async function loadRom(file: File): Promise<void> {
   stateControls.style.display = "flex";
   updateStateButtons();
 
-  // モバイル: バーチャルパッドを表示
-  if (isTouchDevice() && !touchControls) {
-    touchControls = new TouchControls(console.controller1);
+  // モバイル: バーチャルパッドを表示 (ROM swap 時は再生成して新 controller を参照)
+  if (isTouchDevice()) {
     const touchContainer = document.getElementById("touch-container");
-    if (touchContainer) touchContainer.appendChild(touchControls.element);
+    if (touchContainer) {
+      if (touchControls) touchContainer.removeChild(touchControls.element);
+      touchControls = new TouchControls(console.controller1);
+      touchContainer.appendChild(touchControls.element);
+    }
   }
+
+  // FPS カウンタ・タイムスタンプをリセット (ROM swap 時も確実にリセット)
+  lastFrameTime = 0;
+  fpsLastTime = 0;
+  fpsFrameCount = 0;
 
   if (!running) {
     running = true;
-    lastFrameTime = 0;
-    fpsLastTime = 0;
-    fpsFrameCount = 0;
     lastSaveTime = performance.now();
     requestAnimationFrame(gameLoop);
   }
@@ -296,6 +301,7 @@ function gameLoop(timestamp: number): void {
     } catch (e) {
       showError(e);
       audio.stop();
+      fpsCounter.textContent = "";
       running = false;
       return;
     }
