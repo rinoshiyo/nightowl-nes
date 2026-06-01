@@ -303,4 +303,53 @@ describe("Mapper ステート詳細テスト", () => {
     const restoredState = nes.saveState();
     expect(restoredState.mapper.data["bankOffset"]).toBe(state.mapper.data["bankOffset"]);
   });
+
+  it("MMC2: latch 状態と PRG バンクが復元される", () => {
+    const nes = new NesConsole(makeCartForMapper(9, 128 * 1024, 128 * 1024));
+
+    // PRG バンク切替
+    nes.bus.write(0xa000, 5);
+    // CHR latch レジスタ設定
+    nes.bus.write(0xb000, 3);  // 低位 FD = 3
+    nes.bus.write(0xc000, 10); // 低位 FE = 10
+
+    const state = nes.saveState();
+
+    // 状態を破壊
+    nes.bus.write(0xa000, 0);
+    nes.bus.write(0xb000, 0);
+
+    nes.loadState(state);
+
+    const restored = nes.saveState();
+    expect(restored.mapper.data["prgBank"]).toBe(5);
+    expect(restored.mapper.data["chrBankFD"]).toEqual([3, 0]);
+    expect(restored.mapper.data["chrBankFE"]).toEqual([10, 0]);
+  });
+
+  it("MMC4: latch 状態と PRG RAM が復元される", () => {
+    const nes = new NesConsole(makeCartForMapper(10, 256 * 1024, 128 * 1024));
+
+    // PRG バンク切替
+    nes.bus.write(0xa000, 7);
+    // CHR latch レジスタ設定
+    nes.bus.write(0xd000, 5);  // 高位 FD = 5
+    nes.bus.write(0xe000, 15); // 高位 FE = 15
+    // PRG RAM 書き込み
+    nes.bus.write(0x6000, 0xab);
+
+    const state = nes.saveState();
+
+    // 状態を破壊
+    nes.bus.write(0xa000, 0);
+    nes.bus.write(0x6000, 0);
+
+    nes.loadState(state);
+
+    const restored = nes.saveState();
+    expect(restored.mapper.data["prgBank"]).toBe(7);
+    expect(restored.mapper.data["chrBankFD"]).toEqual([0, 5]);
+    expect(restored.mapper.data["chrBankFE"]).toEqual([0, 15]);
+    expect(nes.bus.read(0x6000)).toBe(0xab);
+  });
 });

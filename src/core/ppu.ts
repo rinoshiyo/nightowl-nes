@@ -572,7 +572,11 @@ export class Ppu {
   ppuRead(addr: number): number {
     addr &= 0x3fff;
     if (addr < 0x2000) {
-      if (this.mapper) return this.mapper.readChr(addr);
+      if (this.mapper) {
+        const val = this.mapper.readChr(addr);
+        this.mapper.onChrRead?.(addr);
+        return val;
+      }
       return this.chrRam[addr & 0x1fff]!;
     }
     if (addr < 0x3f00) {
@@ -601,9 +605,12 @@ export class Ppu {
 
     if (addr < 0x2000) {
       const buffered = this.readBuffer;
-      this.readBuffer = this.mapper
-        ? this.mapper.readChr(addr)
-        : this.chrRam[addr & 0x1fff]!;
+      if (this.mapper) {
+        this.readBuffer = this.mapper.readChr(addr);
+        this.mapper.onChrRead?.(addr);
+      } else {
+        this.readBuffer = this.chrRam[addr & 0x1fff]!;
+      }
       return buffered;
     }
 

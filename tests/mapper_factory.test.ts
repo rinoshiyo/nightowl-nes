@@ -11,6 +11,8 @@ import { MapperAxrom } from "../src/core/mappers/axrom.ts";
 import { MapperColorDreams } from "../src/core/mappers/color-dreams.ts";
 import { MapperGxrom } from "../src/core/mappers/gxrom.ts";
 import { MapperCodemasters } from "../src/core/mappers/codemasters.ts";
+import { MapperMmc2 } from "../src/core/mappers/mmc2.ts";
+import { MapperMmc4 } from "../src/core/mappers/mmc4.ts";
 import { MapperDxrom } from "../src/core/mappers/dxrom.ts";
 
 function makeCart(mapper: number, chrSize = 0): Cart {
@@ -59,6 +61,16 @@ describe("createMapper", () => {
   it("mapper 7 で MapperAxrom を返す", () => {
     const mapper = createMapper(makeCart(7));
     expect(mapper).toBeInstanceOf(MapperAxrom);
+  });
+
+  it("mapper 9 で MapperMmc2 を返す", () => {
+    const mapper = createMapper(makeCart(9, 0x4000));
+    expect(mapper).toBeInstanceOf(MapperMmc2);
+  });
+
+  it("mapper 10 で MapperMmc4 を返す", () => {
+    const mapper = createMapper(makeCart(10, 0x4000));
+    expect(mapper).toBeInstanceOf(MapperMmc4);
   });
 
   it("mapper 11 で MapperColorDreams を返す", () => {
