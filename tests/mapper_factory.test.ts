@@ -14,6 +14,8 @@ import { MapperCodemasters } from "../src/core/mappers/codemasters.ts";
 import { MapperMmc2 } from "../src/core/mappers/mmc2.ts";
 import { MapperMmc4 } from "../src/core/mappers/mmc4.ts";
 import { MapperDxrom } from "../src/core/mappers/dxrom.ts";
+import { MapperBandaiFcg } from "../src/core/mappers/bandai-fcg.ts";
+import { MapperJalecoSs8806 } from "../src/core/mappers/jaleco-ss8806.ts";
 
 function makeCart(mapper: number, chrSize = 0): Cart {
   return {
@@ -76,6 +78,16 @@ describe("createMapper", () => {
   it("mapper 11 で MapperColorDreams を返す", () => {
     const mapper = createMapper(makeCart(11, 0x2000));
     expect(mapper).toBeInstanceOf(MapperColorDreams);
+  });
+
+  it("mapper 16 で MapperBandaiFcg を返す", () => {
+    const mapper = createMapper(makeCart(16));
+    expect(mapper).toBeInstanceOf(MapperBandaiFcg);
+  });
+
+  it("mapper 18 で MapperJalecoSs8806 を返す", () => {
+    const mapper = createMapper(makeCart(18));
+    expect(mapper).toBeInstanceOf(MapperJalecoSs8806);
   });
 
   it("mapper 66 で MapperGxrom を返す", () => {
