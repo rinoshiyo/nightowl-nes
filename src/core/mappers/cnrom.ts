@@ -48,6 +48,8 @@ export class MapperCnrom implements Mapper {
 
   readPrgRam(_addr: number): number { return 0; }
   writePrgRam(_addr: number, _value: number): void {}
+  getPrgRam(): Uint8Array | null { return null; }
+  setPrgRam(_data: Uint8Array): void {}
   reset(): void {}
   clockIrqCounter(): void {}
 }

@@ -26,6 +26,10 @@ export interface Mapper {
   readPrgRam(addr: number): number;
   /** CPU アドレス空間 $6000-$7FFF への書き込み (PRG RAM) */
   writePrgRam(addr: number, value: number): void;
+  /** PRG RAM の生バイト列を返す (バッテリーセーブ用)。PRG RAM 非搭載の mapper は null */
+  getPrgRam(): Uint8Array | null;
+  /** PRG RAM にバイト列を復元する (バッテリーロード用) */
+  setPrgRam(data: Uint8Array): void;
   /** ミラーリング変更通知コールバック (動的 mirroring を持つ mapper 用) */
   onMirroringChange: ((m: import("../cart.ts").Mirroring) => void) | null;
   /** mapper 内部状態をリセット */
