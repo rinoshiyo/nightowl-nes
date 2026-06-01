@@ -17,6 +17,7 @@ import { MapperDxrom } from "../src/core/mappers/dxrom.ts";
 import { MapperBandaiFcg } from "../src/core/mappers/bandai-fcg.ts";
 import { MapperJalecoSs8806 } from "../src/core/mappers/jaleco-ss8806.ts";
 import { MapperNamco163 } from "../src/core/mappers/namco163.ts";
+import { MapperMmc5 } from "../src/core/mappers/mmc5.ts";
 
 function makeCart(mapper: number, chrSize = 0): Cart {
   return {
@@ -111,8 +112,12 @@ describe("createMapper", () => {
     expect(mapper).toBeInstanceOf(MapperDxrom);
   });
 
+  it("mapper 5 で MapperMmc5 を返す", () => {
+    const mapper = createMapper(makeCart(5));
+    expect(mapper).toBeInstanceOf(MapperMmc5);
+  });
+
   it("未サポート mapper で Error を throw", () => {
-    expect(() => createMapper(makeCart(5))).toThrow("Unsupported mapper: 5");
     expect(() => createMapper(makeCart(255))).toThrow("Unsupported mapper: 255");
   });
 });

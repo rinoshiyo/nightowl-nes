@@ -23,6 +23,7 @@ import { MapperBandaiFcg } from "./bandai-fcg.ts";
 import { MapperJalecoSs8806 } from "./jaleco-ss8806.ts";
 import { MapperNamco163 } from "./namco163.ts";
 import { MapperSunsoftFme7 } from "./sunsoft-fme7.ts";
+import { MapperMmc5 } from "./mmc5.ts";
 
 export interface Mapper {
   /** CPU アドレス空間 $8000-$FFFF の読み出し */
@@ -83,6 +84,8 @@ export function createMapper(cart: Cart): Mapper {
       return new MapperCnrom(cart);
     case 4:
       return new MapperMmc3(cart);
+    case 5:
+      return new MapperMmc5(cart);
     case 7:
       return new MapperAxrom(cart);
     case 9:
