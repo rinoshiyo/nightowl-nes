@@ -96,6 +96,7 @@ export class MapperMmc5 implements Mapper {
   private readonly pulseEnvelopeDivider = [0, 0];
   private readonly pulseHalt = [false, false];
   private envelopeTickCounter = 0;
+  private halfFrameToggle = false;
 
   constructor(cart: Cart) {
     this.prgRom = cart.prgRom;
@@ -217,13 +218,18 @@ export class MapperMmc5 implements Mapper {
       this.pulseHalt[i] = false;
     }
     this.envelopeTickCounter = 0;
+    this.halfFrameToggle = false;
   }
 
   mapperId(): number { return 5; }
 
   clockIrqCounter(): void {
-    // PPU が scanline ごとに呼ぶ (dot 260)
+    // PPU が scanline ごとに呼ぶ (dot 260: 可視 240 + pre-render 1 = 241 回/フレーム)
     this.irqScanlineCounter++;
+
+    if (this.irqScanlineCounter <= 240) {
+      this.inFrame = true;
+    }
 
     if (this.irqScanlineCounter === this.irqTarget) {
       if (this.irqEnabled) {
@@ -231,9 +237,10 @@ export class MapperMmc5 implements Mapper {
       }
     }
 
-    // 可視フレーム (240 scanlines) 後にカウンタをリセット
-    if (this.irqScanlineCounter >= 240) {
+    // pre-render scanline (241 回目) でリセット
+    if (this.irqScanlineCounter > 240) {
       this.irqScanlineCounter = 0;
+      this.inFrame = false;
     }
   }
 
@@ -253,7 +260,11 @@ export class MapperMmc5 implements Mapper {
     if (this.envelopeTickCounter >= ENVELOPE_PERIOD) {
       this.envelopeTickCounter = 0;
       this.tickEnvelopes();
-      this.tickLengthCounters();
+      // 長さカウンタは 120Hz (half-frame rate = エンベロープの半分)
+      this.halfFrameToggle = !this.halfFrameToggle;
+      if (this.halfFrameToggle) {
+        this.tickLengthCounters();
+      }
     }
   }
 
@@ -287,6 +298,9 @@ export class MapperMmc5 implements Mapper {
     }
 
     switch (addr) {
+      case 0x5015:
+        return (this.pulseLengthCounter[0]! > 0 ? 1 : 0)
+             | (this.pulseLengthCounter[1]! > 0 ? 2 : 0);
       case 0x5204: {
         // IRQ ステータス読み出し + pending クリア
         const result = (this.irqPending ? 0x80 : 0) | (this.inFrame ? 0x40 : 0);

@@ -322,7 +322,7 @@ describe("MapperMmc5", () => {
       expect(m.irqPending).toBe(false);
     });
 
-    it("$5204 読み出しで irqPending がクリアされる", () => {
+    it("$5204 読み出しで irqPending がクリアされ、in-frame ビットが反映される", () => {
       const m = new MapperMmc5(makeCart());
       m.writeRegister!(0x5203, 1);
       m.writeRegister!(0x5204, 0x80);
@@ -332,27 +332,44 @@ describe("MapperMmc5", () => {
 
       const status = m.readRegister!(0x5204);
       expect(status & 0x80).toBe(0x80); // pending ビット
+      expect(status & 0x40).toBe(0x40); // in-frame ビット
       expect(m.irqPending).toBe(false); // クリア済み
     });
 
-    it("240 scanline でカウンタがリセットされる", () => {
+    it("241 回の clock (240 visible + 1 pre-render) でリセットされる", () => {
       const m = new MapperMmc5(makeCart());
       m.writeRegister!(0x5203, 100); // target = 100
       m.writeRegister!(0x5204, 0x80);
 
-      // 240 scanline 分 clock
-      for (let i = 0; i < 240; i++) {
+      // 240 visible + 1 pre-render = 241 calls でフレーム完了
+      for (let i = 0; i < 241; i++) {
         m.clockIrqCounter();
       }
       expect(m.irqPending).toBe(true); // scanline 100 で fire 済み
 
       m.irqPending = false;
 
-      // フレーム 2 — カウンタはリセット済みなので再び target=100 で fire
+      // フレーム 2 — カウンタは pre-render でリセット済みなので再び target=100 で fire
       for (let i = 0; i < 100; i++) {
         m.clockIrqCounter();
       }
       expect(m.irqPending).toBe(true); // フレーム 2 でも正しく fire
+    });
+
+    it("in-frame は pre-render でリセットされる", () => {
+      const m = new MapperMmc5(makeCart());
+
+      // 1 scanline clock → in-frame = true
+      m.clockIrqCounter();
+      const statusInFrame = m.readRegister!(0x5204);
+      expect(statusInFrame & 0x40).toBe(0x40);
+
+      // 241 回目で pre-render → in-frame = false
+      for (let i = 1; i < 241; i++) {
+        m.clockIrqCounter();
+      }
+      const statusVblank = m.readRegister!(0x5204);
+      expect(statusVblank & 0x40).toBe(0x00);
     });
   });
 
@@ -416,6 +433,27 @@ describe("MapperMmc5", () => {
       const m = new MapperMmc5(makeCart());
       // 有効化しない
       expect(m.audioOutput!()).toBe(0);
+    });
+
+    it("$5015 読み出しで pulse length counter ステータスを返す", () => {
+      const m = new MapperMmc5(makeCart());
+
+      // 初期状態: 両方 0
+      expect(m.readRegister!(0x5015)).toBe(0);
+
+      // pulse 1 有効化 + length counter ロード
+      m.writeRegister!(0x5015, 0x01);
+      m.writeRegister!(0x5000, 0x3f); // halt=1, const=1, vol=15
+      m.writeRegister!(0x5003, 0x08); // length counter load
+
+      expect(m.readRegister!(0x5015) & 1).toBe(1); // pulse 1 active
+
+      // pulse 2 も有効化
+      m.writeRegister!(0x5015, 0x03);
+      m.writeRegister!(0x5004, 0x3f);
+      m.writeRegister!(0x5007, 0x08);
+
+      expect(m.readRegister!(0x5015)).toBe(3); // 両方 active
     });
   });
 
