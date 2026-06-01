@@ -283,6 +283,52 @@ describe("MapperSunsoftFme7 エッジケース", () => {
       expect(outputs.size).toBeGreaterThan(1);
     });
 
+    it("エンベロープ Continue + Alternate で音量が周期的に変化する", () => {
+      const mapper = new MapperSunsoftFme7(makeCart());
+
+      writeAudio(mapper, 0x00, 1);
+      writeAudio(mapper, 0x01, 0);
+      writeAudio(mapper, 0x07, 0x38); // ch A トーン有効
+      writeAudio(mapper, 0x08, 0x10); // エンベロープモード
+      writeAudio(mapper, 0x0b, 1);    // エンベロープ周期 = 1
+      writeAudio(mapper, 0x0c, 0);
+      // 形状 14 = Continue(1) + Attack(1) + Alternate(1) + Hold(0) → 三角波
+      writeAudio(mapper, 0x0d, 14);
+
+      const outputs: number[] = [];
+      for (let i = 0; i < 50000; i++) {
+        mapper.cpuCycleTick!();
+        if (i % 100 === 0) {
+          outputs.push(mapper.audioOutput!());
+        }
+      }
+
+      // 三角波なので複数の異なる値が出る
+      const unique = new Set(outputs);
+      expect(unique.size).toBeGreaterThan(2);
+    });
+
+    it("エンベロープ Continue=0 で最初の周期後に 0 に固定", () => {
+      const mapper = new MapperSunsoftFme7(makeCart());
+
+      writeAudio(mapper, 0x00, 1);
+      writeAudio(mapper, 0x01, 0);
+      writeAudio(mapper, 0x07, 0x38);
+      writeAudio(mapper, 0x08, 0x10); // エンベロープモード
+      writeAudio(mapper, 0x0b, 1);
+      writeAudio(mapper, 0x0c, 0);
+      // 形状 0 = Continue(0) + Attack(0) + Alternate(0) + Hold(0) → 下降→0
+      writeAudio(mapper, 0x0d, 0);
+
+      // 十分 tick して最初の周期を過ぎる
+      for (let i = 0; i < 50000; i++) {
+        mapper.cpuCycleTick!();
+      }
+
+      // Continue=0 で周期後は 0
+      expect(mapper.audioOutput!()).toBe(0);
+    });
+
     it("エンベロープ形状書き込みで位置がリセットされる", () => {
       const mapper = new MapperSunsoftFme7(makeCart());
 
