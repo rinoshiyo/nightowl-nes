@@ -60,6 +60,34 @@ describe("TND_TABLE", () => {
   });
 });
 
+describe("テーブル精度: exact 公式との比較", () => {
+  it("Pulse テーブルは exact 公式と完全一致", () => {
+    for (let n = 0; n < 31; n++) {
+      const exact = n === 0 ? 0 : 95.88 / (8128 / n + 100);
+      expect(PULSE_TABLE[n]).toBe(exact);
+    }
+  });
+
+  it("TND 線形近似と exact 公式の最大相対誤差が 8% 以内", () => {
+    let maxError = 0;
+    for (let tri = 0; tri <= 15; tri++) {
+      for (let noise = 0; noise <= 15; noise++) {
+        for (let dmc = 0; dmc <= 127; dmc++) {
+          const tndSum = tri / 8227 + noise / 12241 + dmc / 22638;
+          const exact = tndSum === 0 ? 0 : 159.79 / (1 / tndSum + 100);
+          const approxIdx = 3 * tri + 2 * noise + dmc;
+          const approx = TND_TABLE[approxIdx] ?? 0;
+          if (exact > 0.001) {
+            const relError = Math.abs(approx - exact) / exact;
+            if (relError > maxError) maxError = relError;
+          }
+        }
+      }
+    }
+    expect(maxError).toBeLessThan(0.08);
+  });
+});
+
 describe("ApuMixer", () => {
   it("全チャンネル無音なら出力 0", () => {
     const mixer = new ApuMixer(44100);
