@@ -330,8 +330,13 @@ let currentScale: ScreenScale = 2;
 const scaleBtn = getEl<HTMLButtonElement>("scale-btn");
 const fullscreenBtn = getEl<HTMLButtonElement>("fullscreen-btn");
 
+function isNarrowScreen(): boolean {
+  return window.innerWidth <= 600;
+}
+
 function applyScale(scale: ScreenScale): void {
   currentScale = scale;
+  if (isNarrowScreen()) return;
   const w = SCREEN_W * scale;
   canvas.style.width = `${w}px`;
   canvas.style.height = `${VISIBLE_LINES * scale}px`;
