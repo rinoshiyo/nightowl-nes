@@ -1,5 +1,4 @@
 import { parseINes } from "../core/cart.ts";
-import type { Cart } from "../core/cart.ts";
 import { NesConsole } from "../core/console.ts";
 import { Button } from "../core/controller.ts";
 import { NesAudio } from "./audio.ts";
@@ -23,7 +22,8 @@ const audio = new NesAudio();
 let nes: NesConsole | null = null;
 let running = false;
 let currentRomHash: string | null = null;
-let currentCart: Cart | null = null;
+let currentHasBattery = false;
+let saveDisabled = false;
 
 const FRAME_MS = 1000 / 60;
 let lastFrameTime = 0;
@@ -31,7 +31,7 @@ const SAVE_INTERVAL_MS = 5000;
 let lastSaveTime = 0;
 
 function updateSaveUi(): void {
-  if (!currentRomHash || !currentCart?.header.hasBattery) {
+  if (!currentRomHash || !currentHasBattery) {
     saveInfo.textContent = "";
     deleteBtn.style.display = "none";
     return;
@@ -47,55 +47,55 @@ function updateSaveUi(): void {
 }
 
 function flushSave(): void {
-  if (!nes || !currentRomHash || !currentCart?.header.hasBattery) return;
+  if (!nes || !currentRomHash || !currentHasBattery || saveDisabled) return;
   const ram = nes.mapper.getPrgRam();
   if (ram) savePrgRam(currentRomHash, ram);
+}
+
+async function loadRom(file: File): Promise<void> {
+  const arrayBuf = await file.arrayBuffer();
+  const buf = new Uint8Array(arrayBuf);
+  const cart = parseINes(buf);
+
+  flushSave();
+
+  const hash = await computeRomHash(cart.prgRom);
+
+  const console = new NesConsole(cart);
+  currentRomHash = hash;
+  currentHasBattery = cart.header.hasBattery;
+  saveDisabled = false;
+
+  if (currentHasBattery) {
+    const saved = loadPrgRam(hash);
+    if (saved) console.mapper.setPrgRam(saved);
+  }
+
+  nes = console;
+  audio.start(nes.apu);
+
+  let statusText = `${file.name} (PRG: ${cart.header.prgRomSize / 1024}KB, CHR: ${cart.header.chrRomSize / 1024}KB, Mapper: ${cart.header.mapper})`;
+  if (currentHasBattery) {
+    statusText += " [Battery]";
+    if (hasSaveData(hash)) statusText += " [SAVE LOADED]";
+  }
+  status.textContent = statusText;
+  updateSaveUi();
+
+  if (!running) {
+    running = true;
+    lastFrameTime = 0;
+    lastSaveTime = performance.now();
+    requestAnimationFrame(gameLoop);
+  }
 }
 
 romInput.addEventListener("change", () => {
   const file = romInput.files?.[0];
   if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      flushSave();
-      const buf = new Uint8Array(reader.result as ArrayBuffer);
-      const cart = parseINes(buf);
-      currentCart = cart;
-      nes = new NesConsole(cart);
-      audio.start(nes.apu);
-
-      computeRomHash(cart.prgRom).then((hash) => {
-        currentRomHash = hash;
-        if (cart.header.hasBattery) {
-          const saved = loadPrgRam(hash);
-          if (saved) {
-            nes!.mapper.setPrgRam(saved);
-            status.textContent += " [SAVE LOADED]";
-          }
-        }
-        updateSaveUi();
-      });
-
-      let statusText = `${file.name} (PRG: ${cart.header.prgRomSize / 1024}KB, CHR: ${cart.header.chrRomSize / 1024}KB, Mapper: ${cart.header.mapper})`;
-      if (cart.header.hasBattery) statusText += " [Battery]";
-      status.textContent = statusText;
-
-      if (!running) {
-        running = true;
-        lastFrameTime = 0;
-        lastSaveTime = 0;
-        requestAnimationFrame(gameLoop);
-      }
-    } catch (e) {
-      status.textContent = `エラー: ${e instanceof Error ? e.message : String(e)}`;
-    }
-  };
-  reader.onerror = () => {
-    status.textContent = "エラー: ファイルの読み込みに失敗しました";
-  };
-  reader.readAsArrayBuffer(file);
+  loadRom(file).catch((e) => {
+    status.textContent = `エラー: ${e instanceof Error ? e.message : String(e)}`;
+  });
 });
 
 const KEY_MAP: ReadonlyMap<string, Button> = new Map([
@@ -158,5 +158,6 @@ deleteBtn.addEventListener("click", () => {
   if (!currentRomHash) return;
   if (!confirm("セーブデータを削除しますか？")) return;
   deleteSaveData(currentRomHash);
+  saveDisabled = true;
   updateSaveUi();
 });

@@ -8,32 +8,39 @@
 const SAVE_PREFIX = "nightowl-sram-";
 
 export async function computeRomHash(prgRom: Uint8Array): Promise<string> {
-  const buf = new ArrayBuffer(prgRom.byteLength);
-  new Uint8Array(buf).set(prgRom);
-  const digest = await crypto.subtle.digest("SHA-256", buf);
+  const digest = await crypto.subtle.digest("SHA-256", prgRom as unknown as BufferSource);
   const arr = new Uint8Array(digest);
   return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function savePrgRam(romHash: string, data: Uint8Array): void {
   const key = SAVE_PREFIX + romHash;
-  let binary = "";
+  const chunks: string[] = [];
   for (let i = 0; i < data.length; i++) {
-    binary += String.fromCharCode(data[i]!);
+    chunks.push(String.fromCharCode(data[i]!));
   }
-  localStorage.setItem(key, btoa(binary));
+  try {
+    localStorage.setItem(key, btoa(chunks.join("")));
+  } catch {
+    // QuotaExceededError — localStorage 容量超過時は黙って諦める
+  }
 }
 
 export function loadPrgRam(romHash: string): Uint8Array | null {
   const key = SAVE_PREFIX + romHash;
   const encoded = localStorage.getItem(key);
   if (encoded === null) return null;
-  const binary = atob(encoded);
-  const data = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    data[i] = binary.charCodeAt(i);
+  try {
+    const binary = atob(encoded);
+    const data = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      data[i] = binary.charCodeAt(i);
+    }
+    return data;
+  } catch {
+    // base64 デコード失敗 — 破損データとして無視
+    return null;
   }
-  return data;
 }
 
 export function hasSaveData(romHash: string): boolean {
@@ -42,15 +49,4 @@ export function hasSaveData(romHash: string): boolean {
 
 export function deleteSaveData(romHash: string): void {
   localStorage.removeItem(SAVE_PREFIX + romHash);
-}
-
-export function listSaveKeys(): string[] {
-  const keys: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key !== null && key.startsWith(SAVE_PREFIX)) {
-      keys.push(key.slice(SAVE_PREFIX.length));
-    }
-  }
-  return keys;
 }
