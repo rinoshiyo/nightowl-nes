@@ -15,3 +15,4 @@ export { MapperDxrom } from "./dxrom.ts";
 export { MapperBandaiFcg } from "./bandai-fcg.ts";
 export { MapperJalecoSs8806 } from "./jaleco-ss8806.ts";
 export { MapperNamco163 } from "./namco163.ts";
+export { MapperSunsoftFme7 } from "./sunsoft-fme7.ts";
