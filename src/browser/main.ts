@@ -8,6 +8,7 @@ import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData, deleteSaveData, sa
 import { formatErrorMessage } from "./error-messages.ts";
 import { applyGamepadState } from "./gamepad.ts";
 import { isNesFile } from "./drag-drop.ts";
+import { TouchControls, isTouchDevice } from "./touch-controls.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -31,6 +32,7 @@ let running = false;
 let currentRomHash: string | null = null;
 let currentHasBattery = false;
 let saveDisabled = false;
+let touchControls: TouchControls | null = null;
 
 // --- G5: エラー表示の改善 ---
 
@@ -117,6 +119,13 @@ async function loadRom(file: File): Promise<void> {
 
   stateControls.style.display = "flex";
   updateStateButtons();
+
+  // モバイル: バーチャルパッドを表示
+  if (isTouchDevice() && !touchControls) {
+    touchControls = new TouchControls(console.controller1);
+    const touchContainer = document.getElementById("touch-container");
+    if (touchContainer) touchContainer.appendChild(touchControls.element);
+  }
 
   if (!running) {
     running = true;
