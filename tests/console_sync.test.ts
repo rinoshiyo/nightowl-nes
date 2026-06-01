@@ -131,6 +131,37 @@ describe("NesConsole CPU-PPU 同期", () => {
     expect(nes.mapper.onMirroringChange).toBeNull();
   });
 
+  it("AxROM (mapper 7) の writePrg で PPU ミラーリングが切り替わる", () => {
+    const prgRom = new Uint8Array(0x8000 * 4);
+    prgRom[0x7ffc] = 0x00;
+    prgRom[0x7ffd] = 0x80;
+    prgRom[0x0000] = 0xea;
+    const cart: Cart = {
+      header: {
+        prgRomSize: prgRom.length,
+        chrRomSize: 0,
+        mapper: 7,
+        mirroring: "vertical",
+        hasBattery: false,
+        hasTrainer: false,
+        fourScreen: false,
+      },
+      prgRom,
+      chrRom: new Uint8Array(0),
+      trainer: null,
+    };
+    const nes = new NesConsole(cart);
+
+    nes.mapper.writePrg(0x8000, 0x00);
+    expect(nes.ppu.mirroring).toBe("single-lower");
+
+    nes.mapper.writePrg(0x8000, 0x10);
+    expect(nes.ppu.mirroring).toBe("single-upper");
+
+    nes.mapper.writePrg(0x8000, 0x02);
+    expect(nes.ppu.mirroring).toBe("single-lower");
+  });
+
   it("stepFrame() で 1 フレーム分実行される", () => {
     const prgRom = new Uint8Array(0x8000);
     prgRom.fill(0xea);

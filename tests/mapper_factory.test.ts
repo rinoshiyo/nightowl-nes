@@ -7,6 +7,7 @@ import { MapperMmc1 } from "../src/core/mappers/mmc1.ts";
 import { MapperMmc3 } from "../src/core/mappers/mmc3.ts";
 import { MapperNrom } from "../src/core/mappers/nrom.ts";
 import { MapperUxrom } from "../src/core/mappers/uxrom.ts";
+import { MapperAxrom } from "../src/core/mappers/axrom.ts";
 
 function makeCart(mapper: number, chrSize = 0): Cart {
   return {
@@ -49,6 +50,11 @@ describe("createMapper", () => {
   it("mapper 4 で MapperMmc3 を返す", () => {
     const mapper = createMapper(makeCart(4));
     expect(mapper).toBeInstanceOf(MapperMmc3);
+  });
+
+  it("mapper 7 で MapperAxrom を返す", () => {
+    const mapper = createMapper(makeCart(7));
+    expect(mapper).toBeInstanceOf(MapperAxrom);
   });
 
   it("未サポート mapper で Error を throw", () => {

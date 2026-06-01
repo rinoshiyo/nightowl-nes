@@ -12,6 +12,7 @@ import { MapperMmc1 } from "./mmc1.ts";
 import { MapperUxrom } from "./uxrom.ts";
 import { MapperCnrom } from "./cnrom.ts";
 import { MapperMmc3 } from "./mmc3.ts";
+import { MapperAxrom } from "./axrom.ts";
 
 export interface Mapper {
   /** CPU アドレス空間 $8000-$FFFF の読み出し */
@@ -52,6 +53,8 @@ export function createMapper(cart: Cart): Mapper {
       return new MapperCnrom(cart);
     case 4:
       return new MapperMmc3(cart);
+    case 7:
+      return new MapperAxrom(cart);
     default:
       throw new Error(`Unsupported mapper: ${cart.header.mapper}`);
   }
