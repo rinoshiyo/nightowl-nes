@@ -9,17 +9,15 @@
 #
 # 実行する処理:
 #   1. auto-merge arm (まだなら)
-#   2. 次フラグ書込 (pane スコープ)
-#   3. 🎯 GOAL CONDITION MET を stdout 出力
+#   2. 次の open Issue を動的取得し、goal テキストを生成
+#   3. 次フラグ書込 (pane スコープ)
+#   4. 🎯 GOAL CONDITION MET を stdout 出力
 #
 # PR が状態の SSOT。latest.md は生成しない。
 set -euo pipefail
 
-# /goal テキスト (turns 数は環境変数で上書き可)
-# finish-night.sh 時点では次の夜の Issue はまだ存在しないため汎用文言を使う。
-# Issue が既に存在する場合の具体的 goal は loop-start skill 側で生成する。
 LOOP_TURNS="${LOOP_TURNS:-80}"
-GOAL_TEXT="次の夜の Issue を1つ作成し、その Issue のみを対象に実装→レビュー→merge を完了せよ。達成判定: transcript に「🎯 GOAL CONDITION MET」が出現したこと。scope: この 1 Issue のみ。他の Issue・夜には着手しない。or stop after ${LOOP_TURNS} turns"
+GOAL_TEXT=""
 
 # 引数パース
 STOP=false
@@ -62,9 +60,32 @@ fi
 # review gate の state file を cleanup (次の夜に stale state を持ち越さない)
 rm -f .claude/state/review-status.json
 
-# --- 2. 次フラグ書込 (pane スコープ) ---
+# --- 2. 次 Issue の動的取得 ---
+# current Issue を exclude して次の open night Issue を取得。
+# 次 Issue なし → STOP (連鎖安全停止)。汎用 fallback は廃止 (暴走の根本原因だった)。
+if [ "$STOP" != "true" ]; then
+  CURRENT_ISSUE=""
+  if [ -n "$PR_NUM" ]; then
+    CURRENT_ISSUE=$(gh pr view "$PR_NUM" --json closingIssuesReferences \
+      -q '.closingIssuesReferences[0].number // empty' 2>/dev/null || echo "")
+  fi
+  NEXT_ISSUE_JSON=$(gh issue list -s open -l night --search 'sort:created-asc -label:stuck' \
+    --json number,title \
+    -q "[.[] | select(.number != ${CURRENT_ISSUE:-0})][0]" 2>/dev/null || echo "")
+
+  if [ -n "$NEXT_ISSUE_JSON" ] && [ "$NEXT_ISSUE_JSON" != "null" ]; then
+    NEXT_NUM=$(echo "$NEXT_ISSUE_JSON" | jq -r .number)
+    NEXT_TITLE=$(echo "$NEXT_ISSUE_JSON" | jq -r .title)
+    GOAL_SUFFIX="を対象に実装→レビュー→merge を完了せよ。達成判定: transcript に「🎯 GOAL CONDITION MET」が出現したこと。scope: この 1 Issue のみ。他の Issue・夜には着手しない。or stop after ${LOOP_TURNS} turns"
+    GOAL_TEXT="Issue #${NEXT_NUM} (${NEXT_TITLE}) のみ${GOAL_SUFFIX}"
+  else
+    STOP=true
+  fi
+fi
+
+# --- 3. 次フラグ書込 (pane スコープ) ---
 # STOP はプレーンテキスト (stop-hook.sh が完全一致で判定し連鎖終了)。
-# それ以外は /goal + 固定文言。ターン上限・連鎖駆動を保証する。
+# それ以外は /goal + 具体 Issue 指定。ターン上限・連鎖駆動を保証する。
 if [ -n "$PANE" ]; then
   if [ "$STOP" = "true" ]; then
     printf '%s' "STOP" > ".claude/state/loop-next.${PANE#%}.txt"
@@ -73,7 +94,7 @@ if [ -n "$PANE" ]; then
   fi
 fi
 
-# --- 3. GOAL 出力 ---
+# --- 4. GOAL 出力 ---
 if [ -n "$NIGHT" ]; then
   echo "🎯 GOAL CONDITION MET: night $NIGHT merged"
 else

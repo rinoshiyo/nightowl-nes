@@ -8,9 +8,9 @@
 
 **GitHub Flow** (Issue → Branch → PR → Merge) で運用する。**Issue = scope SSOT** (何をやるか・DoD)、**PR = delivery SSOT** (何をやったか・diff + レビュー)。
 
-- **1 夜 = 1 つの夜 md = 1 Issue = 1 本の PR = 1 つの /clear リセット境界** (所要目安 3-5 時間、 DoD 20-40 項目)
+- **1 夜 = 1 Issue = 1 本の PR = 1 つの /clear リセット境界** (所要目安 3-5 時間、 DoD 20-40 項目。Issue body が DoD の SSOT)
 - **各夜は有限の /goal** (`or stop after N turns`、 N=80 目安)。 1 夜達成 → worker が次フラグ書込 → **Stop hook → helper が /clear して fresh session で次の夜へ交代** (`loop/REFERENCE.md` の「/clear 自走ループ駆動」 参照)
-- 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達。 pending 枯渇では停止しない — `finish-night.sh` は常に `/goal` を書き、 fresh session の setup フェーズ (loop-start skill) で pending 空を検知し seed する
+- 連鎖停止条件: 石井 stop 指示 / フラグに `STOP` / 暴走ブレーキ `NIGHTOWL_LOOP_MAX` 到達 / **次の open Issue なし** (finish-night.sh が next Issue を検索し、なければ STOP を書いて連鎖を安全に停止。seed は `/loop-start seed` で対話的に実行)
 - 各夜の達成 / 上限到達後は SessionEnd hook が retrospective 生成
 - **連鎖の起動**: `loop-start` skill がセットアップ (issue/branch) → flag 書込 → /clear 発火し、fresh session が /goal active で立ち上がる。以降は各夜末の flag 書込で /clear 連鎖が自走する。**手動/自動連鎖とも同一経路 (flag → Stop hook → loop-helper → /clear → /goal 注入)**
 - **アンチパターン**: 「pending 全消化を 1 つの /goal で」 は使わない (夜ごとに /clear リセットするため)。 旧「1 セッションで N 夜をターン上限まで /goal 連鎖」 は context 肥大化で廃止済み
@@ -21,9 +21,9 @@
 
 1. 石井から `stop` / `止めて` / `セッション終了` 等の明示停止指示が来ていない
 2. 現セッションのターン残量が、 次の夜を完遂するのに十分 (目安: 残り 40 turns 以上)
-3. 直近で `nights/stuck/` に隔離された夜が連続 2 つ以下 (連続詰みでセッション終了)
+3. 直近で `stuck` label が付いた Issue が連続 2 つ以下 (連続詰みでセッション終了)
 
-pending が空でも連鎖は止まらない (上記「連鎖停止条件」参照)。
+次の open Issue がなければ連鎖は停止する (finish-night.sh が STOP を書く)。seed は `/loop-start seed` で対話的に実行する。
 
 ## 夜 N PR の自動レビュー (メインが code-review skill を直呼び)
 
@@ -83,7 +83,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
    |---|---|---|
    | 🛑 STOP | 仕様違反 (6502/iNES/NES 挙動が nesdev wiki と食い違う) / ソース由来制約違反の疑い / データ破壊・不可逆操作 / テスト・型・lint が赤 | **auto-merge 設定しない**。 `gh pr ready --undo` で draft 戻し + 「draft 戻し report」コメント + 連鎖中断 + セッション終了 |
    | 🔧 FIX | 明らかなバグ・誤記で修正が一意 / 自己矛盾 (主に --fix が自動修正) | 修正を別 commit で push → 再 round。 **修正往復は最大 2 回**。 2 回で解消しなければ STOP に格上げ |
-   | ✅ PASS | 設計の好み / 可読性 / リファクタ提案 / 将来夜への申し送り | 連鎖続行。 申し送りは次の夜 md に転記 |
+   | ✅ PASS | 設計の好み / 可読性 / リファクタ提案 / 将来夜への申し送り | 連鎖続行。 申し送りは PR description に記録 |
 
 - **FIX 修正は grep で一網打尽**: 1 箇所直したら同じパターンを `grep` で全文スキャンし同種を同じ commit で潰す (同根の取りこぼしが次 round で再浮上し往復上限を無駄にするのを防ぐ)
 - **投稿フォーマットは再 round でも不変**: 指摘の投稿フォーマットは上記フロー 2c の通り (各指摘を inline で1点1コメント + issue comment はサマリ専用)。 **再 round (往復) でも degrade させず維持** — 往復で「issue サマリに指摘を箇条書きするだけ・inline 省略」は禁止 (delivery SSOT で指摘が該当行から辿れなくなる)。 inline の severity ラベルは finding 4段階に対応する `🛑critical / 🔴high / 🟠medium / 🟢low`。 ただし **severity と triage 区分 (STOP/FIX/PASS) は別軸** — 区分は severity でなく「何が起きるか」で振る (`critical` は 🛑STOP に振られやすい最重要度だが、 critical でも純粋な可読性指摘なら STOP にはならない)
@@ -101,7 +101,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
    ```bash
    bash scripts/finish-night.sh [--night NNN]
    ```
-   スクリプトが以下を一括実行: auto-merge arm / 次フラグ書込 (pane スコープ、/goal 汎用文言 — finish-night.sh 時点では次の Issue が未存在のため。Issue 有無の出し分けは loop-start skill 側) / `🎯 GOAL CONDITION MET` 出力。連鎖停止時は `bash scripts/finish-night.sh STOP`
+   スクリプトが以下を一括実行: auto-merge arm / current Issue を exclude して次の open Issue を動的取得 → 具体 goal で次フラグ書込 (pane スコープ) / 次 Issue なし → STOP で安全に連鎖停止 / `🎯 GOAL CONDITION MET` 出力。連鎖停止時は `bash scripts/finish-night.sh STOP`
 3. turn を終える → helper が idle を見て `/clear` → 次ゴール投入
 
 ## 起動時の作法
@@ -121,22 +121,22 @@ loop-start (setup) → flag 書込 → Stop hook → loop-helper → /clear → 
 0. **open Issue / PR を確認**。`gh issue list -s open -l night` で open Issue、`gh pr list --state open` で open PR を確認。**判定基準**:
    - **open PR あり** → `isDraft` / `mergeStateStatus` を確認。draft = レビュー隔離中 (再開対象) / 非 draft かつ BLOCKED = 正常 in-flight (loop-helper が merge 待ち中、中断不要。flag 書かず停止) / 非 draft かつ CLEAN = loop-helper 停止の可能性で最優先再開。ブランチを checkout
    - **open Issue あり + PR なし** → scope は決まっている。ブランチが存在すれば checkout、なければ作成
-   - **どちらもなし** → step 1 から通常開始
+   - **どちらもなし** → open Issue がないため自走不可。`/loop-start seed` で Issue を作成するよう報告して停止
 1. `git checkout main && git pull` で main を最新化
-2. `nights/pending/` の最若番号の md を Read (open Issue がなく pending もなければ seed してから続行)
-3. **Issue 作成** (`gh issue create --title "夜 NNN: <topic>" --label night --body "<DoD チェックリスト>"`)。open Issue が既にあればスキップ。Issue が scope の SSOT
+2. (v2 で廃止: 夜 md は不要。Issue body が DoD の SSOT)
+3. open Issue が既にあればスキップ。Issue が scope の SSOT。新規 Issue は `/loop-start seed` で事前に作成済みの前提
 4. `night/NNN-<topic>` ブランチを切る (既にあれば checkout)
-5. **flag 書込して turn 終了** — `/goal <汎用テキスト>` を `.claude/state/loop-next.${PANE#%}.txt` に書いて turn を終える。**実装には入らない**。Stop hook が flag を検出し loop-helper → /clear → /goal 注入を自動で行う
+5. **flag 書込して turn 終了** — `/goal Issue #N (タイトル) のみを対象に...` を `.claude/state/loop-next.${PANE#%}.txt` に書いて turn を終える。**実装には入らない**。Stop hook が flag を検出し loop-helper → /clear → /goal 注入を自動で行う
 
 ### 実装フェーズ (fresh session が実行。/goal はインフラが注入済み)
 
 **/goal は loop-helper が注入するためモデルは実行しない。** fresh session が起動した時点で /goal は active。SessionStart hook (clear matcher) が Issue/PR state を注入する。
 
-6. 夜 md を Read し DoD を把握 → 実装開始
+6. Issue body を Read し DoD を把握 (`gh issue view <#> --json body`) → 実装開始
 7. 最初の commit → push → **draft PR** (`gh pr create --draft --body "Closes #<Issue番号>"`)。以降の delivery 状態は PR が SSOT
 8. 実装続行。ステップごとに `bun test` + `bunx tsc --noEmit` + `bunx eslint` を実行 (結果は出力リダイレクト)
 9. /goal 評価のため pass / fail を必ず transcript に出力
-10. DoD を全部満たしたら `nights/pending/NNN.md → nights/done/NNN.md` の `git mv` も同じブランチで commit
+10. DoD を全部満たしたら PR 完了準備へ (Issue は `Closes #NNN` で PR merge 時に自動 close)
 11. `gh pr ready` で draft を解除 (この時点では auto-merge を打たない)
 12. メインが `code-review --fix` を直呼びでレビュー → triage が STOP ゼロを確認してから `gh pr merge --auto --merge --delete-branch`
 13. CI 緑 → auto-merge 反映 → Issue 自動 close を見届けてセッション完了報告
@@ -147,7 +147,7 @@ loop-start (setup) → flag 書込 → Stop hook → loop-helper → /clear → 
 
 ### ブランチ命名規約
 
-- `night/NNN-<topic>` (NNN は 3 桁ゼロパディング、 topic は kebab-case)。 夜 md と一対一対応
+- `night/NNN-<topic>` (NNN は 3 桁ゼロパディング、 topic は kebab-case)。 Issue と一対一対応
 - 例: `night/001-cpu-skeleton`、 `night/012-absolute-logic-arith-compare`
 
 ### git / gh 操作の許可マトリクス
@@ -181,7 +181,7 @@ loop-start (setup) → flag 書込 → Stop hook → loop-helper → /clear → 
 
 **CLEAN PR の直接 merge (loop-helper.sh)**: 2026-03-25 以降の GitHub 仕様変更 ([Discussion #190610](https://github.com/orgs/community/discussions/190610)) で、 CI 未通過時の `--auto` arm が HTTP 422 で拒否されるようになり、 `finish-night.sh` の auto-merge arm が silent fail する。 `loop-helper.sh` の merge 待ちループは **arm の成否に依存せず、 5 分 (`LOOP_FORCE_AFTER` × 30s) 経過後に `mergeStateStatus: CLEAN` な non-draft PR を `gh pr merge --merge --delete-branch` で直接 merge** する。 CLEAN = CI 通過済みなので安全。 auto-merge が復活した場合は先に発火して「already merged」で空振りするだけ。 これがないと merge 待ちが 30 分 timeout → 連鎖停止で朝まで止まる。
 
-詰まった場合は PR を draft に戻す (`gh pr ready --undo`) か、 ask 経由で close するか、 stuck/ 隔離フロー (`loop/REFERENCE.md`) に乗せる。
+詰まった場合は PR を draft に戻す (`gh pr ready --undo`) + Issue に `stuck` label を追加 (`gh issue edit <#> --add-label stuck`) か、 ask 経由で close する。詳細は `loop/REFERENCE.md` の stuck protocol 参照。
 
 ## /goal 評価のための出力ルール
 

@@ -2,14 +2,15 @@
 
 > このファイルは **CLAUDE.md から `@import` されない**（@なしポインタ参照）。夜 md の構造や検証の詳細を知りたい時に Claude が必要に応じて Read する。毎セッションのコンテキストには載せない。
 
-## 夜 md の構造
+## 夜 md の構造 (v1 legacy — v2 で Issue-only に移行済み)
 
-- `nights/pending/NNN-<topic>.md` — 未処理の夜。最若番号から着手する
-- `nights/done/NNN-<topic>.md` — 完了した夜 (DoD 達成・PR merged)。実装完了時に `git mv` で pending から移動
-- `nights/stuck/NNN-<topic>-stuck.md` — 30 分以上詰んで隔離された夜 (詰み report 付き)
-- `nights/template/NNN-template.md` — 新しい夜を起こす時のテンプレ。コピーして全項目を埋める
+v2 で `nights/pending/` と `nights/stuck/` は廃止。**Issue body が DoD の唯一の SSOT**。
 
-各夜 md は「## ゴール (/goal)」「## 前提」「## サブゴール」「## 実装ステップ」「## 対象 opcode と nestest 出現行」「## DoD」等のセクションを持つ。
+- `nights/done/NNN-<topic>.md` — 過去の完了夜の履歴アーカイブ (削除しない)
+- `nights/pending/038-mapper-cnrom.md` — 最後の pending md (Issue #99 が SSOT。参考情報として残置)
+- `nights/template/NNN-template.md` — 旧テンプレ。v2 では `.github/ISSUE_TEMPLATE/night.yml` を使用
+
+v2 の stuck protocol: Issue に `stuck` label を追加 (`gh issue edit <#> --add-label stuck`)。`nights/stuck/` は使わない。
 
 ## nestest による CPU 検証
 
@@ -20,4 +21,4 @@
 
 ## 設計の正典
 
-設計の正典は ローカルの `tmp/design.md` (リポ外、 個人保管)。 リポ内では README.md + CLAUDE.md + `nights/pending/*.md` + `.claude/` で自走に必要な情報を分散配置している。
+設計の正典は ローカルの `tmp/design.md` (リポ外、 個人保管)。 リポ内では README.md + CLAUDE.md + GitHub Issues + `.claude/` で自走に必要な情報を分散配置している。

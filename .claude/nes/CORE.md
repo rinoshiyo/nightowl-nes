@@ -21,7 +21,7 @@
 - `bunx tsc --noEmit` 警告ゼロ
 - `bunx eslint 'src/**/*.ts' 'tests/**/*.ts' --max-warnings 0` 警告ゼロ
 - nestest trace test (`TRACE_LINES`) が当該夜の実装範囲まで延伸して pass
-- DoD 各項目を満たす (夜 md に記載)
+- DoD 各項目を満たす (Issue body に記載)
 
 ## レビュー観点 (code-review の finder に渡す NES 固有の観点)
 

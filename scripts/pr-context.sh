@@ -8,7 +8,7 @@ CWD="${1:-.}"
 cd "$CWD"
 
 # --- Issue (scope SSOT) ---
-ISSUE_JSON=$(gh issue list -s open -l night --json number,title,body -L 1 2>/dev/null || echo '[]')
+ISSUE_JSON=$(gh issue list -s open -l night --search 'sort:created-asc -label:stuck' --json number,title,body -L 1 2>/dev/null || echo '[]')
 ISSUE_COUNT=$(printf '%s' "$ISSUE_JSON" | jq 'length')
 ISSUE_NUMBER=""
 ISSUE_TITLE=""
