@@ -190,11 +190,11 @@ export class MapperJalecoSs8806 implements Mapper {
         this.irqEnabled = (nibble & 0x01) !== 0;
         // bit 1-3 でカウンタ幅を選択
         if (nibble & 0x08) {
-          this.irqMask = 0x000f; // 4bit
+          this.irqMask = 0x000f; // F bit: 4bit
         } else if (nibble & 0x04) {
-          this.irqMask = 0x00ff; // 8bit
+          this.irqMask = 0x0fff; // E bit: 12bit
         } else if (nibble & 0x02) {
-          this.irqMask = 0x0fff; // 12bit
+          this.irqMask = 0x00ff; // T bit: 8bit
         } else {
           this.irqMask = 0xffff; // 16bit
         }
