@@ -126,7 +126,7 @@ loop-start (setup) → flag 書込 → Stop hook → loop-helper → /clear → 
 2. (v2 で廃止: 夜 md は不要。Issue body が DoD の SSOT)
 3. open Issue が既にあればスキップ。Issue が scope の SSOT。新規 Issue は `/loop-start seed` で事前に作成済みの前提
 4. `night/NNN-<topic>` ブランチを切る (既にあれば checkout)
-5. **flag 書込して turn 終了** — `/goal <汎用テキスト>` を `.claude/state/loop-next.${PANE#%}.txt` に書いて turn を終える。**実装には入らない**。Stop hook が flag を検出し loop-helper → /clear → /goal 注入を自動で行う
+5. **flag 書込して turn 終了** — `/goal Issue #N (タイトル) のみを対象に...` を `.claude/state/loop-next.${PANE#%}.txt` に書いて turn を終える。**実装には入らない**。Stop hook が flag を検出し loop-helper → /clear → /goal 注入を自動で行う
 
 ### 実装フェーズ (fresh session が実行。/goal はインフラが注入済み)
 

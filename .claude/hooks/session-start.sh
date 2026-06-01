@@ -18,7 +18,7 @@ if [ "$SOURCE" = "compact" ] && [ -n "$CWD" ]; then
     }'
   else
     NEXT_ISSUE=$(cd "$CWD" && gh issue list -s open -l night --search 'sort:created-asc -label:stuck' \
-      --json number,title -q '.[0] | "#\(.number) \(.title)"' 2>/dev/null || echo "")
+      --json number,title -q '.[0] | select(. != null) | "#\(.number) \(.title)"' 2>/dev/null || echo "")
     FALLBACK="コンパクト後: open PR/Issue なし。/goal active なら Issue body Read → 実装続行。active でなければ loop-start skill で setup から。"
     [ -n "$NEXT_ISSUE" ] && FALLBACK="$FALLBACK 次の夜 Issue: $NEXT_ISSUE"
     jq -n --arg content "$FALLBACK" '{
@@ -33,7 +33,7 @@ fi
 
 if [ "$SOURCE" = "startup" ] && [ -n "$CWD" ]; then
   NEXT_ISSUE=$(cd "$CWD" && gh issue list -s open -l night --search 'sort:created-asc -label:stuck' \
-    --json number,title -q '.[0] | "#\(.number) \(.title)"' 2>/dev/null || echo "")
+    --json number,title -q '.[0] | select(. != null) | "#\(.number) \(.title)"' 2>/dev/null || echo "")
   if [ -n "$NEXT_ISSUE" ]; then
     jq -n --arg next "$NEXT_ISSUE" '{
       hookSpecificOutput: {

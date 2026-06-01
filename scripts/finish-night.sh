@@ -17,6 +17,7 @@
 set -euo pipefail
 
 LOOP_TURNS="${LOOP_TURNS:-80}"
+GOAL_TEXT=""
 
 # 引数パース
 STOP=false
@@ -66,7 +67,7 @@ if [ "$STOP" != "true" ]; then
   CURRENT_ISSUE=""
   if [ -n "$PR_NUM" ]; then
     CURRENT_ISSUE=$(gh pr view "$PR_NUM" --json closingIssuesReferences \
-      -q '.closingIssuesReferences[0].number' 2>/dev/null || echo "")
+      -q '.closingIssuesReferences[0].number // empty' 2>/dev/null || echo "")
   fi
   NEXT_ISSUE_JSON=$(gh issue list -s open -l night --search 'sort:created-asc -label:stuck' \
     --json number,title \

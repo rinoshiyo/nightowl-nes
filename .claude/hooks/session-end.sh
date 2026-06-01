@@ -16,7 +16,8 @@ OUTPUT_DIR="$CWD/.claude/retrospective"
 mkdir -p "$OUTPUT_DIR"
 
 STUCK_LIST=$(cd "$CWD" && gh issue list -s open -l stuck --json number,title -q '.[] | "#\(.number) \(.title)"' 2>/dev/null || echo "(なし)")
-NEXT_ISSUE=$(cd "$CWD" && gh issue list -s open -l night --search 'sort:created-asc -label:stuck' --json number,title -q '.[0] | "#\(.number) \(.title)"' 2>/dev/null || echo "なし")
+NEXT_ISSUE=$(cd "$CWD" && gh issue list -s open -l night --search 'sort:created-asc -label:stuck' --json number,title -q '.[0] | select(. != null) | "#\(.number) \(.title)"' 2>/dev/null) || true
+[ -z "$NEXT_ISSUE" ] && NEXT_ISSUE="なし"
 
 cat > "$OUTPUT_DIR/$DATE-$TIME.md" <<EOF
 # Nightowl NES - 夜間作業レポート $DATE $TIME
