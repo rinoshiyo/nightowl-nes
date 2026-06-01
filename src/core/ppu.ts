@@ -17,7 +17,7 @@ import type { Mirroring } from "./cart.ts";
 import type { Mapper } from "./mappers/index.ts";
 
 const CHR_RAM_SIZE = 0x2000;
-const VRAM_SIZE = 0x800;
+const VRAM_SIZE = 0x1000;
 const PALETTE_SIZE = 0x20;
 const OAM_SIZE = 256;
 

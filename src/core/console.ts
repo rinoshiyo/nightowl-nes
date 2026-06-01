@@ -40,9 +40,9 @@ export class NesConsole {
     this.apu.onIrq = () => {
       this.cpu.irqPending = true;
     };
-    this.mapper.onMirroringChange = (m) => {
-      this.ppu.mirroring = m;
-    };
+    this.mapper.onMirroringChange = cart.header.fourScreen
+      ? null
+      : (m) => { this.ppu.mirroring = m; };
     this.reset();
   }
 

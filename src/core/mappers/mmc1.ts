@@ -9,10 +9,10 @@
  * 仕様参照: https://www.nesdev.org/wiki/MMC1
  */
 
-import type { Cart } from "../cart.ts";
-import type { Mirroring } from "../cart.ts";
+import type { Cart, Mirroring } from "../cart.ts";
 import type { Mapper } from "./mapper.ts";
 
+const MMC1_MIRROR_MAP: readonly Mirroring[] = ["single-lower", "single-upper", "vertical", "horizontal"];
 const PRG_BANK_SIZE = 0x4000; // 16KB
 const CHR_BANK_SIZE = 0x1000; // 4KB
 const CHR_RAM_SIZE = 0x2000;  // 8KB
@@ -158,8 +158,7 @@ export class MapperMmc1 implements Mapper {
   private applyMirroring(): void {
     if (!this.onMirroringChange) return;
     const mode = this.control & 0x03;
-    const mirrorMap: readonly Mirroring[] = ["single-lower", "single-upper", "vertical", "horizontal"];
-    this.onMirroringChange(mirrorMap[mode]!);
+    this.onMirroringChange(MMC1_MIRROR_MAP[mode]!);
   }
 
   /** 内部レジスタへの書き込み (アドレスの bit 13-14 でレジスタ選択) */
