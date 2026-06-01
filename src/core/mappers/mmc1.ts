@@ -22,6 +22,7 @@ export class MapperMmc1 implements Mapper {
   private readonly useChrRam: boolean;
 
   private readonly prgBankCount: number;
+  private readonly chrBankCount: number;
 
   /** 5-bit シフトレジスタ */
   private shiftRegister = 0b10000;
@@ -53,9 +54,11 @@ export class MapperMmc1 implements Mapper {
     if (cart.header.chrRomSize === 0) {
       this.chrData = new Uint8Array(CHR_RAM_SIZE);
       this.useChrRam = true;
+      this.chrBankCount = CHR_RAM_SIZE / CHR_BANK_SIZE;
     } else {
       this.chrData = cart.chrRom;
       this.useChrRam = false;
+      this.chrBankCount = Math.max(1, cart.chrRom.length / CHR_BANK_SIZE);
     }
   }
 
@@ -112,22 +115,28 @@ export class MapperMmc1 implements Mapper {
   }
 
   readChr(addr: number): number {
-    const chrMode = (this.control >> 4) & 1;
     const maskedAddr = addr & 0x1fff;
+
+    // CHR RAM (8KB) はバンク切替なし — フラットアドレッシング
+    if (this.useChrRam) {
+      return this.chrData[maskedAddr] ?? 0;
+    }
+
+    const chrMode = (this.control >> 4) & 1;
 
     if (chrMode === 0) {
       // 8KB モード: chrBank0 の bit 0 を無視して 8KB 単位
-      const bank8k = (this.chrBank0 & 0x1e) >> 1;
+      const bank8k = ((this.chrBank0 & 0x1e) >> 1) % Math.max(1, this.chrBankCount >> 1);
       return this.chrData[bank8k * CHR_BANK_SIZE * 2 + maskedAddr] ?? 0;
     }
 
     // 4KB モード
     if (maskedAddr < 0x1000) {
-      const bank = this.chrBank0 & 0x1f;
+      const bank = (this.chrBank0 & 0x1f) % this.chrBankCount;
       return this.chrData[bank * CHR_BANK_SIZE + maskedAddr] ?? 0;
     }
 
-    const bank = this.chrBank1 & 0x1f;
+    const bank = (this.chrBank1 & 0x1f) % this.chrBankCount;
     return this.chrData[bank * CHR_BANK_SIZE + (maskedAddr & 0x0fff)] ?? 0;
   }
 
