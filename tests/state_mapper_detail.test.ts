@@ -186,6 +186,87 @@ describe("Mapper ステート詳細テスト", () => {
     expect(restoredState.mapper.data["irqEnabled"]).toBe(true);
   });
 
+  it("Color Dreams: PRG/CHR バンク切替状態が復元される", () => {
+    const chrRom = new Uint8Array(32 * 1024);
+    for (let b = 0; b < 4; b++) {
+      chrRom[b * 0x2000] = 0x20 + b;
+    }
+    const cart: Cart = {
+      header: {
+        prgRomSize: 128 * 1024, chrRomSize: chrRom.length, mapper: 11,
+        mirroring: "vertical", hasBattery: false, hasTrainer: false, fourScreen: false,
+      },
+      prgRom: (() => {
+        const p = new Uint8Array(128 * 1024);
+        p[p.length - 4] = 0x00; p[p.length - 3] = 0x80;
+        for (let i = 0; i < 256; i++) p[i] = 0xea;
+        for (let b = 0; b < 4; b++) p[b * 0x8000] = b;
+        return p;
+      })(),
+      chrRom,
+      trainer: null,
+    };
+
+    const nes = new NesConsole(cart);
+    nes.bus.write(0x8000, 0x21);
+
+    const state = nes.saveState();
+
+    nes.bus.write(0x8000, 0x00);
+    nes.loadState(state);
+
+    const restoredState = nes.saveState();
+    expect(restoredState.mapper.data["prgBankOffset"]).toBe(state.mapper.data["prgBankOffset"]);
+    expect(restoredState.mapper.data["chrBankOffset"]).toBe(state.mapper.data["chrBankOffset"]);
+  });
+
+  it("GxROM: PRG/CHR バンク切替状態が復元される", () => {
+    const chrRom = new Uint8Array(32 * 1024);
+    for (let b = 0; b < 4; b++) {
+      chrRom[b * 0x2000] = 0x30 + b;
+    }
+    const cart: Cart = {
+      header: {
+        prgRomSize: 128 * 1024, chrRomSize: chrRom.length, mapper: 66,
+        mirroring: "vertical", hasBattery: false, hasTrainer: false, fourScreen: false,
+      },
+      prgRom: (() => {
+        const p = new Uint8Array(128 * 1024);
+        p[p.length - 4] = 0x00; p[p.length - 3] = 0x80;
+        for (let i = 0; i < 256; i++) p[i] = 0xea;
+        for (let b = 0; b < 4; b++) p[b * 0x8000] = b;
+        return p;
+      })(),
+      chrRom,
+      trainer: null,
+    };
+
+    const nes = new NesConsole(cart);
+    nes.bus.write(0x8000, 0x12);
+
+    const state = nes.saveState();
+
+    nes.bus.write(0x8000, 0x00);
+    nes.loadState(state);
+
+    const restoredState = nes.saveState();
+    expect(restoredState.mapper.data["prgBankOffset"]).toBe(state.mapper.data["prgBankOffset"]);
+    expect(restoredState.mapper.data["chrBankOffset"]).toBe(state.mapper.data["chrBankOffset"]);
+  });
+
+  it("Codemasters: PRG バンク切替状態が復元される", () => {
+    const nes = new NesConsole(makeCartForMapper(71, 128 * 1024, 0));
+
+    nes.bus.write(0xc000, 3);
+    const state = nes.saveState();
+
+    nes.bus.write(0xc000, 0);
+    nes.loadState(state);
+
+    const restoredState = nes.saveState();
+    expect(restoredState.mapper.data["switchBankOffset"]).toBe(state.mapper.data["switchBankOffset"]);
+  });
+
   it("AxROM: バンク切替とミラーリング状態が復元される", () => {
     const nes = new NesConsole(makeCartForMapper(7, 128 * 1024, 0));
 
