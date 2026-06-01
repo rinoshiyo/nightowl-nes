@@ -62,7 +62,7 @@ ${LAST_REVIEW:-なし}
 
 PR_EOF
 elif [ "$ISSUE_COUNT" != "0" ]; then
-  echo "No open PR found — Issue #${ISSUE_NUMBER} exists. /goal はインフラ注入済み。ブランチを checkout し実装フェーズ step 6 (夜 md Read → 実装開始) から再開。"
+  echo "No open PR found — Issue #${ISSUE_NUMBER} exists. ブランチを checkout し夜 md Read → 実装開始から再開。"
   echo ""
 fi
 
