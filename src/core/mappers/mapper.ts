@@ -8,6 +8,7 @@
 
 import type { Cart } from "../cart.ts";
 import { MapperNrom } from "./nrom.ts";
+import { MapperMmc1 } from "./mmc1.ts";
 import { MapperUxrom } from "./uxrom.ts";
 import { MapperCnrom } from "./cnrom.ts";
 
@@ -26,6 +27,8 @@ export function createMapper(cart: Cart): Mapper {
   switch (cart.header.mapper) {
     case 0:
       return new MapperNrom(cart);
+    case 1:
+      return new MapperMmc1(cart);
     case 2:
       return new MapperUxrom(cart);
     case 3:
