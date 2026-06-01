@@ -1,0 +1,61 @@
+name: Night Task
+description: 自走ループの夜タスク定義 (DoD = Issue body)
+labels: ["night"]
+body:
+  - type: input
+    id: topic
+    attributes:
+      label: Topic (kebab-case)
+      description: "ブランチ名 night/NNN-<topic> に使う topic 部分"
+      placeholder: "mapper-cnrom"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: ゴール
+      description: "1-2 行で夜のゴールを記述"
+    validations:
+      required: true
+  - type: textarea
+    id: prerequisites
+    attributes:
+      label: 前提
+      description: "依存する夜・仕様参照リンク等"
+    validations:
+      required: false
+  - type: textarea
+    id: subgoals
+    attributes:
+      label: サブゴール (3-5 段階)
+      description: "G1, G2, G3... の形式で分解"
+      value: |
+        1. **G1:** —
+        2. **G2:** —
+        3. **G3:** —
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: DoD (完了条件チェックリスト)
+      description: "20-40 項目。各項目は観測可能な条件"
+      value: |
+        - [ ] `night/NNN-<topic>` ブランチで作業
+        - [ ] G1: <観測可能な完了条件>
+        - [ ] G2: <観測可能な完了条件>
+        - [ ] G3: <観測可能な完了条件>
+        - [ ] `bun test` 全 pass
+        - [ ] `bunx tsc --noEmit` 警告ゼロ
+        - [ ] `bunx eslint 'src/**/*.ts' 'tests/**/*.ts' --max-warnings 0` 警告ゼロ
+        - [ ] git log に最低 5 commit
+        - [ ] PR が立っており merge commit で main に反映済み
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 実装上の注意・詰みパターン参考
+      description: "既知の罠、nesdev wiki リンク等"
+    validations:
+      required: false

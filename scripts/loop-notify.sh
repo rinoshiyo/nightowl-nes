@@ -92,9 +92,9 @@ RECOVERY_EOF
     TITLE="🚨 自走停止: 暴走ブレーキ (MAX=${NIGHTOWL_LOOP_MAX:-20})"
     SITUATION="連鎖が ${NIGHTOWL_LOOP_MAX:-20} 夜を超えた。pending が大量に残っているか、異常に夜が量産されている可能性。"
     RECOVERY=$(cat <<'RECOVERY_EOF'
-1. `ls nights/pending/` で残り夜数を確認
-2. `ls nights/done/` で完了夜数を確認 — 期待通りの数なら正常消化（MAX を引き上げて再開）
-3. 異常に夜が増えている場合: pending の中身を確認し、不要な夜 md を削除
+1. `gh issue list -s open -l night` で残りタスク数を確認
+2. `gh issue list -s closed -l night` で完了タスク数を確認 — 期待通りの数なら正常消化（MAX を引き上げて再開）
+3. 異常にタスクが増えている場合: open Issue を確認し、不要な Issue を close
 4. 再開するなら `.claude/state/loop-<pane>.count` を削除してカウンタリセット
 5. `NIGHTOWL_LOOP_MAX` を調整する場合は compose.yaml の env で設定
 6. 復旧完了後、この issue をクローズ
@@ -104,10 +104,10 @@ RECOVERY_EOF
     TITLE="🚨 自走停止: 実装詰み (stuck 隔離)"
     SITUATION="worker (Claude) が実装中に詰まり、自己判断で stuck 隔離した。"
     RECOVERY=$(cat <<'RECOVERY_EOF'
-1. `ls nights/stuck/` で隔離された夜 md を確認
-2. stuck md 末尾の「詰み report」を読む（再現手順・試したこと・仮説）
+1. `gh issue list -s open -l stuck` で隔離された Issue を確認
+2. Issue コメントの「詰み report」を読む（再現手順・試したこと・仮説）
 3. `gh pr list --state open` で draft に戻された PR を確認し、PR コメントも読む
-4. 別アプローチで解決できそうなら: stuck md を pending に戻し、アプローチを夜 md に追記して再挑戦
+4. 別アプローチで解決できそうなら: Issue の `stuck` label を外し (`gh issue edit <#> --remove-label stuck`)、アプローチを Issue コメントに追記して再挑戦
 5. 人間の判断が必要な場合: PR コメントに方針を書いて石井に委ねる
 6. 復旧完了後、この issue をクローズ
 RECOVERY_EOF
