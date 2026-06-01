@@ -4,7 +4,7 @@ import { NesConsole } from "../core/console.ts";
 import { Button } from "../core/controller.ts";
 import { NesAudio } from "./audio.ts";
 import { Renderer } from "./renderer.ts";
-import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData } from "./save-manager.ts";
+import { computeRomHash, loadPrgRam, savePrgRam } from "./save-manager.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
