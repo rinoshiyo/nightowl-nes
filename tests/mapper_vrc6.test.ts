@@ -159,15 +159,20 @@ describe("MapperVrc6", () => {
   // PRG RAM
   // ==========================================================================
   describe("PRG RAM", () => {
-    it("$B003 bit7 で PRG RAM 有効/無効", () => {
+    it("$B003 bit7 (enable) + bit6 (write enable) で PRG RAM 制御", () => {
       const m = makeVrc6a();
 
       // 初期状態: 無効
       m.writePrgRam(0x6000, 0xaa);
       expect(m.readPrgRam(0x6000)).toBe(0);
 
-      // 有効化
+      // bit7 のみ: read 可、write 不可
       m.writePrg(0xb003, 0x80);
+      m.writePrgRam(0x6000, 0xaa);
+      expect(m.readPrgRam(0x6000)).toBe(0); // write protect
+
+      // bit7 + bit6: read/write 可
+      m.writePrg(0xb003, 0xc0);
       m.writePrgRam(0x6000, 0xaa);
       expect(m.readPrgRam(0x6000)).toBe(0xaa);
 
@@ -178,7 +183,7 @@ describe("MapperVrc6", () => {
 
     it("getPrgRam / setPrgRam でバッテリーセーブ", () => {
       const m = makeVrc6a();
-      m.writePrg(0xb003, 0x80); // PRG RAM 有効化
+      m.writePrg(0xb003, 0xc0); // PRG RAM 有効化 (enable + write enable)
       m.writePrgRam(0x6000, 0x42);
       m.writePrgRam(0x6001, 0x55);
 
@@ -188,7 +193,7 @@ describe("MapperVrc6", () => {
 
       const m2 = makeVrc6a();
       m2.setPrgRam(saved);
-      m2.writePrg(0xb003, 0x80);
+      m2.writePrg(0xb003, 0xc0);
       expect(m2.readPrgRam(0x6000)).toBe(0x42);
     });
   });
@@ -474,7 +479,7 @@ describe("MapperVrc6", () => {
       m1.writePrg(0x8000, 3);
       m1.writePrg(0xc000, 5);
       m1.writePrg(0xd000, 10);
-      m1.writePrg(0xb003, 0x84); // PRG RAM 有効 + horizontal
+      m1.writePrg(0xb003, 0xc4); // PRG RAM 有効 + write有効 + horizontal
       m1.writePrg(0x9000, 0x7f); // pulse1 volume=15, duty=7
       m1.writePrg(0x9002, 0x80); // pulse1 enable
 

@@ -409,8 +409,8 @@ describe("MapperVrc6 エッジケース", () => {
       const changes: Mirroring[] = [];
       m.onMirroringChange = (mir) => { changes.push(mir); };
 
-      // bit7=PRG RAM 有効, bits2-3=ミラーリング
-      m.writePrg(0xb003, 0x88); // PRG RAM有効 + single-lower
+      // bit7=PRG RAM enable, bit6=write enable, bits2-3=ミラーリング
+      m.writePrg(0xb003, 0xc8); // PRG RAM 有効 + write有効 + single-lower
 
       m.writePrgRam(0x6000, 0x42);
       expect(m.readPrgRam(0x6000)).toBe(0x42);

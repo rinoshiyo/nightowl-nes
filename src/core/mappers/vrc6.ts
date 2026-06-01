@@ -59,8 +59,10 @@ export class MapperVrc6 implements Mapper {
   /** CHR バンクレジスタ (1KB × 8) */
   private readonly chrBanks = new Uint8Array(8);
 
-  /** PRG RAM 有効フラグ */
+  /** PRG RAM chip enable (bit 7) */
   private prgRamEnabled = false;
+  /** PRG RAM write enable (bit 6) */
+  private prgRamWriteEnabled = false;
 
   // --- IRQ ---
   /** IRQ latch 値 */
@@ -215,6 +217,7 @@ export class MapperVrc6 implements Mapper {
       // --- ミラーリング + PRG RAM ($B003) ---
       case 0xb003:
         this.prgRamEnabled = (value & 0x80) !== 0;
+        this.prgRamWriteEnabled = (value & 0x40) !== 0;
         this.updateMirroring(value);
         break;
 
@@ -273,7 +276,7 @@ export class MapperVrc6 implements Mapper {
   }
 
   writePrgRam(addr: number, value: number): void {
-    if (!this.prgRamEnabled) return;
+    if (!this.prgRamEnabled || !this.prgRamWriteEnabled) return;
     this.prgRam[addr & 0x1fff] = value;
   }
 
@@ -290,6 +293,7 @@ export class MapperVrc6 implements Mapper {
     this.prgBank1 = 0;
     this.chrBanks.fill(0);
     this.prgRamEnabled = false;
+    this.prgRamWriteEnabled = false;
     this.irqLatch = 0;
     this.irqCounter = 0;
     this.irqEnabled = false;
@@ -471,6 +475,7 @@ export class MapperVrc6 implements Mapper {
       prgBank1: this.prgBank1,
       chrBanks: Array.from(this.chrBanks),
       prgRamEnabled: this.prgRamEnabled,
+      prgRamWriteEnabled: this.prgRamWriteEnabled,
       irqLatch: this.irqLatch,
       irqCounter: this.irqCounter,
       irqEnabled: this.irqEnabled,
@@ -510,6 +515,7 @@ export class MapperVrc6 implements Mapper {
     this.prgBank1 = data["prgBank1"] as number;
     if (Array.isArray(data["chrBanks"])) this.chrBanks.set(data["chrBanks"] as number[]);
     this.prgRamEnabled = data["prgRamEnabled"] as boolean;
+    this.prgRamWriteEnabled = data["prgRamWriteEnabled"] as boolean;
     this.irqLatch = data["irqLatch"] as number;
     this.irqCounter = data["irqCounter"] as number;
     this.irqEnabled = data["irqEnabled"] as boolean;
