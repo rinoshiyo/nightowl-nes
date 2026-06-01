@@ -8,6 +8,7 @@ import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData, deleteSaveData, sa
 import { formatErrorMessage } from "./error-messages.ts";
 import { applyGamepadState } from "./gamepad.ts";
 import { isNesFile } from "./drag-drop.ts";
+import { TouchControls, isTouchDevice } from "./touch-controls.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -31,6 +32,7 @@ let running = false;
 let currentRomHash: string | null = null;
 let currentHasBattery = false;
 let saveDisabled = false;
+let touchControls: TouchControls | null = null;
 
 // --- G5: エラー表示の改善 ---
 
@@ -50,10 +52,17 @@ errorClose.addEventListener("click", () => {
   errorOverlay.classList.remove("visible");
 });
 
-const FRAME_MS = 1000 / 60;
+const TARGET_FPS = 60;
+const FRAME_MS = 1000 / TARGET_FPS;
+const MAX_FRAME_SKIP = 3;
 let lastFrameTime = 0;
 const SAVE_INTERVAL_MS = 5000;
 let lastSaveTime = 0;
+
+// --- FPS カウンタ ---
+let fpsFrameCount = 0;
+let fpsLastTime = 0;
+const fpsCounter = getEl<HTMLDivElement>("fps-counter");
 
 function updateSaveUi(): void {
   if (!currentRomHash || !currentHasBattery) {
@@ -110,9 +119,23 @@ async function loadRom(file: File): Promise<void> {
   stateControls.style.display = "flex";
   updateStateButtons();
 
+  // モバイル: バーチャルパッドを表示 (ROM swap 時は再生成して新 controller を参照)
+  if (isTouchDevice()) {
+    const touchContainer = document.getElementById("touch-container");
+    if (touchContainer) {
+      if (touchControls) touchContainer.removeChild(touchControls.element);
+      touchControls = new TouchControls(console.controller1);
+      touchContainer.appendChild(touchControls.element);
+    }
+  }
+
+  // FPS カウンタ・タイムスタンプをリセット (ROM swap 時も確実にリセット)
+  lastFrameTime = 0;
+  fpsLastTime = 0;
+  fpsFrameCount = 0;
+
   if (!running) {
     running = true;
-    lastFrameTime = 0;
     lastSaveTime = performance.now();
     requestAnimationFrame(gameLoop);
   }
@@ -260,18 +283,38 @@ function gameLoop(timestamp: number): void {
 
   pollGamepads();
 
+  if (lastFrameTime === 0) {
+    lastFrameTime = timestamp;
+    fpsLastTime = timestamp;
+  }
+
   const elapsed = timestamp - lastFrameTime;
   if (elapsed >= FRAME_MS) {
+    const framesToRun = Math.min(Math.floor(elapsed / FRAME_MS), MAX_FRAME_SKIP + 1);
     lastFrameTime = timestamp - (elapsed % FRAME_MS);
+
     try {
-      nes.stepFrame();
+      for (let i = 0; i < framesToRun; i++) {
+        nes.stepFrame();
+      }
       renderer.render(nes.ppu.framebuffer);
     } catch (e) {
       showError(e);
       audio.stop();
+      fpsCounter.textContent = "";
       running = false;
       return;
     }
+
+    fpsFrameCount += framesToRun;
+  }
+
+  // FPS カウンタ更新 (1 秒間隔)
+  const fpsDelta = timestamp - fpsLastTime;
+  if (fpsDelta >= 1000) {
+    fpsCounter.textContent = `${Math.round(fpsFrameCount * 1000 / fpsDelta)} FPS`;
+    fpsFrameCount = 0;
+    fpsLastTime = timestamp;
   }
 
   if (timestamp - lastSaveTime >= SAVE_INTERVAL_MS) {
@@ -291,7 +334,12 @@ let currentScale: ScreenScale = 2;
 const scaleBtn = getEl<HTMLButtonElement>("scale-btn");
 const fullscreenBtn = getEl<HTMLButtonElement>("fullscreen-btn");
 
+function isNarrowScreen(): boolean {
+  return window.innerWidth <= 600;
+}
+
 function applyScale(scale: ScreenScale): void {
+  if (isNarrowScreen()) return;
   currentScale = scale;
   const w = SCREEN_W * scale;
   canvas.style.width = `${w}px`;
