@@ -465,6 +465,38 @@ describe("PPU スプライト描画", () => {
       expect(ppu.framebuffer[ROW1]).toBe(0x0f);
       expect(ppu.framebuffer[ROW1 + 7]).toBe(0x30);
     });
+
+    it("8×16 モードで sprite 0 hit が下半分 (row 8-15) でも発生する", () => {
+      ppu.ctrl = 0x20 | 0x10;
+      ppu.palette[1] = 0x15;
+      ppu.vram.fill(2);
+      writeTile(ppu, 2, 0x1000, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      setSprite(ppu, 0, 0, 0x02, 0, 0);
+      ppu.palette[0x11] = 0x30;
+      // 上タイル: 透明
+      writeTile(ppu, 0x02, 0, new Uint8Array(8), new Uint8Array(8));
+      // 下タイル: 全不透明
+      writeTile(ppu, 0x03, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      // row=8 (下タイル) まで進める
+      tickTo(ppu, 10, 0);
+      expect(ppu.status & 0x40).toBe(0x40);
+    });
+
+    it("8×16 モードで row=16 はスプライト範囲外", () => {
+      ppu.ctrl = 0x20;
+      setSprite(ppu, 0, 0, 0x02, 0, 0);
+      ppu.palette[0x11] = 0x30;
+      writeTile(ppu, 0x02, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+      writeTile(ppu, 0x03, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      // Y=0 → row=16 at scanline 17: 範囲外
+      tickTo(ppu, 18, 0);
+      // スキャンライン 17 (row=16) にスプライトピクセルなし
+      const sl17start = SCREEN_W * 17;
+      expect(ppu.framebuffer[sl17start]).toBe(0x0f);
+    });
   });
 
   describe("PPUMASK 制御", () => {
