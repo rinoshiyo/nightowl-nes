@@ -49,7 +49,7 @@ export class MapperMmc5 implements Mapper {
 
   // --- PRG バンク切替 ---
   private prgMode = 3;              // $5100: PRG バンクモード (0-3)
-  private readonly prgBanks = new Uint8Array(4); // $5113-$5117 のバンクレジスタ (4 本)
+  private readonly prgBanks = new Uint8Array(5); // $5113-$5117 のバンクレジスタ (5 本)
   private prgRamProtect1 = 0;       // $5102
   private prgRamProtect2 = 0;       // $5103
 
@@ -109,8 +109,8 @@ export class MapperMmc5 implements Mapper {
       this.chrBankCount1k = Math.max(1, cart.chrRom.length / CHR_BANK_SIZE_1K);
     }
 
-    // デフォルト: 最終バンクを全域にマッピング
-    this.prgBanks[3] = (this.prgBankCount8k - 1) & 0xff;
+    // デフォルト: 最終バンクを全域にマッピング ($5117 = index 4)
+    this.prgBanks[4] = ((this.prgBankCount8k - 1) | 0x80) & 0xff;
   }
 
   readPrg(addr: number): number {
@@ -176,7 +176,7 @@ export class MapperMmc5 implements Mapper {
   reset(): void {
     this.prgMode = 3;
     this.prgBanks.fill(0);
-    this.prgBanks[3] = (this.prgBankCount8k - 1) & 0xff;
+    this.prgBanks[4] = ((this.prgBankCount8k - 1) | 0x80) & 0xff;
     this.prgRamProtect1 = 0;
     this.prgRamProtect2 = 0;
     this.chrMode = 0;
@@ -356,7 +356,7 @@ export class MapperMmc5 implements Mapper {
         break;
       case 0x5117:
         // $E000-$FFFF: ROM のみ (bit 7 は常に 1 として扱う)
-        this.prgBanks[3] = value | 0x80;
+        this.prgBanks[4] = value | 0x80;
         break;
 
       // CHR バンク — スプライト用 ($5120-$5127)
@@ -563,26 +563,25 @@ export class MapperMmc5 implements Mapper {
     }
   }
 
-  /** モード 0: 32KB 切替 ($5117 の値、下位2bit無視) */
+  /**
+   * モード 0: 32KB 切替 ($5117 の値、下位2bit無視)。
+   * bit 7=1 で ROM、bit 7=0 で RAM。
+   */
   private resolvePrgMode0(addr: number): number {
-    const reg = this.prgBanks[3]!;
-    if ((reg & 0x80) === 0) {
-      // RAM
-      const base = (reg & 0x7c) >> 2;
-      const offset = (addr - 0x8000) >> 13;
-      return -(base + offset + 1);
-    }
-    const base = ((reg & 0x7f) >> 2) << 2;
+    const reg = this.prgBanks[4]!;
+    // $5117 は常に ROM (bit 7 = 1) だがモード 0 の形式上
+    const base = ((reg & 0x7c) >> 2) << 2;
     const slot = (addr - 0x8000) >> 13;
     return base + slot;
   }
 
-  /** モード 1: 16KB+16KB ($5115=$8000, $5117=$C000) */
+  /** モード 1: 16KB+16KB ($5115=$8000-$BFFF, $5117=$C000-$FFFF) */
   private resolvePrgMode1(addr: number): number {
     if (addr < 0xc000) {
+      // $8000-$BFFF → $5115 (prgBanks[2]), 16KB 単位
       const reg = this.prgBanks[2]!;
       if ((reg & 0x80) === 0) {
-        const base = (reg & 0x7e) >> 1;
+        const base = ((reg & 0x7e) >> 1) << 1;
         const offset = (addr & 0x2000) ? 1 : 0;
         return -(base + offset + 1);
       }
@@ -590,7 +589,8 @@ export class MapperMmc5 implements Mapper {
       const offset = (addr & 0x2000) ? 1 : 0;
       return base + offset;
     }
-    const reg = this.prgBanks[3]!;
+    // $C000-$FFFF → $5117 (prgBanks[4]), 16KB 単位, 常に ROM
+    const reg = this.prgBanks[4]!;
     const base = ((reg & 0x7f) >> 1) << 1;
     const offset = (addr & 0x2000) ? 1 : 0;
     return base + offset;
@@ -599,9 +599,10 @@ export class MapperMmc5 implements Mapper {
   /** モード 2: 16KB+8KB+8KB ($5115=$8000, $5116=$C000, $5117=$E000) */
   private resolvePrgMode2(addr: number): number {
     if (addr < 0xc000) {
+      // $8000-$BFFF → $5115 (prgBanks[2]), 16KB 単位
       const reg = this.prgBanks[2]!;
       if ((reg & 0x80) === 0) {
-        const base = (reg & 0x7e) >> 1;
+        const base = ((reg & 0x7e) >> 1) << 1;
         const offset = (addr & 0x2000) ? 1 : 0;
         return -(base + offset + 1);
       }
@@ -610,36 +611,29 @@ export class MapperMmc5 implements Mapper {
       return base + offset;
     }
     if (addr < 0xe000) {
+      // $C000-$DFFF → $5116 (prgBanks[3]), 8KB 単位
       const reg = this.prgBanks[3]!;
       if ((reg & 0x80) === 0) {
         return -((reg & 0x7f) + 1);
       }
       return reg & 0x7f;
     }
-    // $E000-$FFFF: $5117 (常に ROM)
-    return this.prgBanks[3]! & 0x7f;
+    // $E000-$FFFF → $5117 (prgBanks[4]), 常に ROM
+    return this.prgBanks[4]! & 0x7f;
   }
 
-  /** モード 3: 8KB×4 ($5114-$5117) */
+  /** モード 3: 8KB×4 ($5114=$8000, $5115=$A000, $5116=$C000, $5117=$E000) */
   private resolvePrgMode3(addr: number): number {
     const slot = (addr - 0x8000) >> 13;
-    // $5114 = slot 0, $5115 = slot 1, $5116 = slot 2, $5117 = slot 3
-    let reg: number;
-    if (slot === 0) {
-      reg = this.prgBanks[1]!;
-    } else if (slot === 1) {
-      reg = this.prgBanks[2]!;
-    } else if (slot === 2) {
-      reg = this.prgBanks[3]!;
-      if ((reg & 0x80) === 0) {
-        return -((reg & 0x7f) + 1);
-      }
-      return reg & 0x7f;
-    } else {
-      // slot 3 ($E000-$FFFF): $5117 は常に ROM
-      return this.prgBanks[3]! & 0x7f;
+    // prgBanks[1]=$5114, [2]=$5115, [3]=$5116, [4]=$5117
+    const regIndex = slot + 1;
+
+    if (regIndex === 4) {
+      // $5117 ($E000-$FFFF) は常に ROM
+      return this.prgBanks[4]! & 0x7f;
     }
 
+    const reg = this.prgBanks[regIndex]!;
     if ((reg & 0x80) === 0) {
       return -((reg & 0x7f) + 1);
     }
