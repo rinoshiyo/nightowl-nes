@@ -147,6 +147,8 @@ export class MapperMmc1 implements Mapper {
     this.chrData[addr & 0x1fff] = value;
   }
 
+  readPrgRam(_addr: number): number { return 0; }
+  writePrgRam(_addr: number, _value: number): void {}
   clockIrqCounter(): void {}
 
   /** 内部レジスタへの書き込み (アドレスの bit 13-14 でレジスタ選択) */

@@ -50,5 +50,7 @@ export class MapperUxrom implements Mapper {
     this.chrRam[addr & 0x1fff] = value;
   }
 
+  readPrgRam(_addr: number): number { return 0; }
+  writePrgRam(_addr: number, _value: number): void {}
   clockIrqCounter(): void {}
 }

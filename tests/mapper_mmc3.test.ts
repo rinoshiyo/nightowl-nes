@@ -374,6 +374,26 @@ describe("MapperMmc3", () => {
     });
   });
 
+  describe("PRG RAM ($6000-$7FFF)", () => {
+    it("read/write が動作する", () => {
+      const mapper = new MapperMmc3(makeCart());
+      mapper.writePrgRam(0x6000, 0xab);
+      expect(mapper.readPrgRam(0x6000)).toBe(0xab);
+    });
+
+    it("8KB 空間全体が使える", () => {
+      const mapper = new MapperMmc3(makeCart());
+      mapper.writePrgRam(0x7fff, 0xcd);
+      expect(mapper.readPrgRam(0x7fff)).toBe(0xcd);
+    });
+
+    it("$6000-$7FFF 範囲外のアドレスはマスクされる", () => {
+      const mapper = new MapperMmc3(makeCart());
+      mapper.writePrgRam(0x6123, 0xef);
+      expect(mapper.readPrgRam(0x6123)).toBe(0xef);
+    });
+  });
+
   describe("エッジケース", () => {
     it("R0 の奇数値は bit 0 が無視される (2KB 単位)", () => {
       const mapper = new MapperMmc3(makeCart());

@@ -22,6 +22,10 @@ export interface Mapper {
   readChr(addr: number): number;
   /** PPU アドレス空間 $0000-$1FFF への書き込み (CHR RAM 時のみ有効) */
   writeChr(addr: number, value: number): void;
+  /** CPU アドレス空間 $6000-$7FFF の読み出し (PRG RAM) */
+  readPrgRam(addr: number): number;
+  /** CPU アドレス空間 $6000-$7FFF への書き込み (PRG RAM) */
+  writePrgRam(addr: number, value: number): void;
   /** IRQ 保留フラグ (MMC3 等の scanline カウンタ用。未使用 mapper は常に false) */
   irqPending: boolean;
   /** scanline ごとの IRQ カウンタ clocking (PPU が呼び出す)。未使用 mapper は空実装 */

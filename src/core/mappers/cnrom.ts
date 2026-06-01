@@ -45,5 +45,7 @@ export class MapperCnrom implements Mapper {
     // CNROM: CHR ROM は読み取り専用
   }
 
+  readPrgRam(_addr: number): number { return 0; }
+  writePrgRam(_addr: number, _value: number): void {}
   clockIrqCounter(): void {}
 }

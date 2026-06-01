@@ -50,5 +50,7 @@ export class MapperNrom implements Mapper {
     }
   }
 
+  readPrgRam(_addr: number): number { return 0; }
+  writePrgRam(_addr: number, _value: number): void {}
   clockIrqCounter(): void {}
 }

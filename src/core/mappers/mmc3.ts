@@ -25,6 +25,7 @@ export class MapperMmc3 implements Mapper {
   onMirroringChange: ((m: Mirroring) => void) | null = null;
 
   private readonly prgRom: Uint8Array;
+  private readonly prgRam = new Uint8Array(0x2000); // 8KB PRG RAM
   private readonly chrData: Uint8Array;
   private readonly useChrRam: boolean;
 
@@ -117,6 +118,14 @@ export class MapperMmc3 implements Mapper {
         this.irqEnabled = true;
       }
     }
+  }
+
+  readPrgRam(addr: number): number {
+    return this.prgRam[addr & 0x1fff] ?? 0;
+  }
+
+  writePrgRam(addr: number, value: number): void {
+    this.prgRam[addr & 0x1fff] = value;
   }
 
   readChr(addr: number): number {
