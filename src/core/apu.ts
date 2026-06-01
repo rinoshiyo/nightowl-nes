@@ -288,7 +288,7 @@ export class Apu {
   /** オーディオサンプルレートを設定 (フィルタ係数も再計算) */
   setSampleRate(rate: number): void {
     this.sampleRateStep = rate;
-    this.mixer = new ApuMixer(rate);
+    this.mixer.reset(rate);
   }
 
   /** バッファからサンプルを読み出して output 配列を埋める。読み出し分だけ進む */

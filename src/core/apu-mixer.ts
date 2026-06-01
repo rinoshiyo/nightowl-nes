@@ -86,6 +86,14 @@ export class ApuMixer {
     this.lpf = new LowPassFilter(sampleRate, 14000);
   }
 
+  /** フィルタ状態をリセット (ROM ロード・リセット時に呼ぶ) */
+  reset(sampleRate: number): void {
+    this.hpf1 = new HighPassFilter(sampleRate, 37);
+    this.hpf2 = new HighPassFilter(sampleRate, 90);
+    this.hpf3 = new HighPassFilter(sampleRate, 440);
+    this.lpf = new LowPassFilter(sampleRate, 14000);
+  }
+
   /** 5 チャンネルの出力からフィルタ済みサンプルを返す */
   process(pulse1: number, pulse2: number, tri: number, noise: number, dmc: number): number {
     const pulseOut = PULSE_TABLE[pulse1 + pulse2] ?? 0;
