@@ -64,6 +64,10 @@ export interface Mapper {
   readRegister?(addr: number): number;
   /** $4018-$5FFF のレジスタ書き込み (Namco 163 等の拡張レジスタ用) */
   writeRegister?(addr: number, value: number): void;
+  /** NT 読み出しのカスタム処理。undefined を返すと PPU の通常処理に委譲 */
+  readNametable?(addr: number): number | undefined;
+  /** NT 書き込みのカスタム処理。true を返すと書き込みを mapper が処理済み (PPU は書き込まない) */
+  writeNametable?(addr: number, value: number): boolean;
 }
 
 export function createMapper(cart: Cart): Mapper {
