@@ -170,7 +170,7 @@ describe("MapperMmc5", () => {
       expect(m.readChr(0x0c00)).toBe(cart.chrRom[40 * 0x400]!);
     });
 
-    it("モード 3: 背景用バンクが $1000-$1FFF に反映される", () => {
+    it("モード 3: 背景用バンクが全 8 slots に反映される (4 レジスタがミラー)", () => {
       const cart = makeCart({ chrSize: 0x40000 });
       const m = new MapperMmc5(cart);
       m.writeRegister!(0x5101, 3); // モード 3
@@ -181,7 +181,13 @@ describe("MapperMmc5", () => {
       m.writeRegister!(0x512a, 70);
       m.writeRegister!(0x512b, 80);
 
-      // lastChrWrite が "bg" なので $1000-$1FFF に反映
+      // lastChrWrite が "bg" なので全 8 slots に BG バンクがミラーされる
+      // $0000-$0FFF も BG バンクを使う
+      expect(m.readChr(0x0000)).toBe(cart.chrRom[50 * 0x400]!);
+      expect(m.readChr(0x0400)).toBe(cart.chrRom[60 * 0x400]!);
+      expect(m.readChr(0x0800)).toBe(cart.chrRom[70 * 0x400]!);
+      expect(m.readChr(0x0c00)).toBe(cart.chrRom[80 * 0x400]!);
+      // $1000-$1FFF
       expect(m.readChr(0x1000)).toBe(cart.chrRom[50 * 0x400]!);
       expect(m.readChr(0x1400)).toBe(cart.chrRom[60 * 0x400]!);
       expect(m.readChr(0x1800)).toBe(cart.chrRom[70 * 0x400]!);
@@ -296,9 +302,6 @@ describe("MapperMmc5", () => {
       m.writeRegister!(0x5203, 10); // IRQ target = 10
       m.writeRegister!(0x5204, 0x80); // IRQ 有効
 
-      // in-frame にする (onChrRead で $1000 台を読む)
-      m.onChrRead!(0x1000);
-
       // 10 回 clockIrqCounter を呼ぶ
       for (let i = 0; i < 9; i++) {
         m.clockIrqCounter();
@@ -313,7 +316,6 @@ describe("MapperMmc5", () => {
       m.writeRegister!(0x5203, 5);
       // IRQ 無効 (デフォルト)
 
-      m.onChrRead!(0x1000);
       for (let i = 0; i < 10; i++) {
         m.clockIrqCounter();
       }
@@ -325,13 +327,32 @@ describe("MapperMmc5", () => {
       m.writeRegister!(0x5203, 1);
       m.writeRegister!(0x5204, 0x80);
 
-      m.onChrRead!(0x1000);
       m.clockIrqCounter();
       expect(m.irqPending).toBe(true);
 
       const status = m.readRegister!(0x5204);
       expect(status & 0x80).toBe(0x80); // pending ビット
       expect(m.irqPending).toBe(false); // クリア済み
+    });
+
+    it("240 scanline でカウンタがリセットされる", () => {
+      const m = new MapperMmc5(makeCart());
+      m.writeRegister!(0x5203, 100); // target = 100
+      m.writeRegister!(0x5204, 0x80);
+
+      // 240 scanline 分 clock
+      for (let i = 0; i < 240; i++) {
+        m.clockIrqCounter();
+      }
+      expect(m.irqPending).toBe(true); // scanline 100 で fire 済み
+
+      m.irqPending = false;
+
+      // フレーム 2 — カウンタはリセット済みなので再び target=100 で fire
+      for (let i = 0; i < 100; i++) {
+        m.clockIrqCounter();
+      }
+      expect(m.irqPending).toBe(true); // フレーム 2 でも正しく fire
     });
   });
 

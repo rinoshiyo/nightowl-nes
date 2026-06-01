@@ -17,6 +17,8 @@
 
 import type { Cart } from "../cart.ts";
 import type { Mapper } from "./mapper.ts";
+import { LENGTH_TABLE } from "../apu-length.ts";
+import { DUTY_TABLE } from "../apu-pulse.ts";
 
 const PRG_BANK_SIZE_8K = 0x2000;
 const CHR_BANK_SIZE_1K = 0x0400;
@@ -26,13 +28,8 @@ const EXRAM_SIZE = 0x0400;    // 1KB
 /** MMC5 pulse 音源の正規化定数 */
 const PULSE_OUTPUT_SCALE = 0.12 / 30; // 2ch × max vol 15
 
-/** pulse のデューティサイクル波形テーブル (NES APU と同じ) */
-const DUTY_TABLE: readonly (readonly number[])[] = [
-  [0, 0, 0, 0, 0, 0, 0, 1],
-  [0, 0, 0, 0, 0, 0, 1, 1],
-  [0, 0, 0, 0, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 0, 0],
-];
+/** エンベロープ分周期 (240Hz, CPU 1.789773MHz / 240 ≈ 7457) */
+const ENVELOPE_PERIOD = 7457;
 
 export class MapperMmc5 implements Mapper {
   irqPending = false;
@@ -70,6 +67,7 @@ export class MapperMmc5 implements Mapper {
   private ntMapping = 0;            // $5105: ネームテーブルマッピング
   private fillTile = 0;             // $5106: fill モードタイル
   private fillAttr = 0;             // $5107: fill モード属性
+  private fillAttrByte = 0;         // $5107 から計算済みの属性バイト
 
   // --- IRQ ---
   private irqTarget = 0;            // $5203: IRQ 比較値
@@ -97,6 +95,7 @@ export class MapperMmc5 implements Mapper {
   private readonly pulseEnvelopeDecay = [0, 0];
   private readonly pulseEnvelopeDivider = [0, 0];
   private readonly pulseHalt = [false, false];
+  private envelopeTickCounter = 0;
 
   constructor(cart: Cart) {
     this.prgRom = cart.prgRom;
@@ -191,6 +190,7 @@ export class MapperMmc5 implements Mapper {
     this.ntMapping = 0;
     this.fillTile = 0;
     this.fillAttr = 0;
+    this.fillAttrByte = 0;
     this.irqTarget = 0;
     this.irqEnabled = false;
     this.irqScanlineCounter = 0;
@@ -216,19 +216,24 @@ export class MapperMmc5 implements Mapper {
       this.pulseEnvelopeDivider[i] = 0;
       this.pulseHalt[i] = false;
     }
+    this.envelopeTickCounter = 0;
   }
 
   mapperId(): number { return 5; }
 
   clockIrqCounter(): void {
-    // PPU が scanline ごとに呼ぶ
-    if (this.inFrame) {
-      this.irqScanlineCounter++;
-      if (this.irqScanlineCounter === this.irqTarget) {
-        if (this.irqEnabled) {
-          this.irqPending = true;
-        }
+    // PPU が scanline ごとに呼ぶ (dot 260)
+    this.irqScanlineCounter++;
+
+    if (this.irqScanlineCounter === this.irqTarget) {
+      if (this.irqEnabled) {
+        this.irqPending = true;
       }
+    }
+
+    // 可視フレーム (240 scanlines) 後にカウンタをリセット
+    if (this.irqScanlineCounter >= 240) {
+      this.irqScanlineCounter = 0;
     }
   }
 
@@ -241,6 +246,14 @@ export class MapperMmc5 implements Mapper {
         this.pulseTimer[ch] = this.pulsePeriod[ch]!;
         this.pulseSequencePos[ch] = (this.pulseSequencePos[ch]! + 1) & 7;
       }
+    }
+
+    // エンベロープ & 長さカウンタ tick (240Hz 相当)
+    this.envelopeTickCounter++;
+    if (this.envelopeTickCounter >= ENVELOPE_PERIOD) {
+      this.envelopeTickCounter = 0;
+      this.tickEnvelopes();
+      this.tickLengthCounters();
     }
   }
 
@@ -340,9 +353,12 @@ export class MapperMmc5 implements Mapper {
       case 0x5106:
         this.fillTile = value;
         break;
-      case 0x5107:
+      case 0x5107: {
         this.fillAttr = value & 3;
+        const a = this.fillAttr;
+        this.fillAttrByte = (a << 6) | (a << 4) | (a << 2) | a;
         break;
+      }
 
       // PRG バンク ($5113-$5117)
       case 0x5113:
@@ -421,7 +437,7 @@ export class MapperMmc5 implements Mapper {
         if (offset < 0x03c0) {
           return this.fillTile;
         }
-        return this.buildFillAttribute();
+        return this.fillAttrByte;
       default:
         return undefined;
     }
@@ -452,17 +468,7 @@ export class MapperMmc5 implements Mapper {
     return false;
   }
 
-  /** PPU の通知から in-frame 状態を管理 */
-  onChrRead(addr: number): void {
-    // MMC5 は PPU の CHR fetch パターンからスプライト/BG のフェッチを検出する
-    // 簡易実装: A12 の立ち上がりで scanline をカウント (MMC3 類似)
-    if (addr >= 0x1000 && addr < 0x2000) {
-      if (!this.inFrame) {
-        this.inFrame = true;
-        this.irqScanlineCounter = 0;
-      }
-    }
-  }
+  // onChrRead は不要 — IRQ は clockIrqCounter のみで駆動
 
   serializeMapper(): Record<string, unknown> {
     return {
@@ -479,6 +485,7 @@ export class MapperMmc5 implements Mapper {
       ntMapping: this.ntMapping,
       fillTile: this.fillTile,
       fillAttr: this.fillAttr,
+      fillAttrByte: this.fillAttrByte,
       irqTarget: this.irqTarget,
       irqEnabled: this.irqEnabled,
       irqScanlineCounter: this.irqScanlineCounter,
@@ -502,6 +509,7 @@ export class MapperMmc5 implements Mapper {
       pulseEnvelopeDecay: [...this.pulseEnvelopeDecay],
       pulseEnvelopeDivider: [...this.pulseEnvelopeDivider],
       pulseHalt: [...this.pulseHalt],
+      envelopeTickCounter: this.envelopeTickCounter,
     };
   }
 
@@ -525,6 +533,7 @@ export class MapperMmc5 implements Mapper {
     this.ntMapping = data["ntMapping"] as number;
     this.fillTile = data["fillTile"] as number;
     this.fillAttr = data["fillAttr"] as number;
+    this.fillAttrByte = (data["fillAttrByte"] as number | undefined) ?? 0;
     this.irqTarget = data["irqTarget"] as number;
     this.irqEnabled = data["irqEnabled"] as boolean;
     this.irqScanlineCounter = data["irqScanlineCounter"] as number;
@@ -554,6 +563,7 @@ export class MapperMmc5 implements Mapper {
       this.pulseEnvelopeDivider[i] = (data["pulseEnvelopeDivider"] as number[])?.[i] ?? 0;
       this.pulseHalt[i] = (data["pulseHalt"] as boolean[])?.[i] ?? false;
     }
+    this.envelopeTickCounter = (data["envelopeTickCounter"] as number | undefined) ?? 0;
   }
 
   // --- PRG バンク解決 ---
@@ -690,18 +700,15 @@ export class MapperMmc5 implements Mapper {
     const pair = slot1k >> 1;
     const sub = slot1k & 1;
     if (this.lastChrWrite === "bg") {
-      return (this.chrBanksBg[pair]! << 1) + sub;
+      return (this.chrBanksBg[pair & 3]! << 1) + sub;
     }
-    const spriteReg = pair < 4
-      ? this.chrBanksSprite[pair * 2 + 1]!
-      : this.chrBanksSprite[pair * 2 + 1]!;
-    return (spriteReg << 1) + sub;
+    return (this.chrBanksSprite[pair * 2 + 1]! << 1) + sub;
   }
 
   /** モード 3: 1KB×8 ($5120-$5127) */
   private resolveChrMode3(slot1k: number): number {
-    if (this.lastChrWrite === "bg" && slot1k >= 4) {
-      return this.chrBanksBg[slot1k - 4]!;
+    if (this.lastChrWrite === "bg") {
+      return this.chrBanksBg[slot1k & 3]!;
     }
     return this.chrBanksSprite[slot1k]!;
   }
@@ -720,13 +727,7 @@ export class MapperMmc5 implements Mapper {
     return this.prgRamProtect1 === 0x02 && this.prgRamProtect2 === 0x01;
   }
 
-  // --- fill mode 属性 ---
 
-  private buildFillAttribute(): number {
-    // fill mode では属性テーブル全体が同じ値
-    const a = this.fillAttr;
-    return (a << 6) | (a << 4) | (a << 2) | a;
-  }
 
   // --- pulse 音源レジスタ ---
 
@@ -758,12 +759,37 @@ export class MapperMmc5 implements Mapper {
         break;
     }
   }
-}
 
-/** NES APU 長さカウンタテーブル */
-const LENGTH_TABLE: readonly number[] = [
-  10, 254, 20, 2, 40, 4, 80, 6,
-  160, 8, 60, 10, 14, 12, 26, 14,
-  12, 16, 24, 18, 48, 20, 96, 22,
-  192, 24, 72, 26, 16, 28, 32, 30,
-];
+  // --- エンベロープ tick ---
+
+  private tickEnvelopes(): void {
+    for (let ch = 0; ch < 2; ch++) {
+      if (this.pulseEnvelopeStart[ch]) {
+        this.pulseEnvelopeStart[ch] = false;
+        this.pulseEnvelopeDecay[ch] = 15;
+        this.pulseEnvelopeCounter[ch] = this.pulseEnvelopeDivider[ch]!;
+      } else {
+        if (this.pulseEnvelopeCounter[ch]! > 0) {
+          this.pulseEnvelopeCounter[ch]!--;
+        } else {
+          this.pulseEnvelopeCounter[ch] = this.pulseEnvelopeDivider[ch]!;
+          if (this.pulseEnvelopeDecay[ch]! > 0) {
+            this.pulseEnvelopeDecay[ch]!--;
+          } else if (this.pulseHalt[ch]) {
+            this.pulseEnvelopeDecay[ch] = 15;
+          }
+        }
+      }
+    }
+  }
+
+  // --- 長さカウンタ tick ---
+
+  private tickLengthCounters(): void {
+    for (let ch = 0; ch < 2; ch++) {
+      if (!this.pulseHalt[ch] && this.pulseLengthCounter[ch]! > 0) {
+        this.pulseLengthCounter[ch]!--;
+      }
+    }
+  }
+}
