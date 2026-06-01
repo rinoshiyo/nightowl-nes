@@ -167,16 +167,16 @@ describe("MapperAxrom reset", () => {
 });
 
 describe("MapperAxrom PRG RAM / IRQ", () => {
-  it("PRG RAM は無効 (常に 0 を返す)", () => {
+  it("PRG RAM 読み書き可能", () => {
     const mapper = new MapperAxrom(makeAxromCart(4));
     expect(mapper.readPrgRam(0x6000)).toBe(0);
     mapper.writePrgRam(0x6000, 0xff);
-    expect(mapper.readPrgRam(0x6000)).toBe(0);
+    expect(mapper.readPrgRam(0x6000)).toBe(0xff);
   });
 
-  it("getPrgRam は null を返す", () => {
+  it("getPrgRam は Uint8Array を返す", () => {
     const mapper = new MapperAxrom(makeAxromCart(4));
-    expect(mapper.getPrgRam()).toBeNull();
+    expect(mapper.getPrgRam()).not.toBeNull();
   });
 
   it("IRQ は常に false", () => {
