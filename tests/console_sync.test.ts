@@ -99,6 +99,22 @@ describe("NesConsole CPU-PPU 同期", () => {
     expect(nes.cpu.nmiPending).toBe(true);
   });
 
+  it("mapper.onMirroringChange → PPU mirroring に反映される", () => {
+    const cart = makeTestCart();
+    const nes = new NesConsole(cart);
+    expect(nes.ppu.mirroring).toBe("vertical"); // 初期値
+
+    // mapper 経由で mirroring 変更を通知
+    nes.mapper.onMirroringChange!("horizontal");
+    expect(nes.ppu.mirroring).toBe("horizontal");
+
+    nes.mapper.onMirroringChange!("single-lower");
+    expect(nes.ppu.mirroring).toBe("single-lower");
+
+    nes.mapper.onMirroringChange!("single-upper");
+    expect(nes.ppu.mirroring).toBe("single-upper");
+  });
+
   it("stepFrame() で 1 フレーム分実行される", () => {
     const prgRom = new Uint8Array(0x8000);
     prgRom.fill(0xea);
