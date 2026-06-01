@@ -484,6 +484,26 @@ describe("PPU スプライト描画", () => {
       expect(ppu.status & 0x40).toBe(0x40);
     });
 
+    it("8×16 で垂直フリップ + 水平フリップ同時適用が正しく動作する", () => {
+      ppu.ctrl = 0x20;
+      // 上タイル=0x02: row0 のみ bit7 (左端ピクセル) セット
+      // 下タイル=0x03: 全行 0
+      setSprite(ppu, 0, 0, 0x02, 0xC0, 0); // V flip + H flip
+      ppu.palette[0x11] = 0x30;
+      writeTile(ppu, 0x02, 0, new Uint8Array([0x80, 0, 0, 0, 0, 0, 0, 0]), new Uint8Array(8));
+      writeTile(ppu, 0x03, 0, new Uint8Array(8), new Uint8Array(8));
+
+      // V flip: row=0 → fineY=15 → tileOffset=1 → 下タイル(0x03, 全透明)
+      tickTo(ppu, 2, 0);
+      expect(ppu.framebuffer[ROW1]).toBe(0x0f);
+
+      // V flip: row=15 → fineY=0 → tileOffset=0 → 上タイル(0x02) row0=0x80
+      // H flip: bit7 → x=7
+      tickTo(ppu, 17, 0);
+      expect(ppu.framebuffer[SCREEN_W * 16]).toBe(0x0f);
+      expect(ppu.framebuffer[SCREEN_W * 16 + 7]).toBe(0x30);
+    });
+
     it("8×16 モードで row=16 はスプライト範囲外", () => {
       ppu.ctrl = 0x20;
       setSprite(ppu, 0, 0, 0x02, 0, 0);
