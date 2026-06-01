@@ -519,6 +519,29 @@ describe("PPU スプライト描画", () => {
     });
   });
 
+  describe("8×8 / 8×16 モード切替", () => {
+    it("PPUCTRL bit5=0 (8×8) では row=8 以降にスプライトが表示されない", () => {
+      ppu.ctrl = 0x00;
+      setSprite(ppu, 0, 0, 1, 0, 0);
+      ppu.palette[0x11] = 0x30;
+      writeTile(ppu, 1, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      tickTo(ppu, 10, 0);
+      expect(ppu.framebuffer[SCREEN_W * 9]).toBe(0x0f);
+    });
+
+    it("PPUCTRL bit5=1 (8×16) では row=8 以降にもスプライトが表示される", () => {
+      ppu.ctrl = 0x20;
+      setSprite(ppu, 0, 0, 0x02, 0, 0);
+      ppu.palette[0x11] = 0x30;
+      writeTile(ppu, 0x02, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+      writeTile(ppu, 0x03, 0, new Uint8Array(8).fill(0xff), new Uint8Array(8));
+
+      tickTo(ppu, 10, 0);
+      expect(ppu.framebuffer[SCREEN_W * 9]).toBe(0x30);
+    });
+  });
+
   describe("PPUMASK 制御", () => {
     it("PPUMASK bit4=0 のときスプライトは描画されない", () => {
       ppu.mask = 0x08;
