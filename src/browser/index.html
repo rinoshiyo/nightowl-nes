@@ -63,6 +63,22 @@
       display: none;
     }
     #delete-save:hover { background: #ff6e6e; }
+    .keybinds {
+      margin-top: 1rem;
+      display: flex;
+      gap: 2rem;
+      font-size: 0.7rem;
+      color: #6272a4;
+    }
+    .keybinds table { border-collapse: collapse; }
+    .keybinds th { color: #8be9fd; text-align: left; padding: 0.1rem 0.4rem; }
+    .keybinds td { padding: 0.1rem 0.4rem; }
+    .keybinds kbd {
+      background: #44475a;
+      padding: 0 0.3rem;
+      border-radius: 2px;
+      color: #f8f8f2;
+    }
   </style>
 </head>
 <body>
@@ -74,6 +90,20 @@
   </div>
   <div id="status">ROM を読み込んでください</div>
   <div id="save-info"><button id="delete-save">セーブ削除</button></div>
+  <div class="keybinds">
+    <table>
+      <tr><th colspan="2">1P</th></tr>
+      <tr><td>方向</td><td><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></td></tr>
+      <tr><td>A / B</td><td><kbd>Z</kbd><kbd>X</kbd></td></tr>
+      <tr><td>Start / Select</td><td><kbd>Enter</kbd><kbd>Shift</kbd></td></tr>
+    </table>
+    <table>
+      <tr><th colspan="2">2P</th></tr>
+      <tr><td>方向</td><td><kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd></td></tr>
+      <tr><td>A / B</td><td><kbd>J</kbd><kbd>K</kbd></td></tr>
+      <tr><td>Start / Select</td><td><kbd>T</kbd><kbd>G</kbd></td></tr>
+    </table>
+  </div>
   <script type="module" src="./main.ts"></script>
 </body>
 </html>

@@ -98,7 +98,7 @@ romInput.addEventListener("change", () => {
   });
 });
 
-const KEY_MAP: ReadonlyMap<string, Button> = new Map([
+const KEY_MAP_1P: ReadonlyMap<string, Button> = new Map([
   ["arrowup", Button.Up],
   ["arrowdown", Button.Down],
   ["arrowleft", Button.Left],
@@ -109,19 +109,46 @@ const KEY_MAP: ReadonlyMap<string, Button> = new Map([
   ["shift", Button.Select],
 ]);
 
+const KEY_MAP_2P: ReadonlyMap<string, Button> = new Map([
+  ["w", Button.Up],
+  ["s", Button.Down],
+  ["a", Button.Left],
+  ["d", Button.Right],
+  ["j", Button.A],
+  ["k", Button.B],
+  ["t", Button.Start],
+  ["g", Button.Select],
+]);
+
 document.addEventListener("keydown", (e) => {
-  const btn = KEY_MAP.get(e.key.toLowerCase());
-  if (btn !== undefined && nes) {
+  if (!nes) return;
+  const key = e.key.toLowerCase();
+  const btn1 = KEY_MAP_1P.get(key);
+  if (btn1 !== undefined) {
     e.preventDefault();
-    nes.controller1.press(btn);
+    nes.controller1.press(btn1);
+    return;
+  }
+  const btn2 = KEY_MAP_2P.get(key);
+  if (btn2 !== undefined) {
+    e.preventDefault();
+    nes.controller2.press(btn2);
   }
 });
 
 document.addEventListener("keyup", (e) => {
-  const btn = KEY_MAP.get(e.key.toLowerCase());
-  if (btn !== undefined && nes) {
+  if (!nes) return;
+  const key = e.key.toLowerCase();
+  const btn1 = KEY_MAP_1P.get(key);
+  if (btn1 !== undefined) {
     e.preventDefault();
-    nes.controller1.release(btn);
+    nes.controller1.release(btn1);
+    return;
+  }
+  const btn2 = KEY_MAP_2P.get(key);
+  if (btn2 !== undefined) {
+    e.preventDefault();
+    nes.controller2.release(btn2);
   }
 });
 
