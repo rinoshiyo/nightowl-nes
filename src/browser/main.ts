@@ -4,7 +4,7 @@ import { NesConsole } from "../core/console.ts";
 import { Button } from "../core/controller.ts";
 import { NesAudio } from "./audio.ts";
 import { Renderer } from "./renderer.ts";
-import { computeRomHash, loadPrgRam, savePrgRam } from "./save-manager.ts";
+import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData, deleteSaveData } from "./save-manager.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -15,6 +15,8 @@ function getEl<T extends HTMLElement>(id: string): T {
 const canvas = getEl<HTMLCanvasElement>("screen");
 const romInput = getEl<HTMLInputElement>("rom-input");
 const status = getEl<HTMLDivElement>("status");
+const saveInfo = getEl<HTMLDivElement>("save-info");
+const deleteBtn = getEl<HTMLButtonElement>("delete-save");
 
 const renderer = new Renderer(canvas);
 const audio = new NesAudio();
@@ -27,6 +29,22 @@ const FRAME_MS = 1000 / 60;
 let lastFrameTime = 0;
 const SAVE_INTERVAL_MS = 5000;
 let lastSaveTime = 0;
+
+function updateSaveUi(): void {
+  if (!currentRomHash || !currentCart?.header.hasBattery) {
+    saveInfo.textContent = "";
+    deleteBtn.style.display = "none";
+    return;
+  }
+  if (hasSaveData(currentRomHash)) {
+    saveInfo.textContent = "💾 セーブデータあり ";
+    saveInfo.appendChild(deleteBtn);
+    deleteBtn.style.display = "inline";
+  } else {
+    saveInfo.textContent = "";
+    deleteBtn.style.display = "none";
+  }
+}
 
 function flushSave(): void {
   if (!nes || !currentRomHash || !currentCart?.header.hasBattery) return;
@@ -57,6 +75,7 @@ romInput.addEventListener("change", () => {
             status.textContent += " [SAVE LOADED]";
           }
         }
+        updateSaveUi();
       });
 
       let statusText = `${file.name} (PRG: ${cart.header.prgRomSize / 1024}KB, CHR: ${cart.header.chrRomSize / 1024}KB, Mapper: ${cart.header.mapper})`;
@@ -134,3 +153,10 @@ function gameLoop(timestamp: number): void {
 }
 
 window.addEventListener("beforeunload", flushSave);
+
+deleteBtn.addEventListener("click", () => {
+  if (!currentRomHash) return;
+  if (!confirm("セーブデータを削除しますか？")) return;
+  deleteSaveData(currentRomHash);
+  updateSaveUi();
+});
