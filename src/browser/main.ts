@@ -6,6 +6,7 @@ import { Renderer } from "./renderer.ts";
 import { computeRomHash, loadPrgRam, savePrgRam, hasSaveData, deleteSaveData } from "./save-manager.ts";
 import { formatErrorMessage } from "./error-messages.ts";
 import { applyGamepadState } from "./gamepad.ts";
+import { isNesFile } from "./drag-drop.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -138,7 +139,7 @@ document.addEventListener("drop", (e) => {
   dropOverlay.classList.remove("visible");
   const file = e.dataTransfer?.files[0];
   if (!file) return;
-  if (!file.name.toLowerCase().endsWith(".nes")) {
+  if (!isNesFile(file.name)) {
     showError(new Error(".nes ファイルのみ対応しています"));
     return;
   }
