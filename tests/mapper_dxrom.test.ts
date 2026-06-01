@@ -176,11 +176,56 @@ describe("MapperDxrom CHR RAM mode", () => {
   });
 });
 
+describe("MapperDxrom bankSelect 連続操作", () => {
+  it("bankSelect を変えずに bankData を複数回書くと最後の値が有効", () => {
+    const mapper = new MapperDxrom(makeDxromCart(8, 32));
+    mapper.writePrg(0x8000, 6);
+    mapper.writePrg(0x8001, 2);
+    mapper.writePrg(0x8001, 5);
+    expect(mapper.readPrg(0x8000)).toBe(5);
+  });
+
+  it("R6 と R7 を独立に設定できる", () => {
+    const mapper = new MapperDxrom(makeDxromCart(8, 32));
+    mapper.writePrg(0x8000, 6);
+    mapper.writePrg(0x8001, 2);
+    mapper.writePrg(0x8000, 7);
+    mapper.writePrg(0x8001, 4);
+    expect(mapper.readPrg(0x8000)).toBe(2);
+    expect(mapper.readPrg(0xa000)).toBe(4);
+  });
+
+  it("PRG バンク値はバンク数を超える値でラップする", () => {
+    const mapper = new MapperDxrom(makeDxromCart(4, 32));
+    mapper.writePrg(0x8000, 6);
+    mapper.writePrg(0x8001, 5);
+    expect(mapper.readPrg(0x8000)).toBe(1);
+  });
+});
+
 describe("MapperDxrom IRQ は非対応", () => {
   it("irqPending は常に false", () => {
     const mapper = new MapperDxrom(makeDxromCart(8, 32));
     mapper.clockIrqCounter();
     expect(mapper.irqPending).toBe(false);
+  });
+});
+
+describe("MapperDxrom PRG RAM", () => {
+  it("PRG RAM ($6000-$7FFF) に読み書きできる", () => {
+    const mapper = new MapperDxrom(makeDxromCart(8, 32));
+    mapper.writePrgRam(0x6000, 0x42);
+    expect(mapper.readPrgRam(0x6000)).toBe(0x42);
+    mapper.writePrgRam(0x7fff, 0xab);
+    expect(mapper.readPrgRam(0x7fff)).toBe(0xab);
+  });
+
+  it("getPrgRam で PRG RAM バッファを取得できる", () => {
+    const mapper = new MapperDxrom(makeDxromCart(8, 32));
+    mapper.writePrgRam(0x6000, 0x42);
+    const ram = mapper.getPrgRam();
+    expect(ram).not.toBeNull();
+    expect(ram![0]).toBe(0x42);
   });
 });
 
