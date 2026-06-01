@@ -233,6 +233,23 @@ def(0x40, {
   },
 });
 
+def(0x00, {
+  name: "BRK",
+  mode: implied,
+  cycles: 7,
+  exec: (cpu, bus) => {
+    // BRK は 2 バイト命令扱い: PC は既に opcode の次を指しているが、さらに +1 して push
+    const retAddr = (cpu.pc + 1) & 0xffff;
+    push16(cpu, bus, retAddr);
+    push8(cpu, bus, cpu.p | CpuFlags.B | 0x20);
+    cpu.p = setFlag(cpu.p, CpuFlags.I);
+    const lo = bus.read(0xfffe);
+    const hi = bus.read(0xffff);
+    cpu.pc = (hi << 8) | lo;
+    return 0;
+  },
+});
+
 // ---- ロード / ストア ----
 def(0xa2, {
   name: "LDX",
@@ -1424,7 +1441,9 @@ for (const op of [0x1a, 0x3a, 0x5a, 0x7a, 0xda, 0xfa]) {
 }
 
 // immediate NOP (2 byte, 2 cycle)
-def(0x80, { name: "*NOP", mode: immediate, cycles: 2, exec: () => 0 });
+for (const op of [0x80, 0x82, 0x89, 0xc2, 0xe2]) {
+  def(op, { name: "*NOP", mode: immediate, cycles: 2, exec: () => 0 });
+}
 
 // zeroPage NOP (2 byte, 3 cycle)
 for (const op of [0x04, 0x44, 0x64]) {
@@ -1596,3 +1615,187 @@ def(0x73, { name: "*RRA", mode: indirectIndexed, cycles: 8, exec: execRra });
 def(0x77, { name: "*RRA", mode: zeroPageX, cycles: 6, exec: execRra });
 def(0x7b, { name: "*RRA", mode: absoluteY, cycles: 7, exec: execRra });
 def(0x7f, { name: "*RRA", mode: absoluteX, cycles: 7, exec: execRra });
+
+// ---- illegal SHY/SHX (unstable store) ----
+// SHY ($9C abs,X): Y AND (addr_hi+1) → memory
+def(0x9c, {
+  name: "*SHY",
+  mode: absoluteX,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    const hi = (op.addr >> 8) & 0xff;
+    const val = cpu.y & ((hi) + 1) & 0xff;
+    if (op.pageCrossed) {
+      bus.write((val << 8) | (op.addr & 0xff), val);
+    } else {
+      bus.write(op.addr, val);
+    }
+    return 0;
+  },
+});
+// SHX ($9E abs,Y): X AND (addr_hi+1) → memory
+def(0x9e, {
+  name: "*SHX",
+  mode: absoluteY,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    const hi = (op.addr >> 8) & 0xff;
+    const val = cpu.x & ((hi) + 1) & 0xff;
+    if (op.pageCrossed) {
+      bus.write((val << 8) | (op.addr & 0xff), val);
+    } else {
+      bus.write(op.addr, val);
+    }
+    return 0;
+  },
+});
+
+// ---- illegal AHX/SHA ($93 ind,Y; $9F abs,Y): A AND X AND (H+1) ----
+def(0x93, {
+  name: "*AHX",
+  mode: indirectIndexed,
+  cycles: 6,
+  exec: (cpu, bus, op) => {
+    const hi = (op.addr >> 8) & 0xff;
+    const val = cpu.a & cpu.x & ((hi) + 1) & 0xff;
+    bus.write(op.addr, val);
+    return 0;
+  },
+});
+def(0x9f, {
+  name: "*AHX",
+  mode: absoluteY,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    const hi = (op.addr >> 8) & 0xff;
+    const val = cpu.a & cpu.x & ((hi) + 1) & 0xff;
+    if (op.pageCrossed) {
+      bus.write((val << 8) | (op.addr & 0xff), val);
+    } else {
+      bus.write(op.addr, val);
+    }
+    return 0;
+  },
+});
+
+// ---- illegal TAS ($9B abs,Y): SP = A AND X, then store SP AND (H+1) ----
+def(0x9b, {
+  name: "*TAS",
+  mode: absoluteY,
+  cycles: 5,
+  exec: (cpu, bus, op) => {
+    cpu.sp = cpu.a & cpu.x;
+    const hi = (op.addr >> 8) & 0xff;
+    const val = cpu.sp & ((hi) + 1) & 0xff;
+    if (op.pageCrossed) {
+      bus.write((val << 8) | (op.addr & 0xff), val);
+    } else {
+      bus.write(op.addr, val);
+    }
+    return 0;
+  },
+});
+
+// ---- illegal LAS ($BB abs,Y): A = X = SP = M AND SP ----
+def(0xbb, {
+  name: "*LAS",
+  mode: absoluteY,
+  cycles: 4,
+  exec: (cpu, bus, op) => {
+    const val = bus.read(op.addr) & cpu.sp;
+    cpu.a = val;
+    cpu.x = val;
+    cpu.sp = val;
+    setZeroNeg(cpu, val);
+    return op.pageCrossed ? 1 : 0;
+  },
+});
+
+// ---- illegal AXS/SBX ($CB imm): X = (A AND X) - imm (no borrow) ----
+def(0xcb, {
+  name: "*AXS",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    const val = bus.read(op.addr);
+    const tmp = (cpu.a & cpu.x) - val;
+    cpu.x = tmp & 0xff;
+    cpu.p = tmp >= 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+    setZeroNeg(cpu, cpu.x);
+    return 0;
+  },
+});
+
+// ---- illegal ANE/XAA ($8B imm): A = (A OR magic) AND X AND imm ----
+def(0x8b, {
+  name: "*ANE",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    const val = (cpu.a | 0xee) & cpu.x & bus.read(op.addr);
+    cpu.a = val & 0xff;
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+
+// ---- illegal LXA/LAX imm ($AB imm): A = X = (A OR magic) AND imm ----
+def(0xab, {
+  name: "*LXA",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    const val = (cpu.a | 0xff) & bus.read(op.addr);
+    cpu.a = val & 0xff;
+    cpu.x = val & 0xff;
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+
+// ---- illegal ANC ($0B/$2B imm): AND imm, then C = bit 7 of result ----
+for (const op of [0x0b, 0x2b]) {
+  def(op, {
+    name: "*ANC",
+    mode: immediate,
+    cycles: 2,
+    exec: (cpu, bus, o) => {
+      cpu.a = cpu.a & bus.read(o.addr);
+      setZeroNeg(cpu, cpu.a);
+      cpu.p = (cpu.a & 0x80) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+      return 0;
+    },
+  });
+}
+
+// ---- illegal ALR ($4B imm): AND imm, then LSR A ----
+def(0x4b, {
+  name: "*ALR",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    cpu.p = (cpu.a & 0x01) !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+    cpu.a = (cpu.a >> 1) & 0xff;
+    setZeroNeg(cpu, cpu.a);
+    return 0;
+  },
+});
+
+// ---- illegal ARR ($6B imm): AND imm, then ROR, special C/V ----
+def(0x6b, {
+  name: "*ARR",
+  mode: immediate,
+  cycles: 2,
+  exec: (cpu, bus, op) => {
+    cpu.a = cpu.a & bus.read(op.addr);
+    const c = hasFlag(cpu.p, CpuFlags.C) ? 1 : 0;
+    cpu.a = ((cpu.a >> 1) | (c << 7)) & 0xff;
+    setZeroNeg(cpu, cpu.a);
+    const bit6 = (cpu.a >> 6) & 1;
+    const bit5 = (cpu.a >> 5) & 1;
+    cpu.p = bit6 !== 0 ? setFlag(cpu.p, CpuFlags.C) : clearFlag(cpu.p, CpuFlags.C);
+    cpu.p = (bit6 ^ bit5) !== 0 ? setFlag(cpu.p, CpuFlags.V) : clearFlag(cpu.p, CpuFlags.V);
+    return 0;
+  },
+});
