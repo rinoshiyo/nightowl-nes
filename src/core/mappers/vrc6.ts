@@ -64,6 +64,15 @@ export class MapperVrc6 implements Mapper {
   /** PRG RAM write enable (bit 6) */
   private prgRamWriteEnabled = false;
 
+  /**
+   * CHR バンキングモード ($B003 bits 0-1)。
+   * 0: 1KB×8
+   * 1: 2KB(R0,R2) + 1KB(R4-R7)
+   * 2: 1KB(R0-R3) + 2KB(R4,R6)
+   * 3: 2KB×4
+   */
+  private chrBankMode = 0;
+
   // --- IRQ ---
   /** IRQ latch 値 */
   private irqLatch = 0;
@@ -218,6 +227,7 @@ export class MapperVrc6 implements Mapper {
       case 0xb003:
         this.prgRamEnabled = (value & 0x80) !== 0;
         this.prgRamWriteEnabled = (value & 0x40) !== 0;
+        this.chrBankMode = value & 0x03;
         this.updateMirroring(value);
         break;
 
@@ -258,9 +268,60 @@ export class MapperVrc6 implements Mapper {
       return this.chrData[addr & 0x1fff] ?? 0;
     }
 
+    const bank = this.resolveChrBank(addr);
+    const bankSize = this.getChrBankSize(addr);
+
+    if (bankSize === CHR_BANK_1K) {
+      const b = bank % this.chrBankCount;
+      return this.chrData[b * CHR_BANK_1K + (addr & 0x03ff)] ?? 0;
+    }
+    // 2KB バンク: bank 値を 2KB 単位で解釈
+    const bankCount2k = Math.max(1, this.chrBankCount >> 1);
+    const b = (bank >> 1) % bankCount2k;
+    return this.chrData[b * 0x0800 + (addr & 0x07ff)] ?? 0;
+  }
+
+  /** アドレスに対応する CHR バンクサイズを返す */
+  private getChrBankSize(addr: number): number {
+    switch (this.chrBankMode) {
+      case 0: return CHR_BANK_1K;
+      case 1: return addr < 0x1000 ? 0x0800 : CHR_BANK_1K;
+      case 2: return addr < 0x1000 ? CHR_BANK_1K : 0x0800;
+      case 3: return 0x0800;
+      default: return CHR_BANK_1K;
+    }
+  }
+
+  /** アドレスに対応する CHR バンクレジスタ値を返す */
+  private resolveChrBank(addr: number): number {
     const slot = (addr >> 10) & 7;
-    const bank = (this.chrBanks[slot] ?? 0) % this.chrBankCount;
-    return this.chrData[bank * CHR_BANK_1K + (addr & 0x03ff)] ?? 0;
+
+    switch (this.chrBankMode) {
+      case 0:
+        return this.chrBanks[slot] ?? 0;
+      case 1:
+        // $0000-$0FFF: 2KB (R0, R2)、$1000-$1FFF: 1KB (R4-R7)
+        if (addr < 0x1000) {
+          const reg = (slot & 2) === 0 ? 0 : 2;
+          return this.chrBanks[reg] ?? 0;
+        }
+        return this.chrBanks[slot] ?? 0;
+      case 2:
+        // $0000-$0FFF: 1KB (R0-R3)、$1000-$1FFF: 2KB (R4, R6)
+        if (addr >= 0x1000) {
+          const reg = (slot & 2) === 0 ? 4 : 6;
+          return this.chrBanks[reg] ?? 0;
+        }
+        return this.chrBanks[slot] ?? 0;
+      case 3:
+        // 2KB×4: R0, R2, R4, R6
+        {
+          const reg = slot & 6;
+          return this.chrBanks[reg] ?? 0;
+        }
+      default:
+        return this.chrBanks[slot] ?? 0;
+    }
   }
 
   writeChr(addr: number, value: number): void {
@@ -294,6 +355,7 @@ export class MapperVrc6 implements Mapper {
     this.chrBanks.fill(0);
     this.prgRamEnabled = false;
     this.prgRamWriteEnabled = false;
+    this.chrBankMode = 0;
     this.irqLatch = 0;
     this.irqCounter = 0;
     this.irqEnabled = false;
@@ -476,6 +538,7 @@ export class MapperVrc6 implements Mapper {
       chrBanks: Array.from(this.chrBanks),
       prgRamEnabled: this.prgRamEnabled,
       prgRamWriteEnabled: this.prgRamWriteEnabled,
+      chrBankMode: this.chrBankMode,
       irqLatch: this.irqLatch,
       irqCounter: this.irqCounter,
       irqEnabled: this.irqEnabled,
@@ -516,6 +579,7 @@ export class MapperVrc6 implements Mapper {
     if (Array.isArray(data["chrBanks"])) this.chrBanks.set(data["chrBanks"] as number[]);
     this.prgRamEnabled = data["prgRamEnabled"] as boolean;
     this.prgRamWriteEnabled = data["prgRamWriteEnabled"] as boolean;
+    this.chrBankMode = data["chrBankMode"] as number;
     this.irqLatch = data["irqLatch"] as number;
     this.irqCounter = data["irqCounter"] as number;
     this.irqEnabled = data["irqEnabled"] as boolean;

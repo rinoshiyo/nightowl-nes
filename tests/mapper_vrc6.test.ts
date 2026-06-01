@@ -122,6 +122,64 @@ describe("MapperVrc6", () => {
       expect(m.readChr(0x1c00)).toBe(cart.chrRom[40 * 0x0400]!);
     });
 
+    it("CHR bank mode 1: $0000-$0FFF は 2KB、$1000-$1FFF は 1KB", () => {
+      const cart = makeCart({ chrSize: 0x20000 });
+      const m = new MapperVrc6(cart, 24);
+
+      // $B003 bits 0-1 = 1
+      m.writePrg(0xb003, 0x01);
+
+      // R0 で $0000-$07FF を制御 (2KB)
+      m.writePrg(0xd000, 4); // R0 = 4
+      // 2KB バンク: bank = 4 >> 1 = 2 → offset = 2 * 0x0800
+      expect(m.readChr(0x0000)).toBe(cart.chrRom[2 * 0x0800]!);
+      expect(m.readChr(0x07ff)).toBe(cart.chrRom[2 * 0x0800 + 0x07ff]!);
+
+      // R2 で $0800-$0FFF を制御 (2KB)
+      m.writePrg(0xd002, 6); // R2 = 6
+      expect(m.readChr(0x0800)).toBe(cart.chrRom[3 * 0x0800]!);
+
+      // $1000-$1FFF は 1KB 単位 (R4-R7)
+      m.writePrg(0xe000, 10); // R4
+      expect(m.readChr(0x1000)).toBe(cart.chrRom[10 * 0x0400]!);
+    });
+
+    it("CHR bank mode 2: $0000-$0FFF は 1KB、$1000-$1FFF は 2KB", () => {
+      const cart = makeCart({ chrSize: 0x20000 });
+      const m = new MapperVrc6(cart, 24);
+
+      m.writePrg(0xb003, 0x02);
+
+      // $0000-$0FFF は 1KB 単位 (R0-R3)
+      m.writePrg(0xd000, 7);
+      expect(m.readChr(0x0000)).toBe(cart.chrRom[7 * 0x0400]!);
+
+      // R4 で $1000-$17FF を制御 (2KB)
+      m.writePrg(0xe000, 8); // R4 = 8
+      expect(m.readChr(0x1000)).toBe(cart.chrRom[4 * 0x0800]!);
+
+      // R6 で $1800-$1FFF を制御 (2KB)
+      m.writePrg(0xe002, 12); // R6 = 12
+      expect(m.readChr(0x1800)).toBe(cart.chrRom[6 * 0x0800]!);
+    });
+
+    it("CHR bank mode 3: 2KB×4 (R0, R2, R4, R6)", () => {
+      const cart = makeCart({ chrSize: 0x20000 });
+      const m = new MapperVrc6(cart, 24);
+
+      m.writePrg(0xb003, 0x03);
+
+      m.writePrg(0xd000, 2);  // R0 → $0000-$07FF
+      m.writePrg(0xd002, 4);  // R2 → $0800-$0FFF
+      m.writePrg(0xe000, 6);  // R4 → $1000-$17FF
+      m.writePrg(0xe002, 8);  // R6 → $1800-$1FFF
+
+      expect(m.readChr(0x0000)).toBe(cart.chrRom[1 * 0x0800]!);
+      expect(m.readChr(0x0800)).toBe(cart.chrRom[2 * 0x0800]!);
+      expect(m.readChr(0x1000)).toBe(cart.chrRom[3 * 0x0800]!);
+      expect(m.readChr(0x1800)).toBe(cart.chrRom[4 * 0x0800]!);
+    });
+
     it("CHR RAM モードでは flat アクセス", () => {
       const m = makeVrc6a({ chrSize: 0 });
       m.writeChr(0x0100, 0x42);
