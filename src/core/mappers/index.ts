@@ -6,3 +6,7 @@ export { MapperUxrom } from "./uxrom.ts";
 export { MapperCnrom } from "./cnrom.ts";
 export { MapperMmc3 } from "./mmc3.ts";
 export { MapperAxrom } from "./axrom.ts";
+export { MapperColorDreams } from "./color-dreams.ts";
+export { MapperGxrom } from "./gxrom.ts";
+export { MapperCodemasters } from "./codemasters.ts";
+export { MapperDxrom } from "./dxrom.ts";

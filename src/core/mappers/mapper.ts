@@ -13,6 +13,10 @@ import { MapperUxrom } from "./uxrom.ts";
 import { MapperCnrom } from "./cnrom.ts";
 import { MapperMmc3 } from "./mmc3.ts";
 import { MapperAxrom } from "./axrom.ts";
+import { MapperColorDreams } from "./color-dreams.ts";
+import { MapperGxrom } from "./gxrom.ts";
+import { MapperCodemasters } from "./codemasters.ts";
+import { MapperDxrom } from "./dxrom.ts";
 
 export interface Mapper {
   /** CPU アドレス空間 $8000-$FFFF の読み出し */
@@ -61,6 +65,14 @@ export function createMapper(cart: Cart): Mapper {
       return new MapperMmc3(cart);
     case 7:
       return new MapperAxrom(cart);
+    case 11:
+      return new MapperColorDreams(cart);
+    case 66:
+      return new MapperGxrom(cart);
+    case 71:
+      return new MapperCodemasters(cart);
+    case 206:
+      return new MapperDxrom(cart);
     default:
       throw new Error(`Unsupported mapper: ${cart.header.mapper}`);
   }
