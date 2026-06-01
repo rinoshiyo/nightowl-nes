@@ -251,6 +251,7 @@ function gameLoop(timestamp: number): void {
       renderer.render(nes.ppu.framebuffer);
     } catch (e) {
       showError(e);
+      audio.stop();
       running = false;
       return;
     }

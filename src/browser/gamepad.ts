@@ -38,20 +38,18 @@ export function applyGamepadState(gp: GamepadState, ctrl: ControllerActions): vo
   const axes0 = gp.axes[0] ?? 0;
   const axes1 = gp.axes[1] ?? 0;
 
-  if (axes0 < -DEADZONE) { ctrl.press(Button.Left); ctrl.release(Button.Right); }
-  else if (axes0 > DEADZONE) { ctrl.press(Button.Right); ctrl.release(Button.Left); }
-  else { ctrl.release(Button.Left); ctrl.release(Button.Right); }
-
-  if (axes1 < -DEADZONE) { ctrl.press(Button.Up); ctrl.release(Button.Down); }
-  else if (axes1 > DEADZONE) { ctrl.press(Button.Down); ctrl.release(Button.Up); }
-  else { ctrl.release(Button.Up); ctrl.release(Button.Down); }
-
   const dUp = gp.buttons[12]?.pressed ?? false;
   const dDown = gp.buttons[13]?.pressed ?? false;
   const dLeft = gp.buttons[14]?.pressed ?? false;
   const dRight = gp.buttons[15]?.pressed ?? false;
-  if (dUp) ctrl.press(Button.Up); else ctrl.release(Button.Up);
-  if (dDown) ctrl.press(Button.Down); else ctrl.release(Button.Down);
-  if (dLeft) ctrl.press(Button.Left); else ctrl.release(Button.Left);
-  if (dRight) ctrl.press(Button.Right); else ctrl.release(Button.Right);
+
+  const wantLeft = axes0 < -DEADZONE || dLeft;
+  const wantRight = axes0 > DEADZONE || dRight;
+  const wantUp = axes1 < -DEADZONE || dUp;
+  const wantDown = axes1 > DEADZONE || dDown;
+
+  if (wantLeft) ctrl.press(Button.Left); else ctrl.release(Button.Left);
+  if (wantRight) ctrl.press(Button.Right); else ctrl.release(Button.Right);
+  if (wantUp) ctrl.press(Button.Up); else ctrl.release(Button.Up);
+  if (wantDown) ctrl.press(Button.Down); else ctrl.release(Button.Down);
 }

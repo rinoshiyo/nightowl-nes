@@ -124,6 +124,20 @@ describe("applyGamepadState", () => {
     expect(ctrl.released.has(Button.Right)).toBe(true);
   });
 
+  it("アナログスティックと D-pad が OR 合成される (スティック左 + D-pad 中立 → Left press)", () => {
+    const ctrl = createTracker();
+    const gp = makeGamepad({ axes: [-0.8, 0, 0, 0] });
+    applyGamepadState(gp, ctrl);
+    expect(ctrl.pressed.has(Button.Left)).toBe(true);
+  });
+
+  it("D-pad とスティック両方で同方向を入力しても正しく press される", () => {
+    const ctrl = createTracker();
+    const gp = makeGamepad({ axes: [-0.8, 0, 0, 0], buttons: makeButtons([14]) });
+    applyGamepadState(gp, ctrl);
+    expect(ctrl.pressed.has(Button.Left)).toBe(true);
+  });
+
   it("何も押されていない時は全ボタン release", () => {
     const ctrl = createTracker();
     const gp = makeGamepad();
