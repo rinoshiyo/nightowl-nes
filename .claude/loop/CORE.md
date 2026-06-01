@@ -101,7 +101,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
    ```bash
    bash scripts/finish-night.sh [--night NNN]
    ```
-   スクリプトが以下を一括実行: auto-merge arm / 次フラグ書込 (pane スコープ、/goal 固定文言) / `🎯 GOAL CONDITION MET` 出力。連鎖停止時は `bash scripts/finish-night.sh STOP`
+   スクリプトが以下を一括実行: auto-merge arm / 次フラグ書込 (pane スコープ、/goal 動的文言 — Issue 有無で出し分け) / `🎯 GOAL CONDITION MET` 出力。連鎖停止時は `bash scripts/finish-night.sh STOP`
 3. turn を終える → helper が idle を見て `/clear` → 次ゴール投入
 
 ## 起動時の作法
