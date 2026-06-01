@@ -38,7 +38,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 | **レビュアー** | bot `rinoshiyo-bot-reviewer[bot]` | **`scripts/bot-review-post.sh`** (フォーマット強制。内部で `bot-comment.sh` を呼ぶ) | レビュー結果 (severity 付き)。 **指摘ゼロでも「✅ レビュー実施・指摘なし」を必ず1件投稿** (証跡) |
 | **裁定者 (石井代理)** | **石井本人** (`GH_TOKEN` なし通常認証) | `gh pr comment` 直 | triage 裁定・対応の記録 |
 
-- **なぜ分けるか**: レビュアー (bot) の指摘を受けてオーナー (石井=メイン) が「merge してよいか」を裁定する現実のレビュー構図を再現するため。 名義が同じだと朝石井が「指摘か裁定か」を区別できず PR-as-SSOT が機能しない
+- **なぜ分けるか**: レビュアー (bot) の指摘を受けてオーナー (石井=メイン) が「merge してよいか」を裁定する現実のレビュー構図を再現するため。 名義が同じだと朝石井が「指摘か裁定か」を区別できず delivery SSOT が機能しない
 - **bot 名義投稿は必ず `scripts/bot-comment.sh` 経由**。 生の `gh pr comment` / `gh api ... comments` を直接叩くと、 トークン適用漏れで石井名義に静かに fallback したり `gh pr comment` の `--jq` 非対応で投稿失敗する事故が起きる (ラッパーが構造的に防ぐ)。 `gh pr create` / `gh pr merge` / `gh pr ready` 等の write 操作には `GH_TOKEN` を付けない (bot は Contents read のみで失敗)。 鍵マウント未設定のマシンでは bot トークンが空になり、 ラッパーが fail-stop する (石井名義への fallback を許さない)。 **前提**: inline コメントの `head.sha` 取得は通常 gh 認証 (GH_TOKEN なし) で `pulls` を読めることに依存する (bot は Contents read のみで pulls 読取に権限不足)
 - **bot (レビュアー) コメントの声 = フレンドリー・励まし**: code-review の生出力をそのまま貼らず言い換える — ① まず良い点・労いに一言 (例「✨ 実装おつかれさまです！」) ② 各指摘は提案調 (「〜すると安心かも」) ③ 絵文字を程よく (✨🙏💪🤔) ④ **致命度は保ったまま角だけ取る** (STOP 級は柔らかくても「ここは直さないと merge できないかも」 と明確に)。 **Why: 石井は無駄を削いだ簡潔な物言いをするので、 bot の柔らかいレビューが「他人からレビューされている体感」を生む** — この違和感を仕組みで担保するのが狙い (memory `review-bot-identity` で確定)
 
@@ -86,7 +86,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
    | ✅ PASS | 設計の好み / 可読性 / リファクタ提案 / 将来夜への申し送り | 連鎖続行。 申し送りは次の夜 md に転記 |
 
 - **FIX 修正は grep で一網打尽**: 1 箇所直したら同じパターンを `grep` で全文スキャンし同種を同じ commit で潰す (同根の取りこぼしが次 round で再浮上し往復上限を無駄にするのを防ぐ)
-- **投稿フォーマットは再 round でも不変**: 指摘の投稿フォーマットは上記フロー 2c の通り (各指摘を inline で1点1コメント + issue comment はサマリ専用)。 **再 round (往復) でも degrade させず維持** — 往復で「issue サマリに指摘を箇条書きするだけ・inline 省略」は禁止 (PR-as-SSOT で指摘が該当行から辿れなくなる)。 inline の severity ラベルは finding 4段階に対応する `🛑critical / 🔴high / 🟠medium / 🟢low`。 ただし **severity と triage 区分 (STOP/FIX/PASS) は別軸** — 区分は severity でなく「何が起きるか」で振る (`critical` は 🛑STOP に振られやすい最重要度だが、 critical でも純粋な可読性指摘なら STOP にはならない)
+- **投稿フォーマットは再 round でも不変**: 指摘の投稿フォーマットは上記フロー 2c の通り (各指摘を inline で1点1コメント + issue comment はサマリ専用)。 **再 round (往復) でも degrade させず維持** — 往復で「issue サマリに指摘を箇条書きするだけ・inline 省略」は禁止 (delivery SSOT で指摘が該当行から辿れなくなる)。 inline の severity ラベルは finding 4段階に対応する `🛑critical / 🔴high / 🟠medium / 🟢low`。 ただし **severity と triage 区分 (STOP/FIX/PASS) は別軸** — 区分は severity でなく「何が起きるか」で振る (`critical` は 🛑STOP に振られやすい最重要度だが、 critical でも純粋な可読性指摘なら STOP にはならない)
 - **bot サマリ件数 = triage 件数 = その round の posted finding 総数 (単一の不変式)**: 各 round で dedup し、 `--fix` が skip した分 (intended behavior 変更 / スコープ外 / false positive) を除いた **posted finding 総数**が、 bot サマリの severity 別件数の合計とも、 triage の区分別件数の合計とも一致する。 bot が挙げていない項目を triage で勝手に増やさない (doc 整合・自己矛盾も cross-file 整合性を見る finder が拾うので、 finder 指摘として bot サマリに含まれる)。 数がズレると朝石井が「bot は N 件と言ったのに triage は M 件?」と PR を追えなくなる。 ※「指摘ゼロでも証跡1件」と「triage 裁定コメント」は finding 件数とは別軸の投稿で、 件数一致の対象外 (finding 0 でも証跡・裁定は各1件投稿する)
 - **使用量**: code-review 1 回 = finder 7 個 + verifier を spawn する重い処理。 通常は「初回 --fix (修正) + 2 回目 --fix (findings 0/PASS で収束確認)」の **2 回**で済む。 新指摘が出れば往復追加 (上限内)
 
@@ -107,7 +107,7 @@ pending が空でも連鎖は止まらない (上記「連鎖停止条件」参�
 ## 起動時の作法
 
 0. **open Issue / PR を確認**。`gh issue list -s open -l night` で open Issue、`gh pr list --state open` で open PR を確認。**判定基準**:
-   - **open PR あり** → PR description / コメントを読み中断作業か判定。`git checkout <headRefName>` してから **中断箇所に応じた step で再開** (実装途中 → step 7 / レビュー中断・draft 戻し → step 10)。/goal は step 4 で設定してから再開
+   - **open PR あり** → `isDraft` / `mergeStateStatus` を確認。draft = レビュー隔離中 (再開対象) / 非 draft かつ BLOCKED = 正常 in-flight (loop-helper が merge 待ち中、中断不要) / 非 draft かつ CLEAN = loop-helper 停止の可能性で最優先再開。再開時は `git checkout <headRefName>` してから **中断箇所に応じた step で再開** (実装途中 → step 7 / レビュー中断・draft 戻し → step 10)。/goal は step 4 で設定してから再開
    - **open Issue あり + PR なし** → scope は決まっている。**step 4 (/goal 設定) から再開** (step 5 でブランチを切って実装)
    - **どちらもなし** → step 1 から通常開始
 1. `git checkout main && git pull` で main を最新化

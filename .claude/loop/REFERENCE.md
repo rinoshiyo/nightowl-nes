@@ -19,7 +19,7 @@
 
 1. 直近 done になった夜の DoD と nestest.log / 設計の現状を踏まえ、 1 夜分の次タスクを設計
 2. `nights/template/NNN-template.md` をコピーして `nights/pending/NNN+1-<topic>.md` を作成 (NNN は直近 done の番号 + 1)
-3. seed を main に commit (`chore(nights): seed NNN+1`)
+3. main 上で seed を commit (`chore(nights): seed NNN+1`)。main は直 push しない — 次の night ブランチに含めて push する
 4. **GitHub Issue を作成** (`gh issue create --title "夜 NNN+1: <topic>" --label night --body "<DoD>"`)。Issue = scope SSOT
 
 ## /clear 自走ループ駆動 (実装済み)
