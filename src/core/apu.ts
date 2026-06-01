@@ -38,6 +38,13 @@ export class Apu {
   /** フレーム IRQ フラグ */
   frameIrqFlag = false;
 
+  /** IRQ 発生時に呼ばれるコールバック (NesConsole が CPU の irqPending をセットする) */
+  onIrq?: () => void;
+
+  constructor() {
+    this.dmc.onIrq = () => this.onIrq?.();
+  }
+
   /** CPU cycle カウント (パルスタイマーの 2 分周用) */
   private cpuCycleOdd = false;
 
@@ -230,6 +237,7 @@ export class Apu {
           this.clockHalfFrame();
           if (!this.frameIrqInhibit) {
             this.frameIrqFlag = true;
+            this.onIrq?.();
           }
           break;
         case 4:

@@ -50,6 +50,8 @@ export class DmcChannel {
   private irqEnabled = false;
   /** IRQ フラグ */
   irqFlag = false;
+  /** IRQ 発生時に呼ばれるコールバック */
+  onIrq?: () => void;
   /** $4010: フラグ + レート */
   writeControl(value: number): void {
     this.irqEnabled = (value & 0x80) !== 0;
@@ -113,6 +115,7 @@ export class DmcChannel {
         this.restart();
       } else if (this.irqEnabled) {
         this.irqFlag = true;
+        this.onIrq?.();
       }
     }
   }
