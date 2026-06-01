@@ -196,6 +196,29 @@ describe("MMC1 CHR RAM", () => {
   });
 });
 
+describe("MMC1 初期状態", () => {
+  it("初期 control = 0x0C (PRG mode 3, CHR mode 0, mirroring one-screen lower)", () => {
+    const mapper = new MapperMmc1(makeMmc1Cart(8, 8));
+    // PRG mode 3: $8000 切替 (初期 bank 0)、$C000 末尾固定
+    expect(mapper.readPrg(0x8000)).toBe(0);
+    expect(mapper.readPrg(0xc000)).toBe(7);
+    // CHR mode 0 (8KB): chrBank0=0 → 先頭 8KB
+    expect(mapper.readChr(0x0000)).toBe(0);
+    expect(mapper.readChr(0x1000)).toBe(1);
+  });
+
+  it("初期 PRG bank = 0", () => {
+    const mapper = new MapperMmc1(makeMmc1Cart(16, 0));
+    expect(mapper.readPrg(0x8000)).toBe(0);
+  });
+
+  it("初期 CHR bank 0/1 = 0", () => {
+    const mapper = new MapperMmc1(makeMmc1Cart(4, 16));
+    // CHR mode 0: 初期 chrBank0=0 → 先頭 8KB
+    expect(mapper.readChr(0x0000)).toBe(0);
+  });
+});
+
 describe("MMC1 Control レジスタ", () => {
   it("ミラーリングモードの値が control に保持される", () => {
     const mapper = new MapperMmc1(makeMmc1Cart(8, 0));
