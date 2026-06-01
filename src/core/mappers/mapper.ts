@@ -16,6 +16,8 @@ import { MapperAxrom } from "./axrom.ts";
 import { MapperColorDreams } from "./color-dreams.ts";
 import { MapperGxrom } from "./gxrom.ts";
 import { MapperCodemasters } from "./codemasters.ts";
+import { MapperMmc2 } from "./mmc2.ts";
+import { MapperMmc4 } from "./mmc4.ts";
 import { MapperDxrom } from "./dxrom.ts";
 
 export interface Mapper {
@@ -49,6 +51,8 @@ export interface Mapper {
   serializeMapper(): Record<string, unknown>;
   /** mapper 固有の状態をデシリアライズ */
   deserializeMapper(data: Record<string, unknown>): void;
+  /** PPU が CHR 領域を読み出した時の通知 (MMC2/MMC4 の latch 機構用) */
+  onChrRead?(addr: number): void;
 }
 
 export function createMapper(cart: Cart): Mapper {
@@ -65,6 +69,10 @@ export function createMapper(cart: Cart): Mapper {
       return new MapperMmc3(cart);
     case 7:
       return new MapperAxrom(cart);
+    case 9:
+      return new MapperMmc2(cart);
+    case 10:
+      return new MapperMmc4(cart);
     case 11:
       return new MapperColorDreams(cart);
     case 66:
