@@ -16,13 +16,15 @@ describe("PPUSTATUS ($2002)", () => {
     expect(ppu.status & 0x80).toBe(0);
   });
 
-  it("read 後に write toggle がリセットされる", () => {
+  it("read 後に w (write toggle) がリセットされる", () => {
     const ppu = new Ppu();
     ppu.write(5, 0x10);
-    expect(ppu.scrollX).toBe(0x10);
+    expect(ppu.w).toBe(true);
     ppu.read(2);
+    expect(ppu.w).toBe(false);
     ppu.write(5, 0x20);
-    expect(ppu.scrollX).toBe(0x20);
+    expect(Ppu.coarseX(ppu.t)).toBe(0x20 >> 3);
+    expect(ppu.x).toBe(0x20 & 0x07);
   });
 });
 
@@ -54,20 +56,23 @@ describe("OAMDATA ($2004)", () => {
 });
 
 describe("PPUSCROLL ($2005) ダブルライト", () => {
-  it("1st write = scrollX, 2nd write = scrollY", () => {
+  it("1st write → coarse X/fine X が loopy t/x に反映される", () => {
     const ppu = new Ppu();
     ppu.write(5, 0x10);
     ppu.write(5, 0x20);
-    expect(ppu.scrollX).toBe(0x10);
-    expect(ppu.scrollY).toBe(0x20);
+    expect(Ppu.coarseX(ppu.t)).toBe(0x10 >> 3);
+    expect(ppu.x).toBe(0x10 & 0x07);
+    expect(Ppu.coarseY(ppu.t)).toBe(0x20 >> 3);
+    expect(Ppu.fineY(ppu.t)).toBe(0x20 & 0x07);
   });
 
-  it("3rd write は再び scrollX になる (toggle)", () => {
+  it("3rd write は再び 1st write (w toggle リセット)", () => {
     const ppu = new Ppu();
     ppu.write(5, 0x10);
     ppu.write(5, 0x20);
     ppu.write(5, 0x30);
-    expect(ppu.scrollX).toBe(0x30);
+    expect(Ppu.coarseX(ppu.t)).toBe(0x30 >> 3);
+    expect(ppu.x).toBe(0x30 & 0x07);
   });
 });
 
