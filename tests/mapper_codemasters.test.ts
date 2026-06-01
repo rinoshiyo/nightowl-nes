@@ -97,6 +97,26 @@ describe("MapperCodemasters BF9097 ミラーリング", () => {
   });
 });
 
+describe("MapperCodemasters $8000-$BFFF write edge cases", () => {
+  it("$8000-$8FFF への write はバンク切替もミラーリングも発生しない", () => {
+    const mirrorChanges: Mirroring[] = [];
+    const mapper = new MapperCodemasters(makeCodemastersCart(8));
+    mapper.onMirroringChange = (m) => { mirrorChanges.push(m); };
+    mapper.writePrg(0x8000, 0x13);
+    expect(mapper.readPrg(0x8000)).toBe(0);
+    expect(mirrorChanges).toEqual([]);
+  });
+
+  it("$A000-$BFFF への write はバンク切替もミラーリングも発生しない", () => {
+    const mirrorChanges: Mirroring[] = [];
+    const mapper = new MapperCodemasters(makeCodemastersCart(8));
+    mapper.onMirroringChange = (m) => { mirrorChanges.push(m); };
+    mapper.writePrg(0xa000, 0x13);
+    expect(mapper.readPrg(0x8000)).toBe(0);
+    expect(mirrorChanges).toEqual([]);
+  });
+});
+
 describe("MapperCodemasters CHR RAM", () => {
   it("CHR RAM に書き込み・読み出しができる", () => {
     const mapper = new MapperCodemasters(makeCodemastersCart(8));
