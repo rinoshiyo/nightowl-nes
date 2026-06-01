@@ -27,7 +27,7 @@ export class NesConsole {
   constructor(cart: Cart) {
     this.mapper = createMapper(cart);
     this.ppu = new Ppu();
-    this.ppu.mirroring = cart.header.mirroring;
+    this.ppu.mirroring = cart.header.fourScreen ? "four-screen" : cart.header.mirroring;
     this.ppu.mapper = this.mapper;
     this.apu = new Apu();
     this.controller1 = new Controller();
@@ -40,9 +40,9 @@ export class NesConsole {
     this.apu.onIrq = () => {
       this.cpu.irqPending = true;
     };
-    this.mapper.onMirroringChange = (m) => {
-      this.ppu.mirroring = m;
-    };
+    this.mapper.onMirroringChange = cart.header.fourScreen
+      ? null
+      : (m) => { this.ppu.mirroring = m; };
     this.reset();
   }
 

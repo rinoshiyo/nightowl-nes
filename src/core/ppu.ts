@@ -17,7 +17,7 @@ import type { Mirroring } from "./cart.ts";
 import type { Mapper } from "./mappers/index.ts";
 
 const CHR_RAM_SIZE = 0x2000;
-const VRAM_SIZE = 0x800;
+const VRAM_SIZE = 0x1000;
 const PALETTE_SIZE = 0x20;
 const OAM_SIZE = 256;
 
@@ -566,12 +566,20 @@ export class Ppu {
     this.v = (this.v + ((this.ctrl & 0x04) !== 0 ? 32 : 1)) & 0x7fff;
   }
 
-  /** ネームテーブルミラーリング (VRAM 2KB 内オフセットを返す) */
+  /** ネームテーブルミラーリング (VRAM 内オフセットを返す) */
   private mirrorNametable(addr: number): number {
     const relative = (addr - 0x2000) & 0xfff;
-    if (this.mirroring === "vertical") {
-      return relative & 0x7ff;
+    switch (this.mirroring) {
+      case "vertical":
+        return relative & 0x7ff;
+      case "horizontal":
+        return ((relative & 0x800) >> 1) | (relative & 0x3ff);
+      case "single-lower":
+        return relative & 0x3ff;
+      case "single-upper":
+        return 0x400 | (relative & 0x3ff);
+      case "four-screen":
+        return relative;
     }
-    return ((relative & 0x800) >> 1) | (relative & 0x3ff);
   }
 }

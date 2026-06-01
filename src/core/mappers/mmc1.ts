@@ -9,9 +9,10 @@
  * 仕様参照: https://www.nesdev.org/wiki/MMC1
  */
 
-import type { Cart } from "../cart.ts";
+import type { Cart, Mirroring } from "../cart.ts";
 import type { Mapper } from "./mapper.ts";
 
+const MMC1_MIRROR_MAP: readonly Mirroring[] = ["single-lower", "single-upper", "vertical", "horizontal"];
 const PRG_BANK_SIZE = 0x4000; // 16KB
 const CHR_BANK_SIZE = 0x1000; // 4KB
 const CHR_RAM_SIZE = 0x2000;  // 8KB
@@ -153,6 +154,13 @@ export class MapperMmc1 implements Mapper {
   reset(): void {}
   clockIrqCounter(): void {}
 
+  /** control レジスタ bit 0-1 から mirroring モードを通知 */
+  private applyMirroring(): void {
+    if (!this.onMirroringChange) return;
+    const mode = this.control & 0x03;
+    this.onMirroringChange(MMC1_MIRROR_MAP[mode]!);
+  }
+
   /** 内部レジスタへの書き込み (アドレスの bit 13-14 でレジスタ選択) */
   private writeInternalRegister(addr: number, value: number): void {
     const reg = (addr >> 13) & 0x03;
@@ -160,6 +168,7 @@ export class MapperMmc1 implements Mapper {
     switch (reg) {
       case 0: // Control ($8000-$9FFF)
         this.control = value;
+        this.applyMirroring();
         break;
       case 1: // CHR bank 0 ($A000-$BFFF)
         this.chrBank0 = value;
