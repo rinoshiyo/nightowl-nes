@@ -74,16 +74,13 @@ class LowPassFilter {
  * 非線形テーブルでミキシング → 3 段 HPF + 1 段 LPF → クリッピング防止。
  */
 export class ApuMixer {
-  private hpf1: HighPassFilter;
-  private hpf2: HighPassFilter;
-  private hpf3: HighPassFilter;
-  private lpf: LowPassFilter;
+  private hpf1!: HighPassFilter;
+  private hpf2!: HighPassFilter;
+  private hpf3!: HighPassFilter;
+  private lpf!: LowPassFilter;
 
   constructor(sampleRate: number) {
-    this.hpf1 = new HighPassFilter(sampleRate, 37);
-    this.hpf2 = new HighPassFilter(sampleRate, 90);
-    this.hpf3 = new HighPassFilter(sampleRate, 440);
-    this.lpf = new LowPassFilter(sampleRate, 14000);
+    this.reset(sampleRate);
   }
 
   /** フィルタ状態をリセット (ROM ロード・リセット時に呼ぶ) */
@@ -96,9 +93,9 @@ export class ApuMixer {
 
   /** 5 チャンネルの出力からフィルタ済みサンプルを返す */
   process(pulse1: number, pulse2: number, tri: number, noise: number, dmc: number): number {
-    const pulseOut = PULSE_TABLE[pulse1 + pulse2] ?? 0;
+    const pulseOut = PULSE_TABLE[pulse1 + pulse2]!;
     const tndIdx = 3 * tri + 2 * noise + dmc;
-    const tndOut = TND_TABLE[tndIdx] ?? 0;
+    const tndOut = TND_TABLE[tndIdx]!;
 
     let s = pulseOut + tndOut;
 

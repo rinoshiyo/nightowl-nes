@@ -291,6 +291,11 @@ export class Apu {
     this.mixer.reset(rate);
   }
 
+  /** フィルタ内部状態をリセット (コンソールリセット時に呼ぶ) */
+  resetFilters(): void {
+    this.mixer.reset(this.sampleRateStep);
+  }
+
   /** バッファからサンプルを読み出して output 配列を埋める。読み出し分だけ進む */
   readSamples(output: Float32Array): number {
     let written = 0;
