@@ -3,17 +3,8 @@
  * multi-bank テストは実行時間が長いため大きいタイムアウトを設定。
  */
 
-import { describe, it, expect } from "vitest";
-import { runTestRom } from "./helpers/run-test-rom.ts";
-import { existsSync } from "node:fs";
-
-function romTest(name: string, path: string, maxFrames = 600, timeout = 30_000) {
-  const skip = !existsSync(path);
-  (skip ? it.skip : it)(name, () => {
-    const result = runTestRom(path, maxFrames);
-    expect(result.passed, `status=${result.status}, message: ${result.message}`).toBe(true);
-  }, timeout);
-}
+import { describe } from "vitest";
+import { romTest } from "./helpers/run-test-rom.ts";
 
 describe("Mapper 1 互換性: instr_test-v5 (official_only)", () => {
   const path = "roms/test/instr_test-v5/official_only.nes";

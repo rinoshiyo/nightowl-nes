@@ -127,6 +127,7 @@ export class Ppu {
     this.slInitNtX = 0;
     this.spriteCount = 0;
     this.sprite0InLine = false;
+    this.lastA12 = 0;
   }
 
   /** PPU アドレスの A12 立ち上がりエッジで mapper の IRQ カウンタを clock する */

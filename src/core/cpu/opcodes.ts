@@ -1411,13 +1411,13 @@ def(0x3e, { name: "ROL", mode: absoluteX_RMW, cycles: 7, exec: (cpu, bus, op) =>
 def(0x7e, { name: "ROR", mode: absoluteX_RMW, cycles: 7, exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, rorValue) });
 def(0xfe, {
   name: "INC",
-  mode: absoluteX,
+  mode: absoluteX_RMW,
   cycles: 7,
   exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, (_cpu, v) => v + 1),
 });
 def(0xde, {
   name: "DEC",
-  mode: absoluteX,
+  mode: absoluteX_RMW,
   cycles: 7,
   exec: (cpu, bus, op) => rmwAbsolute(cpu, bus, op, (_cpu, v) => v - 1),
 });

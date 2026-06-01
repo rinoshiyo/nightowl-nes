@@ -5,7 +5,8 @@
  * blargg テスト ROM は $6000 にステータス、$6004- にテキストメッセージを書く。
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { it, expect } from "vitest";
 import { parseINes } from "../../src/core/cart.ts";
 import { NesConsole } from "../../src/core/console.ts";
 
@@ -72,3 +73,17 @@ function readResultText(nes: NesConsole, startAddr: number): string {
   }
   return chars.join("");
 }
+
+/**
+ * vitest 用の ROM テストヘルパー。ROM が存在しなければ skip。
+ */
+export function romTest(name: string, path: string, maxFrames = 600, timeout = 30_000): void {
+  const skip = !existsSync(path);
+  (skip ? it.skip : it)(name, () => {
+    const result = runTestRom(path, maxFrames);
+    expect(result.passed, `status=${result.status}, message: ${result.message}`).toBe(true);
+  }, timeout);
+}
+romTest.skip = (name: string, _path: string) => {
+  it.skip(name, () => {});
+};

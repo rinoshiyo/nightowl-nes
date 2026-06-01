@@ -2,20 +2,8 @@
  * Mapper 4 (MMC3) 互換性テスト。
  */
 
-import { describe, it, expect } from "vitest";
-import { runTestRom } from "./helpers/run-test-rom.ts";
-import { existsSync } from "node:fs";
-
-function romTest(name: string, path: string, maxFrames = 600) {
-  const skip = !existsSync(path);
-  (skip ? it.skip : it)(name, () => {
-    const result = runTestRom(path, maxFrames);
-    expect(result.passed, `status=${result.status}, message: ${result.message}`).toBe(true);
-  }, 30_000);
-}
-romTest.skip = (name: string, _path: string) => {
-  it.skip(name, () => {});
-};
+import { describe } from "vitest";
+import { romTest } from "./helpers/run-test-rom.ts";
 
 describe("Mapper 4 互換性: mmc3_test", () => {
   const base = "roms/test/mmc3_test";
