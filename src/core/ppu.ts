@@ -119,6 +119,15 @@ export class Ppu {
     }
   }
 
+  /** 指定マスクのビットのみ decay リフレッシュ ($2002 read 用: 上位 3 bit のみ) */
+  private refreshLatchDecayPartial(val: number, mask: number): void {
+    for (let i = 0; i < 8; i++) {
+      if ((mask & (1 << i)) !== 0 && (val & (1 << i)) !== 0) {
+        this.ioLatchDecay[i] = Ppu.DECAY_FRAMES;
+      }
+    }
+  }
+
   /** フレームごとの open bus decay 処理 */
   decayOpenBus(): void {
     for (let i = 0; i < 8; i++) {
@@ -268,27 +277,40 @@ export class Ppu {
   /** $2000-$2007 の read (addr は 0-7 にマスク済みで渡される想定) */
   read(reg: number): number {
     let val: number;
+    let refreshDecay = true;
     switch (reg) {
       case 2: {
         // bit 7-5 はステータス、bit 4-0 は open bus (latch の下位 5 bit)
         val = (this.status & 0xe0) | (this.ioLatch & 0x1f);
         this.status &= 0x7f;
         this.w = false;
+        // bit 7-5 のみ decay リフレッシュ (bit 4-0 は open bus でリフレッシュ対象外)
+        this.refreshLatchDecayPartial(val, 0xe0);
+        refreshDecay = false;
         break;
       }
-      case 4:
+      case 4: {
         val = this.oam[this.oamAddr]!;
+        // 属性バイト (OAM index & 0x03 == 2) の bit 2-4 は未使用で常に 0
+        if ((this.oamAddr & 0x03) === 2) {
+          val &= 0xe3;
+        }
         break;
+      }
       case 7:
         val = this.readVram();
         break;
       default:
         // write-only レジスタ ($2000, $2001, $2003, $2005, $2006) → open bus
+        // decay は refresh しない (latch 値をそのまま返すだけ)
         val = this.ioLatch;
+        refreshDecay = false;
         break;
     }
     this.ioLatch = val;
-    this.refreshLatchDecay(val);
+    if (refreshDecay) {
+      this.refreshLatchDecay(val);
+    }
     return val;
   }
 

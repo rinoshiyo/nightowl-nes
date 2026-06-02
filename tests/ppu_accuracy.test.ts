@@ -272,7 +272,7 @@ describe("open bus decay", () => {
     expect(ppu.ioLatch).toBe(0x01);
   });
 
-  it("read でもビットが decay する前にリフレッシュされる", () => {
+  it("write-only レジスタ read では decay リフレッシュされない", () => {
     const ppu = new Ppu();
     ppu.write(0, 0xff);
 
@@ -281,7 +281,26 @@ describe("open bus decay", () => {
     }
     expect(ppu.ioLatch).toBe(0xff);
 
+    // write-only レジスタ ($2000) の read は latch を返すが decay はリフレッシュしない
     ppu.read(0);
+
+    ppu.decayOpenBus();
+    // 36 フレーム経過で全ビット decay
+    expect(ppu.ioLatch).toBe(0x00);
+  });
+
+  it("readable レジスタ ($2004) read で decay がリフレッシュされる", () => {
+    const ppu = new Ppu();
+    ppu.write(0, 0xff);
+    ppu.oam[0] = 0xff;
+    ppu.oamAddr = 0;
+
+    for (let i = 0; i < 35; i++) {
+      ppu.decayOpenBus();
+    }
+    expect(ppu.ioLatch).toBe(0xff);
+
+    ppu.read(4);
 
     for (let i = 0; i < 35; i++) {
       ppu.decayOpenBus();
