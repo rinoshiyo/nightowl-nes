@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="description" content="I never read the NES code. I just kept the loop alive. 4,237 lines of TypeScript, zero written by a human — 8 days of autonomous Claude Code.">
+  <meta name="description" content="I never read the NES code. I just kept the loop alive. 12,622 lines of TypeScript, zero written by a human — 8 days of autonomous Claude Code.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="nightowl-NES">
   <meta property="og:title" content="nightowl-NES — NES Emulator Built by AI">
-  <meta property="og:description" content="I never read the NES code. I just kept the loop alive. 4,237 lines of TypeScript, zero written by a human — 8 days of autonomous Claude Code.">
+  <meta property="og:description" content="I never read the NES code. I just kept the loop alive. 12,622 lines of TypeScript, zero written by a human — 8 days of autonomous Claude Code.">
   <meta property="og:url" content="https://rinoshiyo.github.io/nightowl-nes/">
   <meta property="og:image" content="https://rinoshiyo.github.io/nightowl-nes/ogp.png">
   <meta property="og:image:width" content="1200">
@@ -17,7 +17,7 @@
   <meta property="og:locale:alternate" content="zh_CN">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="nightowl-NES — NES Emulator Built by AI">
-  <meta name="twitter:description" content="I never read the NES code. I just kept the loop alive. 4,237 lines of TypeScript, zero written by a human — 8 days of autonomous Claude Code.">
+  <meta name="twitter:description" content="I never read the NES code. I just kept the loop alive. 12,622 lines of TypeScript, zero written by a human — 8 days of autonomous Claude Code.">
   <meta name="twitter:image" content="https://rinoshiyo.github.io/nightowl-nes/ogp.png">
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-1ZMS8RSYQX"></script>
@@ -1284,15 +1284,15 @@ Zero runtime dependencies. Zero lines of human-written code.</p>
       <div class="section-header fade-in">
         <div class="section-label" data-i18n="quality.sectionLabel">Precision</div>
         <h2 class="section-headline" data-i18n="quality.headline">Every opcode. Every scanline. Every channel.</h2>
-        <p class="section-subtitle" data-i18n="quality.subtitle">4,237 lines of TypeScript. 1,572 tests. Zero runtime dependencies. Verified against the NES hardware specification.</p>
+        <p class="section-subtitle" data-i18n="quality.subtitle">12,622 lines of TypeScript. 1,572 tests. Zero runtime dependencies. Verified against the NES hardware specification.</p>
       </div>
 
       <!-- Hardware stats -->
       <div class="stats-grid fade-in">
         <div class="stat-card">
           <div class="stat-label" data-i18n="quality.cpuLabel">CPU</div>
-          <div class="stat-value"><span class="counter" data-target="216">0</span><span class="stat-total">/256</span></div>
-          <div class="stat-bar"><div class="stat-bar-fill" data-percent="84"></div></div>
+          <div class="stat-value"><span class="counter" data-stat="opcodesImplemented" data-target="216">0</span><span class="stat-total" data-stat-total="opcodesTotal">/256</span></div>
+          <div class="stat-bar"><div class="stat-bar-fill" data-stat-percent="opcodesPercent" data-percent="84"></div></div>
           <div class="stat-desc" data-i18n="quality.cpuDesc">216 of 256 opcodes — 151 official + 65 unofficial — implemented from the 6502 specification alone.</div>
         </div>
         <div class="stat-card">
@@ -1309,7 +1309,7 @@ Zero runtime dependencies. Zero lines of human-written code.</p>
         </div>
         <div class="stat-card">
           <div class="stat-label" data-i18n="quality.mapperLabel">Mappers</div>
-          <div class="stat-value"><span class="counter" data-target="20">0</span></div>
+          <div class="stat-value"><span class="counter" data-stat="mapperCount" data-target="20">0</span></div>
           <div class="stat-bar"><div class="stat-bar-fill" data-percent="88"></div></div>
           <div class="stat-desc" data-i18n="quality.mapperDesc">20 mappers covering ~85–90% of the commercial NES library.</div>
         </div>
@@ -1320,19 +1320,19 @@ Zero runtime dependencies. Zero lines of human-written code.</p>
         <div class="test-card">
           <div class="test-icon">✅</div>
           <div class="test-name" data-i18n="quality.nestestLabel">nestest</div>
-          <div class="test-value"><span class="counter" data-target="8991">0</span></div>
+          <div class="test-value"><span class="counter" data-stat="traceLines" data-target="8991">0</span></div>
           <div class="test-desc" data-i18n="quality.nestestDesc">The gold-standard CPU verification ROM. 8,991 trace lines matched. Passed.</div>
         </div>
         <div class="test-card">
           <div class="test-icon">🛡️</div>
           <div class="test-name" data-i18n="quality.testLabel">Tests</div>
-          <div class="test-value"><span class="counter" data-target="1572">0</span></div>
+          <div class="test-value"><span class="counter" data-stat="testPass" data-target="1572">0</span></div>
           <div class="test-desc" data-i18n="quality.testDesc">1,572 pass / 6 skip / 0 fail. CI on every commit.</div>
         </div>
         <div class="test-card">
           <div class="test-icon">🎯</div>
           <div class="test-name" data-i18n="quality.assertLabel">Assertions</div>
-          <div class="test-value"><span class="counter" data-target="217919" data-format="compact">0</span></div>
+          <div class="test-value"><span class="counter" data-stat="expects" data-target="217919" data-format="compact">0</span></div>
           <div class="test-desc" data-i18n="quality.assertDesc">217,919 expect() calls verifying correctness at opcode, register, and pixel level.</div>
         </div>
       </div>
@@ -1342,14 +1342,14 @@ Zero runtime dependencies. Zero lines of human-written code.</p>
         <div class="meta-card">
           <div class="test-icon">🎮</div>
           <div class="meta-label" data-i18n="quality.romLabel">Test ROMs</div>
-          <div class="meta-value"><span class="counter" data-target="81">0</span><span class="meta-total">/263</span></div>
-          <div class="meta-desc" data-i18n="quality.romDesc">81 of 263 ROMs from nes-test-roms. CPU 24 / PPU 33 / APU 14 / Mapper 7 / others 3. 182 still to go.</div>
+          <div class="meta-value"><span class="counter" data-stat="romPassTotal" data-target="66">0</span><span class="meta-total" data-stat-total="romTotal">/263</span></div>
+          <div class="meta-desc" data-i18n="quality.romDesc">66 of 263 ROMs from nes-test-roms. CPU 24 / PPU 16 / APU 12 / Mapper 6 / others 8. 197 still to go.</div>
         </div>
         <div class="meta-card">
           <div class="test-icon">📝</div>
           <div class="meta-label" data-i18n="quality.sourceLabel">Source</div>
-          <div class="meta-value"><span class="counter" data-target="4237" data-format="compact">0</span></div>
-          <div class="meta-desc" data-i18n="quality.sourceDesc">4,237 lines of TypeScript. Not a line more than needed.</div>
+          <div class="meta-value"><span class="counter" data-stat="tsLines" data-target="12622" data-format="compact">0</span></div>
+          <div class="meta-desc" data-i18n="quality.sourceDesc">12,622 lines of TypeScript. Not a line more than needed.</div>
         </div>
         <div class="meta-card">
           <div class="test-icon">✨</div>
@@ -1492,7 +1492,7 @@ Zero runtime dependencies. Zero lines of human-written code.</p>
         </div>
         <div class="constraint-card denied">
           <h3 data-i18n="harness.denyTitle">✗ Denied References</h3>
-          <p data-i18n="harness.denyDesc">All existing NES emulator source code — 16 known repositories, any language, any license.</p>
+          <p data-i18n="harness.denyDesc">All existing NES emulator source code — 15 known repositories, any language, any license.</p>
           <p class="constraint-enforce" data-i18n="harness.enforceDesc">Pre-tool-use hooks block WebFetch URLs matching the deny list. A structural constraint, not an airtight seal — WebSearch results and local files are not blocked.</p>
         </div>
       </div>

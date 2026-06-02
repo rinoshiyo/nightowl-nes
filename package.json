@@ -6,6 +6,7 @@
   "description": "NES emulator built by Claude Code at night via /goal. Vibe coding experiment.",
   "scripts": {
     "dev": "vite",
+    "prebuild": "bun run scripts/collect-stats.ts > src/browser/stats.generated.json && bun run scripts/inject-stats-html.ts",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",

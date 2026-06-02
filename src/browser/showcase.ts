@@ -1,5 +1,6 @@
 import { getLocale, setLocale, onLocaleChange, t } from "./i18n.ts";
 import type { Locale } from "./i18n.ts";
+import stats from "./stats.generated.json";
 
 // --- タイプライターアニメーション ---
 
@@ -168,7 +169,7 @@ function initCounters(): void {
   }
 }
 
-const numFmt = new Intl.NumberFormat();
+const numFmt = new Intl.NumberFormat("en-US");
 
 function animateCounter(el: HTMLElement, target: number, compact: boolean): void {
   const duration = 1500;
@@ -308,7 +309,33 @@ function initHeaderScroll(): void {
 
 // --- Init all showcase features ---
 
+function applyStatsToCounters(): void {
+  const s = stats as Record<string, number>;
+
+  for (const el of document.querySelectorAll<HTMLElement>(".counter[data-stat]")) {
+    const key = el.dataset["stat"];
+    if (key !== undefined && key in s) {
+      el.dataset["target"] = String(s[key]);
+    }
+  }
+
+  for (const el of document.querySelectorAll<HTMLElement>("[data-stat-total]")) {
+    const key = el.dataset["statTotal"];
+    if (key !== undefined && key in s) {
+      el.textContent = `/${s[key]}`;
+    }
+  }
+
+  for (const el of document.querySelectorAll<HTMLElement>("[data-stat-percent]")) {
+    const key = el.dataset["statPercent"];
+    if (key !== undefined && key in s) {
+      el.dataset["percent"] = String(s[key]);
+    }
+  }
+}
+
 export function initShowcase(): void {
+  applyStatsToCounters();
   initTypewriter();
   initParallax();
   initFadeIn();
