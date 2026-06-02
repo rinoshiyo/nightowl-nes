@@ -112,19 +112,11 @@ export class Ppu {
   /** open bus decay 処理用の定数 — 36 フレーム ≈ 600ms at 60fps */
   private static readonly DECAY_FRAMES = 36;
 
-  /** IO latch の decay カウンタをリフレッシュ (read/write 時にビットごとに設定) */
-  private refreshLatchDecay(val: number): void {
+  /** IO latch の decay カウンタをリフレッシュ (mask で対象ビットを制限可能) */
+  private refreshLatchDecay(val: number, mask = 0xff): void {
+    const effective = val & mask;
     for (let i = 0; i < 8; i++) {
-      if ((val & (1 << i)) !== 0) {
-        this.ioLatchDecay[i] = Ppu.DECAY_FRAMES;
-      }
-    }
-  }
-
-  /** 指定マスクのビットのみ decay リフレッシュ ($2002 read 用: 上位 3 bit のみ) */
-  private refreshLatchDecayPartial(val: number, mask: number): void {
-    for (let i = 0; i < 8; i++) {
-      if ((mask & (1 << i)) !== 0 && (val & (1 << i)) !== 0) {
+      if ((effective & (1 << i)) !== 0) {
         this.ioLatchDecay[i] = Ppu.DECAY_FRAMES;
       }
     }
@@ -288,7 +280,7 @@ export class Ppu {
         this.status &= 0x7f;
         this.w = false;
         // bit 7-5 のみ decay リフレッシュ (bit 4-0 は open bus でリフレッシュ対象外)
-        this.refreshLatchDecayPartial(val, 0xe0);
+        this.refreshLatchDecay(val, 0xe0);
         refreshDecay = false;
         break;
       }
@@ -300,9 +292,17 @@ export class Ppu {
         }
         break;
       }
-      case 7:
+      case 7: {
+        // v のアドレスがパレット範囲かチェック (readVram 内で v がインクリメントされる前に判定)
+        const isPalette = (this.v & 0x3fff) >= 0x3f00;
         val = this.readVram();
+        if (isPalette) {
+          // パレット read は bit 0-5 のみ PPU 駆動、bit 6-7 は open bus でリフレッシュ対象外
+          this.refreshLatchDecay(val, 0x3f);
+          refreshDecay = false;
+        }
         break;
+      }
       default:
         // write-only レジスタ ($2000, $2001, $2003, $2005, $2006) → open bus
         // decay は refresh しない (latch 値をそのまま返すだけ)
@@ -410,7 +410,7 @@ export class Ppu {
     // 奇数フレームスキップ: 背景描画有効 + 奇数フレームでは
     // pre-render line の最終 dot (340) をスキップしてフレーム終了
     if (this.scanline === PRE_RENDER_LINE && this.dot === 339
-        && this.oddFrame && renderEnabled) {
+        && this.oddFrame && (this.mask & 0x08) !== 0) {
       this.dot = 0;
       this.scanline = 0;
       this.frameComplete = true;
@@ -476,8 +476,6 @@ export class Ppu {
       this.slInitCoarseX = Ppu.coarseX(this.v);
       this.slInitNtX = (Ppu.ntSelect(this.v) & 1);
       this.bgFetchedCol = -1;
-    }
-    if (dot === 0) {
       this.evaluateSprites();
     }
 
@@ -619,8 +617,6 @@ export class Ppu {
     if (count === 0) return;
 
     const bgOpaque = this.bgColorIdx !== 0;
-    // left clipping がどちらか無効 (bit1 or bit2 = 0) なら左端ではスプライト 0 hit しない
-    const leftClipActive = screenX < 8 && ((this.mask & 0x06) !== 0x06);
     const secOam = this.secOam;
     const sprLoArr = this.sprPatternLo;
     const sprHiArr = this.sprPatternHi;
@@ -645,7 +641,8 @@ export class Ppu {
       const palAddr = 0x10 + ((attr & 0x03) << 2) + colorIdx;
 
       // スプライト 0 hit: 背景不透明 + スプライト不透明 + x<255 + クリッピング領域外
-      if (this.sprite0InLine && i === 0 && bgOpaque && screenX < 255 && !leftClipActive) {
+      if (this.sprite0InLine && i === 0 && bgOpaque && screenX < 255
+          && !(screenX < 8 && (this.mask & 0x06) !== 0x06)) {
         this.status |= 0x40;
       }
 
@@ -785,6 +782,7 @@ export class Ppu {
       scanline: this.scanline,
       frameComplete: this.frameComplete,
       oddFrame: this.oddFrame,
+      nmiDelay: this.nmiDelay,
       ioLatchDecay: Array.from(this.ioLatchDecay),
       bgNametable: this.bgNametable,
       bgAttribute: this.bgAttribute,
@@ -820,6 +818,7 @@ export class Ppu {
     this.scanline = state.scanline;
     this.frameComplete = state.frameComplete;
     this.oddFrame = state.oddFrame;
+    this.nmiDelay = state.nmiDelay;
     this.ioLatchDecay.set(state.ioLatchDecay);
     this.bgNametable = state.bgNametable;
     this.bgAttribute = state.bgAttribute;

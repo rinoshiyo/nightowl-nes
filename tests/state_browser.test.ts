@@ -31,7 +31,7 @@ function makeMinimalState(overrides?: Partial<NesState>): NesState {
       mirroring: "vertical",
       ctrl: 0, mask: 0, status: 0, oamAddr: 0, ioLatch: 0,
       v: 0, t: 0, x: 0, w: false, readBuffer: 0,
-      dot: 0, scanline: 0, frameComplete: false, oddFrame: false,
+      dot: 0, scanline: 0, frameComplete: false, oddFrame: false, nmiDelay: 0,
       ioLatchDecay: [0,0,0,0,0,0,0,0],
       bgNametable: 0, bgAttribute: 0, bgPatternLo: 0, bgPatternHi: 0,
       bgFetchedCol: -1, bgColorIdx: 0,

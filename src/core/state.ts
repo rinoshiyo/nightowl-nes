@@ -35,6 +35,7 @@ export interface PpuState {
   scanline: number;
   frameComplete: boolean;
   oddFrame: boolean;
+  nmiDelay: number;
   ioLatchDecay: number[];
   bgNametable: number;
   bgAttribute: number;
