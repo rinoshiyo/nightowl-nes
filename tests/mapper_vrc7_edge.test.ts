@@ -146,18 +146,43 @@ describe("MapperVrc7 エッジケース", () => {
       expect(m.irqPending).toBe(false);
     });
 
-    it("IRQ acknowledge で enable を A bit にコピー", () => {
+    it("IRQ acknowledge で $F000 の A bit (bit 0) を enable に復元する", () => {
       const m = new MapperVrc7(makeCart());
 
       m.writePrg(0xe010, 0xfe);
-      m.writePrg(0xf000, 0x06); // enable=1, A=0
+      // A=1, E=1, M=1 (bit 0=1, bit 1=1, bit 2=1)
+      m.writePrg(0xf000, 0x07);
 
       m.cpuCycleTick!();
       m.cpuCycleTick!();
       expect(m.irqPending).toBe(true);
 
-      // acknowledge with A=1 → enable=1 (A にコピー)
-      m.writePrg(0xf010, 0x02);
+      // acknowledge (書き込み値は無関係、A=1 が enable に復元される)
+      m.writePrg(0xf010, 0x00);
+      expect(m.irqPending).toBe(false);
+
+      // A=1 が復元されているので IRQ は再発火する
+      for (let i = 0; i < 2; i++) m.cpuCycleTick!();
+      expect(m.irqPending).toBe(true);
+    });
+
+    it("IRQ acknowledge で A=0 の場合、enable が false に復元される", () => {
+      const m = new MapperVrc7(makeCart());
+
+      m.writePrg(0xe010, 0xfe);
+      // A=0, E=1 (bit 0=0, bit 1=1)
+      m.writePrg(0xf000, 0x06);
+
+      m.cpuCycleTick!();
+      m.cpuCycleTick!();
+      expect(m.irqPending).toBe(true);
+
+      // acknowledge → A=0 を enable に復元 → IRQ 無効化
+      m.writePrg(0xf010, 0x00);
+      expect(m.irqPending).toBe(false);
+
+      // enable が false なので再発火しない
+      for (let i = 0; i < 1000; i++) m.cpuCycleTick!();
       expect(m.irqPending).toBe(false);
     });
 

@@ -424,8 +424,10 @@ export class Vrc7Audio {
   silence(): void {
     for (const ch of this.channels) {
       ch.keyOn = false;
+      ch.mod.phase = 0;
       ch.mod.egState = EgState.Release;
       ch.mod.egLevel = 127;
+      ch.car.phase = 0;
       ch.car.egState = EgState.Release;
       ch.car.egLevel = 127;
     }

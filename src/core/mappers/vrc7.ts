@@ -73,6 +73,8 @@ export class MapperVrc7 implements Mapper {
   private irqEnabled = false;
   private irqCycleMode = false;
   private irqPrescaler = 0;
+  /** IRQ enable-after-acknowledge (bit 0 of $F000) */
+  private irqAfterAck = false;
 
   // --- FM 音源 ---
   private readonly audio: Vrc7Audio;
@@ -116,7 +118,7 @@ export class MapperVrc7 implements Mapper {
   }
 
   writePrg(addr: number, value: number): void {
-    const reg = addr & 0xf010;
+    const reg = addr & 0xf030;
 
     switch (reg) {
       // --- PRG バンク切替 ---
@@ -165,6 +167,7 @@ export class MapperVrc7 implements Mapper {
         this.irqLatch = value;
         break;
       case 0xf000:
+        this.irqAfterAck = (value & 0x01) !== 0;
         this.irqEnabled = (value & 0x02) !== 0;
         this.irqCycleMode = (value & 0x04) !== 0;
         if (this.irqEnabled) {
@@ -175,7 +178,7 @@ export class MapperVrc7 implements Mapper {
         break;
       case 0xf010:
         this.irqPending = false;
-        this.irqEnabled = (value & 0x02) !== 0;
+        this.irqEnabled = this.irqAfterAck;
         break;
     }
   }
@@ -230,6 +233,7 @@ export class MapperVrc7 implements Mapper {
     this.irqCycleMode = false;
     this.irqPrescaler = 0;
     this.irqPending = false;
+    this.irqAfterAck = false;
     this.audio.reset();
   }
 
@@ -295,6 +299,7 @@ export class MapperVrc7 implements Mapper {
       irqCycleMode: this.irqCycleMode,
       irqPrescaler: this.irqPrescaler,
       irqPending: this.irqPending,
+      irqAfterAck: this.irqAfterAck,
       prgRam: Array.from(this.prgRam),
       chrRam: this.useChrRam ? Array.from(this.chrData) : undefined,
       audio: this.audio.serialize(),
@@ -314,6 +319,7 @@ export class MapperVrc7 implements Mapper {
     this.irqCycleMode = data["irqCycleMode"] as boolean;
     this.irqPrescaler = data["irqPrescaler"] as number;
     this.irqPending = data["irqPending"] as boolean;
+    this.irqAfterAck = data["irqAfterAck"] as boolean;
     if (Array.isArray(data["prgRam"])) this.prgRam.set(data["prgRam"] as number[]);
     if (this.useChrRam && Array.isArray(data["chrRam"])) {
       this.chrData.set((data["chrRam"] as number[]).slice(0, this.chrData.length));
