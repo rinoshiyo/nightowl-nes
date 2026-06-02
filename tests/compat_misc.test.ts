@@ -10,8 +10,7 @@ describe("PPU read buffer", () => {
 });
 
 describe("PPU open bus", () => {
-  // open bus decay (時間経過で io latch がゼロに戻る) 未実装のため skip
-  romTest.skip("ppu_open_bus", "roms/test/ppu_open_bus/ppu_open_bus.nes");
+  romTest("ppu_open_bus", "roms/test/ppu_open_bus/ppu_open_bus.nes");
 });
 
 describe("Sprite overflow", () => {

@@ -22,6 +22,6 @@ describe("CPU 追加: branch_timing", () => {
 
 describe("OAM テスト", () => {
   romTest("oam_read", "roms/test/oam_read/oam_read.nes");
-  // OAM DMA のタイミング精度を要求するため skip
+  // OAM DMA の cycle-accurate なタイミング精度 (DMA 中の PPU/CPU 同期) を要求
   romTest.skip("oam_stress", "roms/test/oam_stress/oam_stress.nes");
 });

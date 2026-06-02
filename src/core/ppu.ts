@@ -46,6 +46,8 @@ export class Ppu {
 
   /** IO latch (open bus) — レジスタへの最後の write/read 値 */
   ioLatch = 0;
+  /** IO latch のビットごとの decay カウンタ (各ビット 36 フレーム ≈ 600ms で 0 に) */
+  private ioLatchDecay = new Uint8Array(8);
 
   /** loopy v — current VRAM address (15 bit) */
   v = 0;
@@ -73,9 +75,13 @@ export class Ppu {
   scanline = 0;
   /** フレーム完了フラグ (1 フレーム描画終了時に true) */
   frameComplete = false;
+  /** 奇数フレームフラグ (背景描画有効時、pre-render line 最終ドットをスキップ) */
+  oddFrame = false;
 
   /** NMI 通知コールバック */
   onNmi: (() => void) | null = null;
+  /** NMI 遅延カウンタ ($2000 書き込みで NMI enable 遷移時、console.step() が管理) */
+  nmiDelay = 0;
 
   /** 背景 fetch 用の内部バッファ */
   private bgNametable = 0;
@@ -103,6 +109,31 @@ export class Ppu {
   /** 直近の PPU アドレスの A12 ビット (MMC3 IRQ カウンタ用) */
   private lastA12 = 0;
 
+  /** open bus decay 処理用の定数 — 36 フレーム ≈ 600ms at 60fps */
+  private static readonly DECAY_FRAMES = 36;
+
+  /** IO latch の decay カウンタをリフレッシュ (mask で対象ビットを制限可能) */
+  private refreshLatchDecay(val: number, mask = 0xff): void {
+    const effective = val & mask;
+    for (let i = 0; i < 8; i++) {
+      if ((effective & (1 << i)) !== 0) {
+        this.ioLatchDecay[i] = Ppu.DECAY_FRAMES;
+      }
+    }
+  }
+
+  /** フレームごとの open bus decay 処理 */
+  decayOpenBus(): void {
+    for (let i = 0; i < 8; i++) {
+      if (this.ioLatchDecay[i]! > 0) {
+        this.ioLatchDecay[i]!--;
+        if (this.ioLatchDecay[i] === 0) {
+          this.ioLatch &= ~(1 << i);
+        }
+      }
+    }
+  }
+
   /** PPU 状態をリセット */
   reset(): void {
     this.ctrl = 0;
@@ -114,10 +145,13 @@ export class Ppu {
     this.x = 0;
     this.w = false;
     this.ioLatch = 0;
+    this.ioLatchDecay.fill(0);
     this.readBuffer = 0;
     this.dot = 0;
     this.scanline = 0;
     this.frameComplete = false;
+    this.oddFrame = false;
+    this.nmiDelay = 0;
     this.bgNametable = 0;
     this.bgAttribute = 0;
     this.bgPatternLo = 0;
@@ -238,41 +272,69 @@ export class Ppu {
   /** $2000-$2007 の read (addr は 0-7 にマスク済みで渡される想定) */
   read(reg: number): number {
     let val: number;
+    let refreshDecay = true;
     switch (reg) {
       case 2: {
         // bit 7-5 はステータス、bit 4-0 は open bus (latch の下位 5 bit)
         val = (this.status & 0xe0) | (this.ioLatch & 0x1f);
         this.status &= 0x7f;
         this.w = false;
+        // bit 7-5 のみ decay リフレッシュ (bit 4-0 は open bus でリフレッシュ対象外)
+        this.refreshLatchDecay(val, 0xe0);
+        refreshDecay = false;
         break;
       }
-      case 4:
+      case 4: {
         val = this.oam[this.oamAddr]!;
+        // 属性バイト (OAM index & 0x03 == 2) の bit 2-4 は未使用で常に 0
+        if ((this.oamAddr & 0x03) === 2) {
+          val &= 0xe3;
+        }
         break;
-      case 7:
+      }
+      case 7: {
+        // v のアドレスがパレット範囲かチェック (readVram 内で v がインクリメントされる前に判定)
+        const isPalette = (this.v & 0x3fff) >= 0x3f00;
         val = this.readVram();
+        if (isPalette) {
+          // パレット read は bit 0-5 のみ PPU 駆動、bit 6-7 は open bus でリフレッシュ対象外
+          this.refreshLatchDecay(val, 0x3f);
+          refreshDecay = false;
+        }
         break;
+      }
       default:
         // write-only レジスタ ($2000, $2001, $2003, $2005, $2006) → open bus
+        // decay は refresh しない (latch 値をそのまま返すだけ)
         val = this.ioLatch;
+        refreshDecay = false;
         break;
     }
     this.ioLatch = val;
+    if (refreshDecay) {
+      this.refreshLatchDecay(val);
+    }
     return val;
   }
 
   /** $2000-$2007 の write (addr は 0-7 にマスク済み、value は 0-255 で渡される想定) */
   write(reg: number, value: number): void {
     this.ioLatch = value;
+    this.refreshLatchDecay(value);
     switch (reg) {
       case 0: {
         const prevNmi = this.ctrl & 0x80;
         this.ctrl = value;
         // NT 選択 bit (bit 0-1) を t の bit 10-11 に反映
         this.t = (this.t & ~0x0c00) | ((value & 0x03) << 10);
-        // NMI enable が 0→1 に変わり、VBL フラグが既に立っていれば即座に NMI 発火
-        if (prevNmi === 0 && (value & 0x80) !== 0 && (this.status & 0x80) !== 0 && this.onNmi) {
-          this.onNmi();
+        // NMI enable が 0→1 に変わり、VBL フラグが既に立っていれば NMI を予約
+        // (実機では次の命令完了後に発火 — nmiDelayTicks で遅延)
+        if (prevNmi === 0 && (value & 0x80) !== 0 && (this.status & 0x80) !== 0) {
+          this.nmiDelay = 2;
+        }
+        // NMI disable (1→0) で pending NMI をキャンセル
+        if (prevNmi !== 0 && (value & 0x80) === 0) {
+          this.nmiDelay = 0;
         }
         break;
       }
@@ -343,6 +405,14 @@ export class Ppu {
           this.mapper.clockIrqCounter();
         }
       }
+      // 奇数フレームスキップ: BG 描画有効 + 奇数フレームでは最終 dot (340) をスキップ
+      if (this.dot === 339 && this.oddFrame && (this.mask & 0x08) !== 0) {
+        this.dot = 0;
+        this.scanline = 0;
+        this.frameComplete = true;
+        this.oddFrame = !this.oddFrame;
+        return;
+      }
     }
 
     this.dot++;
@@ -352,6 +422,7 @@ export class Ppu {
       if (this.scanline >= TOTAL_LINES) {
         this.scanline = 0;
         this.frameComplete = true;
+        this.oddFrame = !this.oddFrame;
       }
     }
   }
@@ -402,8 +473,6 @@ export class Ppu {
       this.slInitCoarseX = Ppu.coarseX(this.v);
       this.slInitNtX = (Ppu.ntSelect(this.v) & 1);
       this.bgFetchedCol = -1;
-    }
-    if (dot === 1) {
       this.evaluateSprites();
     }
 
@@ -421,7 +490,7 @@ export class Ppu {
    * v の coarseX increment は状態管理用で、描画には初期値を使う。
    */
   private renderBgPixel(screenX: number, fbIdx: number): void {
-    if ((this.mask & 0x08) === 0) {
+    if ((this.mask & 0x08) === 0 || (screenX < 8 && (this.mask & 0x02) === 0)) {
       this.framebuffer[fbIdx] = this.palette[0]!;
       this.bgColorIdx = 0;
       return;
@@ -531,6 +600,9 @@ export class Ppu {
   private renderSpritePixel(screenX: number, fbIdx: number): void {
     if ((this.mask & 0x10) === 0) return;
 
+    // $2001 bit2=0: スプライト左端 8px クリッピング
+    if (screenX < 8 && (this.mask & 0x04) === 0) return;
+
     const count = this.spriteCount;
     if (count === 0) return;
 
@@ -558,7 +630,9 @@ export class Ppu {
 
       const palAddr = 0x10 + ((attr & 0x03) << 2) + colorIdx;
 
-      if (this.sprite0InLine && i === 0 && bgOpaque && screenX < 255) {
+      // スプライト 0 hit: 背景不透明 + スプライト不透明 + x<255 + クリッピング領域外
+      if (this.sprite0InLine && i === 0 && bgOpaque && screenX < 255
+          && !(screenX < 8 && (this.mask & 0x06) !== 0x06)) {
         this.status |= 0x40;
       }
 
@@ -697,6 +771,9 @@ export class Ppu {
       dot: this.dot,
       scanline: this.scanline,
       frameComplete: this.frameComplete,
+      oddFrame: this.oddFrame,
+      nmiDelay: this.nmiDelay,
+      ioLatchDecay: Array.from(this.ioLatchDecay),
       bgNametable: this.bgNametable,
       bgAttribute: this.bgAttribute,
       bgPatternLo: this.bgPatternLo,
@@ -730,6 +807,9 @@ export class Ppu {
     this.dot = state.dot;
     this.scanline = state.scanline;
     this.frameComplete = state.frameComplete;
+    this.oddFrame = state.oddFrame;
+    this.nmiDelay = state.nmiDelay;
+    this.ioLatchDecay.set(state.ioLatchDecay);
     this.bgNametable = state.bgNametable;
     this.bgAttribute = state.bgAttribute;
     this.bgPatternLo = state.bgPatternLo;
