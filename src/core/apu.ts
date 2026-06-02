@@ -25,6 +25,7 @@ const ACT_R = 8;  // カウンタリセット
  * フレームカウンタのステップ定義。
  * cycle: 発火する CPU cycle 数、action: ビットフラグ。
  * 最終エントリは ACT_R でカウンタリセット。action=0 は「何もしない」ステップ。
+ * 4-step mode ではステップ 3 で IRQ フラグが 3 cycle (29828, 29829, 29830) にわたって set される。
  * 仕様参照: https://www.nesdev.org/wiki/APU_Frame_Counter
  */
 const FRAME_4STEP: readonly { cycle: number; action: number }[] = [
@@ -61,6 +62,10 @@ export class Apu {
   private frameIrqInhibit = false;
   /** フレーム IRQ フラグ */
   frameIrqFlag = false;
+  /** $4017 書込による遅延リセット (0=なし、>0=残り待ちcycle) */
+  private frameResetDelay = 0;
+  /** 遅延リセット時に設定する新フレームモード */
+  private pendingFrameMode = 0;
 
   /** IRQ 発生時に呼ばれるコールバック (NesConsole が CPU の irqPending をセットする) */
   onIrq?: () => void;
@@ -198,18 +203,18 @@ export class Apu {
   }
 
   private writeFrameCounter(value: number): void {
-    this.frameMode = (value >> 7) & 1;
+    this.pendingFrameMode = (value >> 7) & 1;
     this.frameIrqInhibit = (value & 0x40) !== 0;
 
     if (this.frameIrqInhibit) {
       this.frameIrqFlag = false;
     }
 
-    this.frameCycle = 0;
-    this.frameStep = 0;
+    // $4017 書込から 3-4 cycle 後にリセットが発生 (偶数cycle=3、奇数cycle=4)
+    this.frameResetDelay = this.cpuCycleOdd ? 4 : 3;
 
     // 5-step モードに切り替え時は即座に half + quarter frame を clock
-    if (this.frameMode === 1) {
+    if (this.pendingFrameMode === 1) {
       this.clockQuarterFrame();
       this.clockHalfFrame();
     }
@@ -252,6 +257,17 @@ export class Apu {
   }
 
   private tickFrameCounter(): void {
+    // $4017 書込による遅延リセット
+    if (this.frameResetDelay > 0) {
+      this.frameResetDelay--;
+      if (this.frameResetDelay === 0) {
+        this.frameMode = this.pendingFrameMode;
+        this.frameCycle = 0;
+        this.frameStep = 0;
+        return;
+      }
+    }
+
     this.frameCycle++;
     const steps = this.frameMode === 0 ? FRAME_4STEP : FRAME_5STEP;
     const step = steps[this.frameStep];
@@ -310,6 +326,19 @@ export class Apu {
     this.dmc.irqFlag = false;
   }
 
+  /** RESET 時の APU 初期化。パワーオンとは異なりチャンネル状態を部分的に保持する */
+  reset(): void {
+    // $4015 に 0 書込: 全チャンネル disable + length counter 0
+    this.write(0x4015, 0x00);
+    // $4017 に現在のモードを再書込: フレームカウンタリセット
+    this.write(0x4017, this.frameMode << 7);
+    // IRQ フラグクリア
+    this.frameIrqFlag = false;
+    this.dmc.irqFlag = false;
+    // DMC 出力レベルは維持 (リセットでクリアされない)
+    // トライアングルのシーケンサ位置は維持
+  }
+
   /** バッファからサンプルを読み出して output 配列を埋める。読み出し分だけ進む */
   readSamples(output: Float32Array): number {
     let written = 0;
@@ -335,6 +364,8 @@ export class Apu {
       frameIrqInhibit: this.frameIrqInhibit,
       frameIrqFlag: this.frameIrqFlag,
       cpuCycleOdd: this.cpuCycleOdd,
+      frameResetDelay: this.frameResetDelay,
+      pendingFrameMode: this.pendingFrameMode,
     };
   }
 
@@ -350,6 +381,8 @@ export class Apu {
     this.frameIrqInhibit = state.frameIrqInhibit;
     this.frameIrqFlag = state.frameIrqFlag;
     this.cpuCycleOdd = state.cpuCycleOdd;
+    this.frameResetDelay = state.frameResetDelay;
+    this.pendingFrameMode = state.pendingFrameMode;
     this.bufferWritePos = 0;
     this.bufferReadPos = 0;
     this.sampleRateAccum = 0;

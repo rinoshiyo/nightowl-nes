@@ -5,9 +5,15 @@ import { Apu } from "../src/core/apu.ts";
  * APU フレームカウンタの精度検証。
  *
  * nesdev wiki: https://www.nesdev.org/wiki/APU_Frame_Counter
- * 4-step: 7457, 14913, 22371, 29829 CPU cycles
- * 5-step: 7457, 14913, 22371, 29829, 37281 CPU cycles
+ * $4017 書込から 3-4 cycle 後にフレームカウンタがリセットされる (偶数cycle=3, 奇数cycle=4)。
+ * テストでは新規 Apu (cpuCycleOdd=false) に $4017 を書くため遅延は常に 3 cycle。
+ *
+ * 各ステップのタイミング ($4017 書込後の CPU cycle 数):
+ * 4-step: 7460, 14916, 22374, 29832 (+3 offset)
+ * 5-step: 7460, 14916, 22374, 29832, 37284 (+3 offset)
  */
+
+const DELAY = 3;
 
 /** 指定サイクル数だけ APU を tick する */
 function tickN(apu: Apu, n: number): void {
@@ -31,61 +37,45 @@ describe("APU フレームカウンタ", () => {
       apu.write(0x4017, 0x00); // 4-step, IRQ enabled
     });
 
-    it("step 0 (cycle 7457): quarter frame が発火する", () => {
-      // cycle 7456 ではまだ発火していない
-      tickN(apu, 7456);
-      // envelope は初回 tick で start=true → decayLevel=15 をセットする
-      // まだ quarter frame が来ていないので start=true のまま
+    it("step 0 (cycle 7457+DELAY): quarter frame が発火する", () => {
+      tickN(apu, 7457 + DELAY - 1);
       expect(apu.pulse1.envelope.start).toBe(true);
 
-      // cycle 7457 で quarter frame が発火
       apu.tick();
       expect(apu.pulse1.envelope.start).toBe(false);
     });
 
-    it("step 1 (cycle 14913): quarter + half frame が発火する", () => {
-      tickN(apu, 14912);
+    it("step 1 (cycle 14913+DELAY): quarter + half frame が発火する", () => {
+      tickN(apu, 14913 + DELAY - 1);
       const lengthBefore = apu.pulse1.lengthCounter;
 
-      apu.tick(); // cycle 14913
-      // half frame で長さカウンタがデクリメントされる
+      apu.tick();
       expect(apu.pulse1.lengthCounter).toBe(lengthBefore - 1);
     });
 
-    it("step 2 (cycle 22371): quarter frame が発火する", () => {
-      tickN(apu, 22370);
-      // step 0, 1 で envelope が 2 回 tick されている
-      // step 2 の直前で envelope tick 数を確認
+    it("step 2 (cycle 22371+DELAY): quarter frame が発火する", () => {
+      tickN(apu, 22371 + DELAY - 1);
       const decayBefore = apu.pulse1.envelope.decayLevel;
 
-      apu.tick(); // cycle 22371
-      // quarter frame で envelope がもう 1 回 tick される
-      // decayLevel は divider が 0 になった時にデクリメントされる
-      // tick 回数が増えたことを確認 (値の変化は volume 設定依存)
+      apu.tick();
       expect(apu.pulse1.envelope.decayLevel).toBeLessThanOrEqual(decayBefore);
     });
 
-    it("step 3 (cycle 29829): quarter + half + IRQ が発火する", () => {
+    it("step 3 (cycle 29829+DELAY): quarter + half + IRQ が発火する", () => {
       apu.frameIrqFlag = false;
-      tickN(apu, 29828);
+      tickN(apu, 29829 + DELAY - 1);
       expect(apu.frameIrqFlag).toBe(false);
 
-      apu.tick(); // cycle 29829
+      apu.tick();
       expect(apu.frameIrqFlag).toBe(true);
     });
 
-    it("cycle 29830 でカウンタがリセットされ、次のループが始まる", () => {
-      tickN(apu, 29829);
+    it("cycle 29830+DELAY でカウンタがリセットされ、次のループが始まる", () => {
+      tickN(apu, 29830 + DELAY);
       apu.frameIrqFlag = false;
 
-      // 2 周目: 29830 でリセット → 次の 7457 サイクル後に step 0
-      tickN(apu, 1); // cycle 29830: リセット
-      tickN(apu, 7457); // 2 周目の step 0
-      // envelope が tick されたことで start=false (もう初回ではないが tick 自体は発生)
-      // 2 周目の step 3 で再度 IRQ が発火することを確認
-      tickN(apu, 14913 - 7457); // step 1
-      tickN(apu, 22371 - 14913); // step 2
-      tickN(apu, 29829 - 22371); // step 3
+      // 2 周目: リセット後 29829 cycle で step 3
+      tickN(apu, 29829);
       expect(apu.frameIrqFlag).toBe(true);
     });
   });
@@ -99,86 +89,77 @@ describe("APU フレームカウンタ", () => {
     });
 
     it("$4017 書き込み直後に quarter + half frame が即発火する", () => {
-      // 5-step モード設定時に即座に quarter+half が発火
-      // half frame で長さカウンタがデクリメントされる (254 → 253)
       expect(apu.pulse1.lengthCounter).toBe(253);
     });
 
-    it("step 0 (cycle 7457): quarter frame が発火する", () => {
-      tickN(apu, 7456);
+    it("step 0 (cycle 7457+DELAY): quarter frame が発火する", () => {
+      tickN(apu, 7457 + DELAY - 1);
       const decayBefore = apu.pulse1.envelope.decayLevel;
 
-      apu.tick(); // cycle 7457
+      apu.tick();
       expect(apu.pulse1.envelope.decayLevel).toBeLessThanOrEqual(decayBefore);
     });
 
-    it("step 1 (cycle 14913): quarter + half frame が発火する", () => {
+    it("step 1 (cycle 14913+DELAY): quarter + half frame が発火する", () => {
       const lengthBefore = apu.pulse1.lengthCounter;
-      tickN(apu, 14913);
-      // half frame で長さカウンタがデクリメント
+      tickN(apu, 14913 + DELAY);
       expect(apu.pulse1.lengthCounter).toBe(lengthBefore - 1);
     });
 
-    it("step 2 (cycle 22371): quarter frame のみ発火する", () => {
-      tickN(apu, 14913); // step 1 まで進める
+    it("step 2 (cycle 22371+DELAY): quarter frame のみ発火する", () => {
+      tickN(apu, 14913 + DELAY);
       const lengthAfterHalf = apu.pulse1.lengthCounter;
 
-      tickN(apu, 22371 - 14913); // step 2
-      // quarter frame のみなので長さカウンタは変化しない
+      tickN(apu, 22371 - 14913);
       expect(apu.pulse1.lengthCounter).toBe(lengthAfterHalf);
     });
 
-    it("step 3 (cycle 29829): 何も発火しない", () => {
-      tickN(apu, 14913); // step 1
+    it("step 3 (cycle 29829+DELAY): 何も発火しない", () => {
+      tickN(apu, 14913 + DELAY);
       const lengthAfterStep1 = apu.pulse1.lengthCounter;
 
-      tickN(apu, 22371 - 14913); // step 2
-      tickN(apu, 29829 - 22371); // step 3
-      // step 2 は quarter のみ、step 3 は何もない → 長さカウンタは step 1 から変化なし
+      tickN(apu, 22371 - 14913);
+      tickN(apu, 29829 - 22371);
       expect(apu.pulse1.lengthCounter).toBe(lengthAfterStep1);
     });
 
-    it("step 4 (cycle 37281): quarter + half frame が発火する", () => {
-      tickN(apu, 14913); // step 1: half
+    it("step 4 (cycle 37281+DELAY): quarter + half frame が発火する", () => {
+      tickN(apu, 14913 + DELAY);
       const lengthAfterStep1 = apu.pulse1.lengthCounter;
 
-      tickN(apu, 37281 - 14913); // step 2, 3, 4
-      // step 4 の half frame で長さカウンタがデクリメント
+      tickN(apu, 37281 - 14913);
       expect(apu.pulse1.lengthCounter).toBe(lengthAfterStep1 - 1);
     });
 
     it("5-step モードでは IRQ が一切生成されない", () => {
       apu.frameIrqFlag = false;
-      tickN(apu, 37282); // 1 周期分
+      tickN(apu, 37282 + DELAY);
       expect(apu.frameIrqFlag).toBe(false);
 
-      tickN(apu, 37282); // 2 周期分
+      tickN(apu, 37282);
       expect(apu.frameIrqFlag).toBe(false);
     });
 
-    it("cycle 37282 でカウンタがリセットされる", () => {
-      tickN(apu, 37281); // step 4
-      const lengthAfterStep4 = apu.pulse1.lengthCounter;
+    it("cycle 37282+DELAY でカウンタがリセットされる", () => {
+      tickN(apu, 37282 + DELAY);
+      const lengthAfterPeriod = apu.pulse1.lengthCounter;
 
-      // リセット後、2 周目の step 1 (cycle 14913) で再度 half frame
-      tickN(apu, 1); // cycle 37282: リセット
-      tickN(apu, 14913); // 2 周目 step 1
-      expect(apu.pulse1.lengthCounter).toBe(lengthAfterStep4 - 1);
+      // 2 周目の step 1 (14913 cycle 後) で half frame
+      tickN(apu, 14913);
+      expect(apu.pulse1.lengthCounter).toBe(lengthAfterPeriod - 1);
     });
   });
 
   describe("quarter frame がエンベロープと linear カウンタを駆動する", () => {
     it("pulse1 エンベロープが quarter frame で tick される", () => {
       apu.write(0x4015, 0x01);
-      apu.write(0x4000, 0x30); // halt=true, constant=true, vol=0
-      apu.write(0x4003, 0x08); // 長さカウンタロード
-      apu.write(0x4017, 0x00); // 4-step
+      apu.write(0x4000, 0x30);
+      apu.write(0x4003, 0x08);
+      apu.write(0x4017, 0x00);
 
-      // envelope.start は $4003 書き込みで true にセットされる
       expect(apu.pulse1.envelope.start).toBe(true);
 
-      // step 0 (cycle 7457) で quarter frame → envelope.tick() → start=false
-      tickN(apu, 7457);
+      tickN(apu, 7457 + DELAY);
       expect(apu.pulse1.envelope.start).toBe(false);
       expect(apu.pulse1.envelope.decayLevel).toBe(15);
     });
@@ -190,7 +171,7 @@ describe("APU フレームカウンタ", () => {
       apu.write(0x4017, 0x00);
 
       expect(apu.pulse2.envelope.start).toBe(true);
-      tickN(apu, 7457);
+      tickN(apu, 7457 + DELAY);
       expect(apu.pulse2.envelope.start).toBe(false);
     });
 
@@ -201,23 +182,19 @@ describe("APU フレームカウンタ", () => {
       apu.write(0x4017, 0x00);
 
       expect(apu.noise.envelope.start).toBe(true);
-      tickN(apu, 7457);
+      tickN(apu, 7457 + DELAY);
       expect(apu.noise.envelope.start).toBe(false);
     });
 
     it("triangle linear カウンタが quarter frame で tick される", () => {
-      apu.write(0x4015, 0x04); // triangle enable
-      apu.write(0x4008, 0x0a); // control=false, reload=10
-      apu.write(0x400b, 0x08); // 長さカウンタロード → linearCounterReloadFlag=true
+      apu.write(0x4015, 0x04);
+      apu.write(0x4008, 0x0a);
+      apu.write(0x400b, 0x08);
       apu.write(0x4017, 0x00);
 
-      // $400B 書き込みで reloadFlag=true
-      // 最初の quarter frame で linearCounter = linearCounterReload (10)
-      tickN(apu, 7457);
+      tickN(apu, 7457 + DELAY);
       expect(apu.triangle.linearCounter).toBe(10);
 
-      // control=false なので reloadFlag は false にリセットされる
-      // 次の quarter frame で linearCounter がデクリメント
       tickN(apu, 14913 - 7457);
       expect(apu.triangle.linearCounter).toBe(9);
     });
@@ -226,58 +203,57 @@ describe("APU フレームカウンタ", () => {
   describe("half frame が長さカウンタとスウィープを駆動する", () => {
     it("pulse1 長さカウンタが half frame でデクリメントされる", () => {
       apu.write(0x4015, 0x01);
-      apu.write(0x4000, 0x00); // halt=false
-      apu.write(0x4003, 0x08); // 長さカウンタロード (254)
+      apu.write(0x4000, 0x00);
+      apu.write(0x4003, 0x08);
       apu.write(0x4017, 0x00);
 
-      tickN(apu, 7457); // step 0: quarter のみ
+      tickN(apu, 7457 + DELAY);
       expect(apu.pulse1.lengthCounter).toBe(254);
 
-      tickN(apu, 14913 - 7457); // step 1: quarter + half
+      tickN(apu, 14913 - 7457);
       expect(apu.pulse1.lengthCounter).toBe(253);
     });
 
     it("pulse2 長さカウンタが half frame でデクリメントされる", () => {
       apu.write(0x4015, 0x02);
       apu.write(0x4004, 0x00);
-      apu.write(0x4007, 0x08); // 長さカウンタ 254
+      apu.write(0x4007, 0x08);
       apu.write(0x4017, 0x00);
 
-      tickN(apu, 14913); // step 1: quarter + half
+      tickN(apu, 14913 + DELAY);
       expect(apu.pulse2.lengthCounter).toBe(253);
     });
 
     it("triangle 長さカウンタが half frame でデクリメントされる", () => {
       apu.write(0x4015, 0x04);
-      apu.write(0x4008, 0x00); // control=false (halt=false)
-      apu.write(0x400b, 0x08); // 長さカウンタ 254
+      apu.write(0x4008, 0x00);
+      apu.write(0x400b, 0x08);
       apu.write(0x4017, 0x00);
 
-      tickN(apu, 14913); // step 1: quarter + half
+      tickN(apu, 14913 + DELAY);
       expect(apu.triangle.lengthCounter).toBe(253);
     });
 
     it("noise 長さカウンタが half frame でデクリメントされる", () => {
       apu.write(0x4015, 0x08);
-      apu.write(0x400c, 0x00); // halt=false
-      apu.write(0x400f, 0x08); // 長さカウンタ 254
+      apu.write(0x400c, 0x00);
+      apu.write(0x400f, 0x08);
       apu.write(0x4017, 0x00);
 
-      tickN(apu, 14913); // step 1: quarter + half
+      tickN(apu, 14913 + DELAY);
       expect(apu.noise.lengthCounter).toBe(253);
     });
 
     it("pulse1 スウィープが half frame で tick される", () => {
       apu.write(0x4015, 0x01);
-      apu.write(0x4000, 0x3f); // halt=true, constant, vol=15
-      apu.write(0x4001, 0x81); // sweep: enabled, period=0, shift=1
-      apu.write(0x4002, 0x00); // timer low = 0
-      apu.write(0x4003, 0x10); // timer high = 2 → timerPeriod = 0x200 = 512
+      apu.write(0x4000, 0x3f);
+      apu.write(0x4001, 0x81);
+      apu.write(0x4002, 0x00);
+      apu.write(0x4003, 0x10);
       apu.write(0x4017, 0x00);
 
-      // sweep.reload が true の状態で half frame が来ると divider がリセットされる
       expect(apu.pulse1.sweep.reload).toBe(true);
-      tickN(apu, 14913); // step 1: half frame
+      tickN(apu, 14913 + DELAY);
       expect(apu.pulse1.sweep.reload).toBe(false);
     });
   });
@@ -286,81 +262,77 @@ describe("APU フレームカウンタ", () => {
     it("4-step モードで IRQ コールバックが呼ばれる", () => {
       const irqCallback = vi.fn();
       apu.onIrq = irqCallback;
-      apu.write(0x4017, 0x00); // 4-step, IRQ enabled
+      apu.write(0x4017, 0x00);
 
-      tickN(apu, 29829);
+      tickN(apu, 29829 + DELAY);
       expect(irqCallback).toHaveBeenCalled();
     });
 
     it("IRQ inhibit 時はコールバックが呼ばれない", () => {
       const irqCallback = vi.fn();
       apu.onIrq = irqCallback;
-      apu.write(0x4017, 0x40); // 4-step, IRQ inhibit
+      apu.write(0x4017, 0x40);
 
-      tickN(apu, 29830);
+      tickN(apu, 29830 + DELAY);
       expect(irqCallback).not.toHaveBeenCalled();
       expect(apu.frameIrqFlag).toBe(false);
     });
 
     it("$4015 read でフレーム IRQ フラグがクリアされる", () => {
       apu.write(0x4017, 0x00);
-      tickN(apu, 29829);
+      tickN(apu, 29829 + DELAY);
       expect(apu.frameIrqFlag).toBe(true);
 
       const status = apu.read(0x4015);
       expect(status & 0x40).toBe(0x40);
       expect(apu.frameIrqFlag).toBe(false);
 
-      // 2 回目の read では bit6 がクリアされている
       expect(apu.read(0x4015) & 0x40).toBe(0);
     });
 
     it("IRQ inhibit を後からセットするとフラグがクリアされる", () => {
       apu.write(0x4017, 0x00);
-      tickN(apu, 29829);
+      tickN(apu, 29829 + DELAY);
       expect(apu.frameIrqFlag).toBe(true);
 
-      apu.write(0x4017, 0x40); // IRQ inhibit
+      apu.write(0x4017, 0x40);
       expect(apu.frameIrqFlag).toBe(false);
     });
 
     it("5-step モードでは IRQ コールバックが呼ばれない", () => {
       const irqCallback = vi.fn();
       apu.onIrq = irqCallback;
-      apu.write(0x4017, 0x80); // 5-step
+      apu.write(0x4017, 0x80);
 
-      tickN(apu, 37282 * 2); // 2 周期
+      tickN(apu, (37282 + DELAY) * 2);
       expect(irqCallback).not.toHaveBeenCalled();
     });
   });
 
   describe("$4017 書き込み時のリセット動作", () => {
     it("$4017 書き込みでフレームカウンタがリセットされる", () => {
-      apu.write(0x4017, 0x00); // 4-step
-      tickN(apu, 10000); // 途中まで進める
+      apu.write(0x4017, 0x00);
+      tickN(apu, 10000);
 
-      // リセット
       apu.write(0x4017, 0x00);
       apu.frameIrqFlag = false;
 
-      // リセット後、step 3 は 29829 cycle 後
-      tickN(apu, 29828);
+      tickN(apu, 29829 + DELAY - 1);
       expect(apu.frameIrqFlag).toBe(false);
 
-      apu.tick(); // cycle 29829
+      apu.tick();
       expect(apu.frameIrqFlag).toBe(true);
     });
 
     it("モード切替 (4-step → 5-step) でリセットされる", () => {
       apu.write(0x4015, 0x01);
       apu.write(0x4000, 0x00);
-      apu.write(0x4003, 0x08); // 長さカウンタ 254
-      apu.write(0x4017, 0x00); // 4-step
+      apu.write(0x4003, 0x08);
+      apu.write(0x4017, 0x00);
       tickN(apu, 10000);
 
       const lengthBefore = apu.pulse1.lengthCounter;
 
-      // 5-step に切替 → 即座に half frame
       apu.write(0x4017, 0x80);
       expect(apu.pulse1.lengthCounter).toBe(lengthBefore - 1);
     });
@@ -368,11 +340,10 @@ describe("APU フレームカウンタ", () => {
     it("5-step モードで $4017 再書き込みすると再度 quarter + half が即発火", () => {
       apu.write(0x4015, 0x01);
       apu.write(0x4000, 0x00);
-      apu.write(0x4003, 0x08); // 長さカウンタ 254
-      apu.write(0x4017, 0x80); // 5-step → 即 half (254→253)
+      apu.write(0x4003, 0x08);
+      apu.write(0x4017, 0x80);
       expect(apu.pulse1.lengthCounter).toBe(253);
 
-      // 再度 $4017 書き込み → 即 half (253→252)
       apu.write(0x4017, 0x80);
       expect(apu.pulse1.lengthCounter).toBe(252);
     });
@@ -380,8 +351,8 @@ describe("APU フレームカウンタ", () => {
     it("4-step モードでの $4017 書き込みでは即時 clock しない", () => {
       apu.write(0x4015, 0x01);
       apu.write(0x4000, 0x00);
-      apu.write(0x4003, 0x08); // 長さカウンタ 254
-      apu.write(0x4017, 0x00); // 4-step → 即時 clock なし
+      apu.write(0x4003, 0x08);
+      apu.write(0x4017, 0x00);
       expect(apu.pulse1.lengthCounter).toBe(254);
     });
   });
@@ -389,14 +360,14 @@ describe("APU フレームカウンタ", () => {
   describe("quarter/half frame の正確なカウント (1 周期分)", () => {
     it("4-step モード: 1 周期で quarter 4 回、half 2 回", () => {
       apu.write(0x4015, 0x01);
-      apu.write(0x4000, 0x30); // halt=true, constant, vol=0
-      apu.write(0x4003, 0x08); // 長さカウンタ 254
-      apu.write(0x4017, 0x00); // 4-step
+      apu.write(0x4000, 0x30);
+      apu.write(0x4003, 0x08);
+      apu.write(0x4017, 0x00);
 
       const envSpy = vi.spyOn(apu.pulse1.envelope, "tick");
       const lenSpy = vi.spyOn(apu.pulse1, "tickLength");
 
-      tickN(apu, 29830); // 1 周期
+      tickN(apu, 29830 + DELAY);
       expect(envSpy).toHaveBeenCalledTimes(4);
       expect(lenSpy).toHaveBeenCalledTimes(2);
     });
@@ -409,14 +380,12 @@ describe("APU フレームカウンタ", () => {
       const envSpy = vi.spyOn(apu.pulse1.envelope, "tick");
       const lenSpy = vi.spyOn(apu.pulse1, "tickLength");
 
-      apu.write(0x4017, 0x80); // 5-step → 即時 quarter+half
+      apu.write(0x4017, 0x80);
       expect(envSpy).toHaveBeenCalledTimes(1);
       expect(lenSpy).toHaveBeenCalledTimes(1);
 
-      tickN(apu, 37282); // 1 周期
-      // 即時 1 + 通常 4 (7457, 14913, 22371, 37281)
+      tickN(apu, 37282 + DELAY);
       expect(envSpy).toHaveBeenCalledTimes(5);
-      // 即時 1 + 通常 2 (14913, 37281)
       expect(lenSpy).toHaveBeenCalledTimes(3);
     });
   });
@@ -427,29 +396,33 @@ describe("APU フレームカウンタ", () => {
       let totalCycles = 0;
 
       apu.onIrq = () => { irqCycles.push(totalCycles); };
-      apu.write(0x4017, 0x00); // 4-step, IRQ enabled
+      apu.write(0x4017, 0x00);
 
-      // 3 周期分 = 29830 * 3 cycles
-      for (let i = 0; i < 29830 * 3; i++) {
+      // 3 周期分 (1周目は DELAY 付き、2周目以降は 29830 ぴったり)
+      for (let i = 0; i < 29830 * 3 + DELAY; i++) {
         totalCycles++;
         apu.tick();
       }
 
-      expect(irqCycles).toEqual([29829, 29830 + 29829, 29830 * 2 + 29829]);
+      // 1周目: 29829+DELAY=29832, 2周目: 29832+29830=59662, 3周目: 59662+29830=89492
+      expect(irqCycles).toEqual([
+        29829 + DELAY,
+        29829 + DELAY + 29830,
+        29829 + DELAY + 29830 * 2,
+      ]);
     });
 
     it("5-step モード: 2 周期分の half frame タイミングが安定している", () => {
       apu.write(0x4015, 0x01);
-      apu.write(0x4000, 0x00); // halt=false
-      apu.write(0x4003, 0x08); // 長さカウンタ 254
-      apu.write(0x4017, 0x80); // 5-step → 即時 half (254→253)
+      apu.write(0x4000, 0x00);
+      apu.write(0x4003, 0x08);
+      apu.write(0x4017, 0x80);
 
       let length = apu.pulse1.lengthCounter; // 253
       const halfCycles: number[] = [];
       let totalCycles = 0;
 
-      // tick ごとに長さカウンタの変化を監視
-      for (let i = 0; i < 37282 * 2; i++) {
+      for (let i = 0; i < 37282 * 2 + DELAY; i++) {
         totalCycles++;
         apu.tick();
         if (apu.pulse1.lengthCounter < length) {
@@ -458,9 +431,14 @@ describe("APU フレームカウンタ", () => {
         }
       }
 
-      // 1 周期目: 14913, 37281
-      // 2 周期目: 37282+14913, 37282+37281
-      expect(halfCycles).toEqual([14913, 37281, 37282 + 14913, 37282 + 37281]);
+      // 1周目: 14913+DELAY, 37281+DELAY
+      // 2周目: 37282+DELAY+14913, 37282+DELAY+37281
+      expect(halfCycles).toEqual([
+        14913 + DELAY,
+        37281 + DELAY,
+        37282 + 14913 + DELAY,
+        37282 + 37281 + DELAY,
+      ]);
     });
   });
 
@@ -475,7 +453,7 @@ describe("APU フレームカウンタ", () => {
       apu.frameIrqFlag = true;
       apu.dmc.irqFlag = true;
       const status = apu.read(0x4015);
-      expect(status & 0xc0).toBe(0xc0); // bit6 + bit7
+      expect(status & 0xc0).toBe(0xc0);
     });
   });
 });

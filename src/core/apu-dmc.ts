@@ -16,6 +16,8 @@ const DMC_RATE_TABLE: readonly number[] = [
 export class DmcChannel {
   /** メモリ読み出しコールバック (Bus.read 相当) */
   readSample: (addr: number) => number = () => 0;
+  /** DMC サンプルフェッチ時に CPU が stall するサイクル数 (NesConsole.step で消費) */
+  stallCycles = 0;
 
   /** タイマー周期 */
   timerPeriod = DMC_RATE_TABLE[0]!;
@@ -102,6 +104,8 @@ export class DmcChannel {
 
     this.sampleBuffer = this.readSample(this.currentAddress);
     this.sampleBufferEmpty = false;
+    // DMC サンプルフェッチ時、CPU は 1-4 cycle stall する (nesdev wiki: APU_DMC)
+    this.stallCycles += 4;
 
     // アドレスインクリメント ($FFFF → $8000 ラップ)
     if (this.currentAddress === 0xffff) {
@@ -186,6 +190,7 @@ export class DmcChannel {
       loop: this.loop,
       irqEnabled: this.irqEnabled,
       irqFlag: this.irqFlag,
+      stallCycles: this.stallCycles,
     };
   }
 
@@ -205,5 +210,6 @@ export class DmcChannel {
     this.loop = state.loop;
     this.irqEnabled = state.irqEnabled;
     this.irqFlag = state.irqFlag;
+    this.stallCycles = state.stallCycles;
   }
 }
