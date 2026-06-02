@@ -405,17 +405,14 @@ export class Ppu {
           this.mapper.clockIrqCounter();
         }
       }
-    }
-
-    // 奇数フレームスキップ: 背景描画有効 + 奇数フレームでは
-    // pre-render line の最終 dot (340) をスキップしてフレーム終了
-    if (this.scanline === PRE_RENDER_LINE && this.dot === 339
-        && this.oddFrame && (this.mask & 0x08) !== 0) {
-      this.dot = 0;
-      this.scanline = 0;
-      this.frameComplete = true;
-      this.oddFrame = !this.oddFrame;
-      return;
+      // 奇数フレームスキップ: BG 描画有効 + 奇数フレームでは最終 dot (340) をスキップ
+      if (this.dot === 339 && this.oddFrame && (this.mask & 0x08) !== 0) {
+        this.dot = 0;
+        this.scanline = 0;
+        this.frameComplete = true;
+        this.oddFrame = !this.oddFrame;
+        return;
+      }
     }
 
     this.dot++;
@@ -493,14 +490,7 @@ export class Ppu {
    * v の coarseX increment は状態管理用で、描画には初期値を使う。
    */
   private renderBgPixel(screenX: number, fbIdx: number): void {
-    if ((this.mask & 0x08) === 0) {
-      this.framebuffer[fbIdx] = this.palette[0]!;
-      this.bgColorIdx = 0;
-      return;
-    }
-
-    // $2001 bit1=0: 背景左端 8px クリッピング
-    if (screenX < 8 && (this.mask & 0x02) === 0) {
+    if ((this.mask & 0x08) === 0 || (screenX < 8 && (this.mask & 0x02) === 0)) {
       this.framebuffer[fbIdx] = this.palette[0]!;
       this.bgColorIdx = 0;
       return;
