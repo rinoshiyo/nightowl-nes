@@ -87,7 +87,7 @@ interface Translations {
 const en: Translations = {
   nav: { github: "GitHub" },
   kv: {
-    headline: "nightowl-nes",
+    headline: "nightowl-NES",
     sub: "A NES emulator, built from scratch in TypeScript.\nZero runtime dependencies. Zero lines of human code.",
     typewriterPrefix: "Just the ",
     typewriterWords: ["specs.", "AI.", "loop."],
@@ -139,7 +139,7 @@ const en: Translations = {
     sectionLabel: "The Harness",
     headline: "Zero lines of human-written code.",
     subtitle: "Everything you just played was built by Claude Code — running a self-driving loop that executes the full GitHub Flow without human intervention. The emulator is what you see. The harness is why it exists.",
-    revealLine: "The human seeds Issues and reviews in the morning. The machine does everything else.",
+    revealLine: "The human just starts the loop. The machine does everything else.",
     storyTitle: "8 Days",
     storyIntro: "The first four days were almost entirely about the harness. Getting an AI to run a sustainable development loop — branching, committing, opening PRs, reviewing its own code, merging, and picking up the next Issue — turned out to be the hardest part.",
     day12Desc: "CPU skeleton and first loop attempts. The harness crashed, lost context, couldn't recover. Broken PRs every morning.",
@@ -176,7 +176,7 @@ const en: Translations = {
 const ja: Translations = {
   nav: { github: "GitHub" },
   kv: {
-    headline: "nightowl-nes",
+    headline: "nightowl-NES",
     sub: "A NES emulator, built from scratch in TypeScript.\nZero runtime dependencies. Zero lines of human code.",
     typewriterPrefix: "Just the ",
     typewriterWords: ["specs.", "AI.", "loop."],
@@ -209,7 +209,7 @@ const ja: Translations = {
     ppuDesc: "背景 + スプライト描画、loopy スクロールレジスタ、Sprite 0 Hit 検出、スキャンライン精度タイミング。",
     apuLabel: "APU",
     apuDesc: "全5チャンネル — Pulse×2、Triangle、Noise、DMC — 非線形ミキシング。",
-    mapperLabel: "マッパー",
+    mapperLabel: "Mappers",
     mapperDesc: "20種のマッパーで商用 NES ライブラリの約85〜90%をカバー。",
     testLabel: "テスト",
     testDesc: "1,572 pass / 6 skip / 0 fail。毎コミット CI で検証。",
@@ -227,8 +227,8 @@ const ja: Translations = {
   harness: {
     sectionLabel: "ハーネス",
     headline: "人間が書いたコードは、ゼロ行。",
-    subtitle: "いま触ったエミュレータは、Claude Code が自走ループで GitHub Flow を回して作った。エミュレータは見える成果物。ハーネスが、それを存在させた理由。",
-    revealLine: "人間は Issue を立てて、朝レビューするだけ。あとは全部マシンがやる。",
+    subtitle: "このエミュレータは、Claude Code が自走ループで GitHub Flow を回して作った。エミュレータは見える成果物。ハーネスが、それを存在させた理由。",
+    revealLine: "人間はループをスタートするだけ。あとは全部マシンがやる。",
     storyTitle: "8日間",
     storyIntro: "最初の4日間は、ほぼ全てをハーネスに費やした。AI に持続可能な開発ループを回させること——ブランチを切り、コミットし、PR を開き、自分のコードをレビューし、マージし、次の Issue を拾う。それが一番難しかった。",
     day12Desc: "CPU の骨格と最初のループ試行。ハーネスはクラッシュし、コンテキストを失い、復旧できなかった。",
@@ -265,7 +265,7 @@ const ja: Translations = {
 const zh: Translations = {
   nav: { github: "GitHub" },
   kv: {
-    headline: "nightowl-nes",
+    headline: "nightowl-NES",
     sub: "A NES emulator, built from scratch in TypeScript.\nZero runtime dependencies. Zero lines of human code.",
     typewriterPrefix: "Just the ",
     typewriterWords: ["specs.", "AI.", "loop."],
@@ -298,7 +298,7 @@ const zh: Translations = {
     ppuDesc: "背景 + 精灵渲染、loopy滚动寄存器、Sprite 0 Hit检测、扫描线精确时序。",
     apuLabel: "APU",
     apuDesc: "全部5个通道 — Pulse×2、Triangle、Noise、DMC — 非线性混音。",
-    mapperLabel: "映射器",
+    mapperLabel: "Mappers",
     mapperDesc: "20种映射器，覆盖约85–90%的商用NES游戏库。",
     testLabel: "测试",
     testDesc: "1,572通过 / 6跳过 / 0失败。每次提交均通过 CI 验证。",
@@ -317,7 +317,7 @@ const zh: Translations = {
     sectionLabel: "线束",
     headline: "人类编写的代码：零行。",
     subtitle: "你刚刚体验的模拟器，由 Claude Code 通过自驱动循环执行 GitHub Flow 构建。模拟器是看得见的成果。线束是它存在的原因。",
-    revealLine: "人类创建 Issue，早上做代码审查。其余全部由机器完成。",
+    revealLine: "人类只需启动循环。其余全部由机器完成。",
     storyTitle: "8天",
     storyIntro: "前四天几乎全部投入在线束上。让AI运行一个可持续的开发循环——创建分支、提交、开PR、审查自己的代码、合并、获取下一个Issue——是最困难的部分。",
     day12Desc: "CPU骨架和首次循环尝试。线束崩溃、丢失上下文、无法恢复。",
