@@ -22,6 +22,8 @@ export interface Cpu {
   nmiPending: boolean;
   /** IRQ 保留フラグ (APU 等の IRQ ソースがアサート中に true) */
   irqPending: boolean;
+  /** *KIL 命令で CPU が停止した状態 */
+  halted: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export function createCpu(overrides?: Partial<Cpu>): Cpu {
     cycles: 0,
     nmiPending: false,
     irqPending: false,
+    halted: false,
     ...overrides,
   };
 }
@@ -57,6 +60,7 @@ export function serializeCpu(cpu: Cpu): CpuState {
     cycles: cpu.cycles,
     nmiPending: cpu.nmiPending,
     irqPending: cpu.irqPending,
+    halted: cpu.halted,
   };
 }
 

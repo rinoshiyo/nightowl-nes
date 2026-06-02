@@ -67,6 +67,7 @@ export class NesConsole {
     this.cpu.cycles = 7;
     this.cpu.nmiPending = false;
     this.cpu.irqPending = false;
+    this.cpu.halted = false;
     this.bus.dmaCycles = 0;
     this.apu.reset();
     this.apu.resetFilters();

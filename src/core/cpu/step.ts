@@ -29,6 +29,10 @@ function handleInterrupt(cpu: Cpu, bus: Bus, vector: number): number {
  * NMI 保留中は先に NMI を処理し、次に IRQ を確認する。
  */
 export function cpuStep(cpu: Cpu, bus: Bus): number {
+  if (cpu.halted) {
+    cpu.cycles += 1;
+    return 1;
+  }
   if (cpu.nmiPending) {
     cpu.nmiPending = false;
     return handleInterrupt(cpu, bus, NMI_VECTOR);

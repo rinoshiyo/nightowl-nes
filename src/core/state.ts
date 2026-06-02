@@ -17,6 +17,7 @@ export interface CpuState {
   cycles: number;
   nmiPending: boolean;
   irqPending: boolean;
+  halted: boolean;
 }
 
 export interface PpuState {

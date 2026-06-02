@@ -1802,3 +1802,18 @@ def(0x6b, {
     return 0;
   },
 });
+
+// ---- illegal *KIL / *JAM — CPU を停止させる ----
+// 実機では CPU がバスを完全にロックし、リセットでしか復帰できない。
+for (const op of [0x02, 0x12, 0x22, 0x32, 0x42, 0x52, 0x62, 0x72, 0x92, 0xb2, 0xd2, 0xf2]) {
+  def(op, {
+    name: "*KIL",
+    mode: implied,
+    cycles: 2,
+    exec: (cpu) => {
+      cpu.halted = true;
+      cpu.pc = (cpu.pc - 1) & 0xffff;
+      return 0;
+    },
+  });
+}
