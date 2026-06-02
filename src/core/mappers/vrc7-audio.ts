@@ -416,6 +416,22 @@ export class Vrc7Audio {
     }
   }
 
+  /**
+   * $E000 bit 6 による audio silence/reset。
+   * 全チャンネルをリリース状態にし、トレモロ LFO をリセットする。
+   * ビブラート LFO はクリアされない (nesdev wiki 仕様)。
+   */
+  silence(): void {
+    for (const ch of this.channels) {
+      ch.keyOn = false;
+      ch.mod.egState = EgState.Release;
+      ch.mod.egLevel = 127;
+      ch.car.egState = EgState.Release;
+      ch.car.egLevel = 127;
+    }
+    this.amCounter = 0;
+  }
+
   /** CPU サイクルごとの tick */
   tick(): void {
     this.cpuCycleCounter++;

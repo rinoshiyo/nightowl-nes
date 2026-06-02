@@ -130,12 +130,12 @@ export class MapperVrc7 implements Mapper {
         this.prgBank2 = value & 0x3f;
         break;
 
-      // --- FM 音源 ---
+      // --- FM 音源 (silence 中は書き込み無視) ---
       case 0x9010:
-        this.audio.writeAddress(value);
+        if (!this.audioSilenced) this.audio.writeAddress(value);
         break;
       case 0x9030:
-        this.audio.writeData(value);
+        if (!this.audioSilenced) this.audio.writeData(value);
         break;
 
       // --- CHR バンク切替 ---
@@ -149,11 +149,16 @@ export class MapperVrc7 implements Mapper {
       case 0xd010: this.chrBanks[7] = value; break;
 
       // --- ミラーリング + PRG RAM ---
-      case 0xe000:
+      case 0xe000: {
         this.prgRamEnabled = (value & 0x80) !== 0;
-        this.audioSilenced = (value & 0x40) !== 0;
+        const newSilence = (value & 0x40) !== 0;
+        if (newSilence && !this.audioSilenced) {
+          this.audio.silence();
+        }
+        this.audioSilenced = newSilence;
         this.updateMirroring(value);
         break;
+      }
 
       // --- IRQ ---
       case 0xe010:
