@@ -155,8 +155,7 @@ function initCounters(): void {
         if (entry.isIntersecting) {
           const el = entry.target as HTMLElement;
           const target = parseInt(el.dataset["target"] ?? "0", 10);
-          const format = el.dataset["format"];
-          animateCounter(el, target, format === "compact");
+          animateCounter(el, target);
           observer.unobserve(el);
         }
       }
@@ -171,7 +170,7 @@ function initCounters(): void {
 
 const numFmt = new Intl.NumberFormat("en-US");
 
-function animateCounter(el: HTMLElement, target: number, compact: boolean): void {
+function animateCounter(el: HTMLElement, target: number): void {
   const duration = 1500;
   const start = performance.now();
 
@@ -179,16 +178,11 @@ function animateCounter(el: HTMLElement, target: number, compact: boolean): void
     const progress = Math.min((now - start) / duration, 1);
     const eased = 1 - Math.pow(1 - progress, 3);
     const current = Math.round(eased * target);
-    el.textContent = compact ? formatCompact(current) : numFmt.format(current);
+    el.textContent = numFmt.format(current);
     if (progress < 1) requestAnimationFrame(step);
   }
 
   requestAnimationFrame(step);
-}
-
-function formatCompact(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K`;
-  return String(n);
 }
 
 // --- 互換性バーのアニメーション ---
