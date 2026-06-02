@@ -3,7 +3,6 @@ import type { Locale } from "./i18n.ts";
 
 // --- タイプライターアニメーション ---
 
-const WORDS = ["specs.", "AI.", "loop."];
 const TYPE_SPEED = 100;
 const DELETE_SPEED = 60;
 const PAUSE_AFTER_TYPE = 1800;
@@ -18,8 +17,13 @@ function initTypewriter(): void {
   let charIndex = 0;
   let isDeleting = false;
 
+  function getWords(): string[] {
+    return t().kv.typewriterWords;
+  }
+
   function tick(): void {
-    const word = WORDS[wordIndex]!;
+    const words = getWords();
+    const word = words[wordIndex % words.length]!;
 
     if (!isDeleting) {
       charIndex++;
@@ -37,7 +41,7 @@ function initTypewriter(): void {
       typewriterEl.textContent = word.slice(0, charIndex);
       if (charIndex === 0) {
         isDeleting = false;
-        wordIndex = (wordIndex + 1) % WORDS.length;
+        wordIndex = (wordIndex + 1) % words.length;
         setTimeout(tick, PAUSE_AFTER_DELETE);
         return;
       }
@@ -48,12 +52,14 @@ function initTypewriter(): void {
   tick();
 }
 
-// --- Parallax KV ---
+// --- Parallax (全セクション対応) ---
 
 function initParallax(): void {
   const kvContent = document.getElementById("kv-content");
   const kvHint = document.querySelector<HTMLElement>(".kv-scroll-hint");
-  if (!kvContent) return;
+  const kvScreenshots = document.querySelector<HTMLElement>(".kv-screenshots");
+  const qualityBg = document.getElementById("quality-parallax-bg");
+  const revealBg = document.getElementById("reveal-parallax-bg");
 
   let ticking = false;
   window.addEventListener("scroll", () => {
@@ -61,12 +67,47 @@ function initParallax(): void {
       requestAnimationFrame(() => {
         const scrollY = window.scrollY;
         const vh = window.innerHeight;
-        const progress = Math.min(scrollY / vh, 1);
-        kvContent.style.transform = `translate3d(0, ${scrollY * 0.4}px, 0)`;
-        kvContent.style.opacity = String(Math.max(0, 1 - progress * 1.5));
+
+        // KV: コンテンツ parallax + fade out
+        if (kvContent) {
+          const progress = Math.min(scrollY / vh, 1);
+          kvContent.style.transform = `translate3d(0, ${scrollY * 0.4}px, 0)`;
+          kvContent.style.opacity = String(Math.max(0, 1 - progress * 1.5));
+        }
         if (kvHint) {
+          const progress = Math.min(scrollY / vh, 1);
           kvHint.style.opacity = String(Math.max(0, 1 - progress * 3));
         }
+
+        // KV: NES screenshot frames parallax
+        if (kvScreenshots) {
+          const frames = kvScreenshots.querySelectorAll<HTMLElement>(".nes-frame");
+          frames.forEach((frame, i) => {
+            const speed = 0.1 + i * 0.05;
+            frame.style.transform = `translateY(${scrollY * speed}px) rotate(${frame.classList.contains("nes-frame-1") ? -8 : frame.classList.contains("nes-frame-2") ? 6 : frame.classList.contains("nes-frame-3") ? 4 : -5}deg)`;
+          });
+        }
+
+        // Quality section: background parallax
+        if (qualityBg) {
+          const section = qualityBg.parentElement;
+          if (section) {
+            const rect = section.getBoundingClientRect();
+            const sectionProgress = -rect.top / vh;
+            qualityBg.style.transform = `translate3d(0, ${sectionProgress * 40}px, 0)`;
+          }
+        }
+
+        // Reveal section: background parallax
+        if (revealBg) {
+          const section = revealBg.parentElement;
+          if (section) {
+            const rect = section.getBoundingClientRect();
+            const sectionProgress = -rect.top / vh;
+            revealBg.style.transform = `translate3d(0, ${sectionProgress * 30}px, 0)`;
+          }
+        }
+
         ticking = false;
       });
       ticking = true;
@@ -141,7 +182,7 @@ function formatCompact(n: number): string {
 
 // --- 互換性バーのアニメーション ---
 
-function initCompatBars(): void {
+function initStatBars(): void {
   const observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -156,7 +197,7 @@ function initCompatBars(): void {
     { threshold: 0.3 }
   );
 
-  for (const el of document.querySelectorAll<HTMLElement>(".compat-bar-fill")) {
+  for (const el of document.querySelectorAll<HTMLElement>(".stat-bar-fill")) {
     observer.observe(el);
   }
 }
@@ -170,7 +211,11 @@ function applyI18n(): void {
     const key = el.dataset["i18n"]!;
     const value = resolveKey(tr, key);
     if (typeof value === "string") {
-      el.textContent = value;
+      if (key === "kv.sub") {
+        el.textContent = value;
+      } else {
+        el.textContent = value;
+      }
     }
   }
 
@@ -178,7 +223,7 @@ function applyI18n(): void {
   const oracleList = document.getElementById("oracle-list");
   if (oracleList) {
     oracleList.innerHTML = "";
-    for (const item of tr.constraints.oracleItems) {
+    for (const item of tr.reveal.oracleItems) {
       const li = document.createElement("li");
       li.textContent = item;
       oracleList.appendChild(li);
@@ -227,27 +272,6 @@ function initLangSwitcher(): void {
   applyI18n();
 }
 
-// --- GitHub link dark/light ---
-
-function initGithubLinkTheme(): void {
-  const link = document.getElementById("github-link");
-  if (!link) return;
-
-  const emulatorSection = document.getElementById("emulator-section");
-  if (!emulatorSection) return;
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        link.classList.toggle("on-dark", entry.isIntersecting);
-      }
-    },
-    { threshold: 0 }
-  );
-
-  observer.observe(emulatorSection);
-}
-
 // --- Init all showcase features ---
 
 export function initShowcase(): void {
@@ -255,7 +279,6 @@ export function initShowcase(): void {
   initParallax();
   initFadeIn();
   initCounters();
-  initCompatBars();
+  initStatBars();
   initLangSwitcher();
-  initGithubLinkTheme();
 }

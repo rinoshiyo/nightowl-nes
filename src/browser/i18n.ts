@@ -2,6 +2,11 @@ type Locale = "en" | "ja" | "zh";
 
 interface Translations {
   nav: { github: string };
+  kv: {
+    headline: string;
+    sub: string;
+    typewriterWords: string[];
+  };
   emulator: {
     title: string;
     romSelect: string;
@@ -20,43 +25,39 @@ interface Translations {
     saveBanner: string;
     deleteSave: string;
   };
-  about: {
-    title: string;
+  quality: {
+    sectionLabel: string;
+    headline: string;
     subtitle: string;
-    desc1: string;
-    desc2: string;
-    desc3: string;
+    cpuLabel: string;
+    cpuDesc: string;
+    ppuLabel: string;
+    ppuDesc: string;
+    apuLabel: string;
+    apuDesc: string;
+    mapperLabel: string;
+    mapperDesc: string;
+    testLabel: string;
+    testDesc: string;
+    assertLabel: string;
+    assertDesc: string;
+    nestestLabel: string;
+    nestestDesc: string;
   };
-  constraints: {
-    title: string;
+  reveal: {
+    sectionLabel: string;
+    headline: string;
     subtitle: string;
+    revealLine: string;
+    loopTitle: string;
+    loopDesc: string;
+    nightsLabel: string;
+    nightsDesc: string;
     oracleTitle: string;
     oracleItems: string[];
     denyTitle: string;
     denyDesc: string;
     enforceDesc: string;
-  };
-  compat: {
-    title: string;
-    subtitle: string;
-    cpu: string;
-    cpuDesc: string;
-    ppu: string;
-    ppuDesc: string;
-    apu: string;
-    apuDesc: string;
-    mapper: string;
-    mapperDesc: string;
-  };
-  tests: {
-    title: string;
-    subtitle: string;
-    nestest: string;
-    nestestDesc: string;
-    unit: string;
-    unitDesc: string;
-    expects: string;
-    expectsDesc: string;
   };
   footer: {
     license: string;
@@ -66,8 +67,13 @@ interface Translations {
 
 const en: Translations = {
   nav: { github: "GitHub" },
+  kv: {
+    headline: "nightowl-nes",
+    sub: "A NES emulator, built from scratch.\nNo existing code was ever referenced.",
+    typewriterWords: ["specs.", "silicon.", "soul."],
+  },
   emulator: {
-    title: "Emulator",
+    title: "Play",
     romSelect: "Select ROM (.nes)",
     status: "Drop or select a .nes ROM to begin",
     helpToggle: "Controls ▼",
@@ -84,58 +90,59 @@ const en: Translations = {
     saveBanner: "💾 Save data found ",
     deleteSave: "Delete save",
   },
-  about: {
-    title: "About",
-    subtitle: "An AI-built NES emulator that never looked at existing code",
-    desc1: "Built with Claude Code's autonomous loop: GitHub Flow (Issue → Branch → PR → Review → Merge) running continuously without human intervention.",
-    desc2: "Human involvement is limited to seeding Issues and morning code reviews.",
-    desc3: "60+ nights of continuous autonomous development.",
+  quality: {
+    sectionLabel: "Precision",
+    headline: "Every opcode. Every channel. Every scanline.",
+    subtitle: "Not a proof of concept. A production-grade emulator with full hardware coverage and rigorous test infrastructure.",
+    cpuLabel: "CPU",
+    cpuDesc: "All 256 opcodes — 151 official + 105 unofficial — faithfully implemented from the 6502 specification alone.",
+    ppuLabel: "PPU",
+    ppuDesc: "Pixel-perfect rendering: Sprite 0 Hit detection, loopy scrolling, and scanline-accurate timing.",
+    apuLabel: "APU",
+    apuDesc: "All 5 audio channels with expansion audio support, delivering authentic 8-bit sound.",
+    mapperLabel: "Mappers",
+    mapperDesc: "20 mappers covering ~85–90% of the entire NES game library.",
+    testLabel: "Tests",
+    testDesc: "Comprehensive test suite with continuous integration.",
+    assertLabel: "Assertions",
+    assertDesc: "Individual verification points ensuring correctness at every level.",
+    nestestLabel: "nestest",
+    nestestDesc: "The gold-standard CPU test ROM — every instruction, every flag, every edge case. Passed.",
   },
-  constraints: {
-    title: "Constraints",
-    subtitle: "The rules that define this experiment",
-    oracleTitle: "Allowed References (Oracle)",
+  reveal: {
+    sectionLabel: "The Experiment",
+    headline: "Zero lines of human-written code.",
+    subtitle: "Everything you just played was written by an AI that never saw another emulator.",
+    revealLine: "No human wrote a single line. Not one function. Not one fix.",
+    loopTitle: "Autonomous GitHub Flow",
+    loopDesc: "Issue, branch, PR, code review, merge — every night, without human hands on the keyboard. Claude Code runs the full development cycle autonomously.",
+    nightsLabel: "nights",
+    nightsDesc: "Of continuous autonomous development. Human involvement: seeding Issues and morning code reviews.",
+    oracleTitle: "Allowed References",
     oracleItems: [
-      "nesdev.org wiki (NES hardware docs)",
+      "nesdev.org wiki — NES hardware documentation",
       "6502 instruction set specification",
       "iNES / NES 2.0 header format",
     ],
     denyTitle: "Denied References",
-    denyDesc: "All existing NES emulator source code — any language, any license. No peeking, no snippets.",
-    enforceDesc: "Structurally enforced via pre-tool-use hooks with a deny list.",
-  },
-  compat: {
-    title: "Compatibility",
-    subtitle: "What's implemented",
-    cpu: "CPU",
-    cpuDesc: "opcodes (official 151 + unofficial 105)",
-    ppu: "PPU",
-    ppuDesc: "Full implementation (Sprite 0 Hit, loopy scroll, scanline timing)",
-    apu: "APU",
-    apuDesc: "channels + expansion audio support",
-    mapper: "Mappers",
-    mapperDesc: "supported (~85–90% of NES library)",
-  },
-  tests: {
-    title: "Tests",
-    subtitle: "Quality assurance",
-    nestest: "nestest trace",
-    nestestDesc: "CPU instruction accuracy verification via official test ROM",
-    unit: "Unit tests",
-    unitDesc: "passing",
-    expects: "Assertions",
-    expectsDesc: "expect() calls",
+    denyDesc: "All existing NES emulator source code — any language, any license. Structurally enforced.",
+    enforceDesc: "Pre-tool-use hooks with a deny list prevent even accidental access to existing implementations.",
   },
   footer: {
     license: "MIT License",
-    builtWith: "Built with Claude Code",
+    builtWith: "Built autonomously with Claude Code",
   },
 };
 
 const ja: Translations = {
   nav: { github: "GitHub" },
+  kv: {
+    headline: "nightowl-nes",
+    sub: "スクラッチ実装の NES エミュレータ。\n既存のコードは一切参照していない。",
+    typewriterWords: ["仕様.", "回路.", "魂."],
+  },
   emulator: {
-    title: "エミュレータ",
+    title: "プレイ",
     romSelect: "ROM を選択 (.nes)",
     status: "ROM を読み込んでください（ファイル選択またはドラッグ＆ドロップ）",
     helpToggle: "操作ヘルプ ▼",
@@ -152,58 +159,59 @@ const ja: Translations = {
     saveBanner: "💾 セーブデータあり ",
     deleteSave: "セーブ削除",
   },
-  about: {
-    title: "概要",
-    subtitle: "既存コードを一切見ずに AI がスクラッチ実装した NES エミュレータ",
-    desc1: "Claude Code の自走ループ機構（GitHub Flow: Issue → Branch → PR → Review → Merge を人手を介さず自動で回し続ける）で構築。",
-    desc2: "人間の関与は Issue のシード（作成）と朝のコードレビューのみ。",
-    desc3: "60夜以上の継続的な自律開発実績。",
+  quality: {
+    sectionLabel: "精度",
+    headline: "全オプコード。全チャンネル。全スキャンライン。",
+    subtitle: "概念実証ではない。完全なハードウェアカバレッジと厳格なテスト基盤を備えた本格エミュレータ。",
+    cpuLabel: "CPU",
+    cpuDesc: "256オプコード全実装 — 公式151 + 非公式105 — 6502仕様書のみから忠実に実装。",
+    ppuLabel: "PPU",
+    ppuDesc: "ピクセルパーフェクト描画: Sprite 0 Hit 検出、loopy スクロール、スキャンライン精度タイミング。",
+    apuLabel: "APU",
+    apuDesc: "5チャンネル全実装、拡張音源対応。本物の8ビットサウンドを再現。",
+    mapperLabel: "マッパー",
+    mapperDesc: "20マッパー対応 — NES ゲームライブラリの約85〜90%をカバー。",
+    testLabel: "テスト",
+    testDesc: "CI 統合された包括的テストスイート。",
+    assertLabel: "アサーション",
+    assertDesc: "あらゆるレベルで正確性を保証する個別検証ポイント。",
+    nestestLabel: "nestest",
+    nestestDesc: "CPU テストの最高基準 ROM — 全命令、全フラグ、全エッジケース。合格。",
   },
-  constraints: {
-    title: "制約",
-    subtitle: "この実験を定義するルール",
-    oracleTitle: "参照 OK（Oracle）",
+  reveal: {
+    sectionLabel: "実験",
+    headline: "人間が書いたコードは、ゼロ行。",
+    subtitle: "いま触ったエミュレータは、既存の実装を一切見ていない AI が書いた。",
+    revealLine: "人間が書いたコードは一行もない。関数ひとつ。修正ひとつ。すべて AI。",
+    loopTitle: "自律 GitHub Flow",
+    loopDesc: "Issue、ブランチ、PR、コードレビュー、マージ — 毎晩、人間がキーボードに触れることなく。Claude Code が開発サイクル全体を自律的に実行。",
+    nightsLabel: "夜",
+    nightsDesc: "継続的な自律開発の実績。人間の関与は Issue のシードと朝のコードレビューのみ。",
+    oracleTitle: "参照OK",
     oracleItems: [
-      "nesdev.org wiki（NES ハードウェアドキュメント）",
+      "nesdev.org wiki — NES ハードウェアドキュメント",
       "6502 命令セット仕様書",
       "iNES / NES 2.0 ヘッダフォーマット",
     ],
-    denyTitle: "参照 NG",
-    denyDesc: "既存 NES エミュレータのソースコード全て — 言語問わず、ライセンス問わず。",
-    enforceDesc: "pre-tool-use hooks の deny list で構造的に強制。",
-  },
-  compat: {
-    title: "互換性",
-    subtitle: "実装状況",
-    cpu: "CPU",
-    cpuDesc: "オプコード（公式 151 + 非公式 105）",
-    ppu: "PPU",
-    ppuDesc: "完全実装（Sprite 0 Hit, loopy スクロール, スキャンラインタイミング）",
-    apu: "APU",
-    apuDesc: "チャンネル + 拡張音源対応",
-    mapper: "マッパー",
-    mapperDesc: "対応（NES ライブラリの ~85–90%）",
-  },
-  tests: {
-    title: "テスト",
-    subtitle: "品質保証",
-    nestest: "nestest trace",
-    nestestDesc: "公式テスト ROM による CPU 命令の正確性検証",
-    unit: "ユニットテスト",
-    unitDesc: "パス",
-    expects: "アサーション",
-    expectsDesc: "expect() 呼び出し",
+    denyTitle: "参照NG",
+    denyDesc: "既存 NES エミュレータのソースコード全て — 言語・ライセンス不問。構造的に強制。",
+    enforceDesc: "pre-tool-use hooks の deny list により、既存実装への偶発的なアクセスすら防止。",
   },
   footer: {
     license: "MIT License",
-    builtWith: "Claude Code で構築",
+    builtWith: "Claude Code による自律開発",
   },
 };
 
 const zh: Translations = {
   nav: { github: "GitHub" },
+  kv: {
+    headline: "nightowl-nes",
+    sub: "从零构建的 NES 模拟器。\n从未参考任何现有代码。",
+    typewriterWords: ["规格.", "芯片.", "灵魂."],
+  },
   emulator: {
-    title: "模拟器",
+    title: "游玩",
     romSelect: "选择 ROM (.nes)",
     status: "拖放或选择 .nes ROM 文件开始",
     helpToggle: "操作帮助 ▼",
@@ -220,51 +228,47 @@ const zh: Translations = {
     saveBanner: "💾 已找到存档数据 ",
     deleteSave: "删除存档",
   },
-  about: {
-    title: "关于",
-    subtitle: "一个从未参考现有代码的 AI 构建 NES 模拟器",
-    desc1: "由 Claude Code 自主循环机制构建（GitHub Flow: Issue → Branch → PR → Review → Merge 自动循环）。",
-    desc2: "人类参与仅限于创建 Issue 和每日代码审查。",
-    desc3: "超过 60 夜的持续自主开发。",
+  quality: {
+    sectionLabel: "精度",
+    headline: "每个操作码。每个通道。每条扫描线。",
+    subtitle: "不是概念验证，而是具备完整硬件覆盖和严格测试体系的生产级模拟器。",
+    cpuLabel: "CPU",
+    cpuDesc: "全部256个操作码 — 官方151 + 非官方105 — 仅从6502规范忠实实现。",
+    ppuLabel: "PPU",
+    ppuDesc: "像素级完美渲染: Sprite 0 Hit 检测、loopy 滚动、扫描线精确时序。",
+    apuLabel: "APU",
+    apuDesc: "全部5个音频通道，支持扩展音源，还原正宗8位音效。",
+    mapperLabel: "映射器",
+    mapperDesc: "支持20种映射器 — 覆盖约85-90%的NES游戏库。",
+    testLabel: "测试",
+    testDesc: "集成持续集成的全面测试套件。",
+    assertLabel: "断言",
+    assertDesc: "在每个层级确保正确性的独立验证点。",
+    nestestLabel: "nestest",
+    nestestDesc: "CPU 测试的黄金标准 ROM — 每条指令、每个标志、每个边界情况。通过。",
   },
-  constraints: {
-    title: "约束",
-    subtitle: "定义这个实验的规则",
-    oracleTitle: "允许参考 (Oracle)",
+  reveal: {
+    sectionLabel: "实验",
+    headline: "人类编写的代码：零行。",
+    subtitle: "你刚刚体验的模拟器，由一个从未见过其他模拟器的 AI 编写。",
+    revealLine: "没有一行人类代码。没有一个函数。没有一次修复。全部由 AI 完成。",
+    loopTitle: "自主 GitHub Flow",
+    loopDesc: "Issue、分支、PR、代码审查、合并 — 每晚自动运行，无需人类触碰键盘。Claude Code 自主执行完整开发周期。",
+    nightsLabel: "夜",
+    nightsDesc: "持续自主开发的实绩。人类参与仅限于创建 Issue 和每日代码审查。",
+    oracleTitle: "允许参考",
     oracleItems: [
-      "nesdev.org wiki（NES 硬件文档）",
+      "nesdev.org wiki — NES 硬件文档",
       "6502 指令集规范",
       "iNES / NES 2.0 头格式",
     ],
     denyTitle: "禁止参考",
-    denyDesc: "所有现有 NES 模拟器源代码 — 不限语言、不限许可证。",
-    enforceDesc: "通过 pre-tool-use hooks 的 deny list 结构性强制。",
-  },
-  compat: {
-    title: "兼容性",
-    subtitle: "实现状况",
-    cpu: "CPU",
-    cpuDesc: "操作码（官方 151 + 非官方 105）",
-    ppu: "PPU",
-    ppuDesc: "完整实现（Sprite 0 Hit, loopy 滚动, 扫描线时序）",
-    apu: "APU",
-    apuDesc: "通道 + 扩展音源支持",
-    mapper: "映射器",
-    mapperDesc: "支持（NES 游戏库的 ~85–90%）",
-  },
-  tests: {
-    title: "测试",
-    subtitle: "质量保证",
-    nestest: "nestest trace",
-    nestestDesc: "通过官方测试 ROM 验证 CPU 指令的准确性",
-    unit: "单元测试",
-    unitDesc: "通过",
-    expects: "断言",
-    expectsDesc: "expect() 调用",
+    denyDesc: "所有现有 NES 模拟器源代码 — 不限语言、不限许可证。结构性强制执行。",
+    enforceDesc: "通过 pre-tool-use hooks 的 deny list，防止对现有实现的任何访问。",
   },
   footer: {
     license: "MIT License",
-    builtWith: "使用 Claude Code 构建",
+    builtWith: "由 Claude Code 自主构建",
   },
 };
 
