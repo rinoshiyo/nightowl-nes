@@ -1,48 +1,191 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>nightowl-nes</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* --- Reset & Base --- */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      background: #1a1a2e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      color: #1d1d1f;
+      background: #fff;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* --- Accent color --- */
+    :root {
+      --accent: #D97757;
+      --accent-light: #E8956F;
+      --text-primary: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary: #86868b;
+      --bg-dark: #1a1a2e;
+      --section-gap: min(12vw, 160px);
+    }
+
+    /* --- GitHub Link (top-right fixed) --- */
+    .github-link {
+      position: fixed;
+      top: 1.2rem;
+      right: 1.5rem;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: color 0.2s;
+      mix-blend-mode: difference;
+    }
+    .github-link:hover { color: var(--accent); }
+    .github-link svg { width: 20px; height: 20px; fill: currentColor; }
+    .github-link.on-dark { color: rgba(255,255,255,0.7); }
+    .github-link.on-dark:hover { color: #fff; }
+
+    /* --- Language Switcher (top-right fixed) --- */
+    .lang-switcher {
+      position: fixed;
+      top: 1.2rem;
+      right: 7rem;
+      z-index: 1000;
+      display: flex;
+      gap: 0.3rem;
+      mix-blend-mode: difference;
+    }
+    .lang-btn {
+      background: none;
+      border: 1px solid rgba(128,128,128,0.3);
+      color: var(--text-secondary);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .lang-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .lang-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* --- Section: KV (Key Visual) --- */
+    .kv {
+      height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      font-family: monospace;
-      color: #e0e0e0;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, #fff 0%, #fafafa 100%);
     }
-    h1 {
-      font-size: 1.2rem;
-      margin-bottom: 1rem;
-      color: #8be9fd;
+    .kv-content {
+      text-align: center;
+      will-change: transform, opacity;
     }
-    canvas {
+    .kv-headline {
+      font-size: clamp(3.5rem, 10vw, 8rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      color: var(--text-primary);
+    }
+    .kv-sub {
+      margin-top: 1.5rem;
+      font-size: clamp(1rem, 2.5vw, 1.5rem);
+      font-weight: 400;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .kv-typewriter {
+      display: inline;
+    }
+    .kv-typewriter-word {
+      color: var(--accent);
+      font-weight: 600;
+      border-right: 2px solid var(--accent);
+      padding-right: 2px;
+    }
+    .kv-scroll-hint {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--text-tertiary);
+      font-size: 0.8rem;
+      animation: kv-bounce 2s ease-in-out infinite;
+    }
+    @keyframes kv-bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(6px); }
+    }
+
+    /* --- Section: Emulator (dark) --- */
+    .emulator-section {
+      background: var(--bg-dark);
+      padding: var(--section-gap) 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    .emulator-section::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      left: 0;
+      right: 0;
+      height: 120px;
+      background: linear-gradient(180deg, transparent, var(--bg-dark));
+      pointer-events: none;
+    }
+    .emulator-section .section-label {
+      color: var(--accent-light);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .emulator-section h2 {
+      color: #f8f8f2;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    /* Emulator core UI (ported from original) */
+    .emu-wrap { position: relative; display: inline-block; }
+    #screen {
       border: 2px solid #44475a;
       image-rendering: pixelated;
       width: 512px;
       height: 480px;
       touch-action: none;
     }
-    canvas:fullscreen {
-      width: 100vw;
-      height: 100vh;
-      object-fit: contain;
-      border: none;
-      background: #000;
+    #screen:fullscreen {
+      width: 100vw; height: 100vh;
+      object-fit: contain; border: none; background: #000;
     }
+    #fps-counter {
+      position: absolute; top: 4px; right: 4px;
+      background: rgba(0,0,0,0.6); color: #50fa7b;
+      font-size: 0.7rem; padding: 2px 6px; border-radius: 3px;
+      pointer-events: none; z-index: 10; font-family: monospace;
+    }
+    #fps-counter:empty { display: none; }
     .controls {
       margin-top: 1rem;
       display: flex;
       gap: 0.5rem;
       align-items: center;
     }
-    .controls label,
-    .controls button {
+    .controls label, .controls button {
       display: inline-block;
       padding: 0.5rem 1rem;
       background: #44475a;
@@ -53,18 +196,19 @@
       font-family: monospace;
       font-size: 0.85rem;
     }
-    .controls label:hover,
-    .controls button:hover { background: #6272a4; }
+    .controls label:hover, .controls button:hover { background: #6272a4; }
     input[type="file"] { display: none; }
     #status {
       margin-top: 0.5rem;
       font-size: 0.8rem;
       color: #6272a4;
+      font-family: monospace;
     }
     #save-info {
       margin-top: 0.3rem;
       font-size: 0.75rem;
       color: #50fa7b;
+      font-family: monospace;
     }
     #save-info:empty { display: none; }
     #delete-save {
@@ -80,10 +224,10 @@
     }
     #delete-save:hover { background: #ff6e6e; }
 
-    /* G3: キーバインド・操作ヘルプ */
+    /* Help section */
     .help-section {
       margin-top: 1rem;
-      width: 512px; /* JS の applyScale() で動的に更新 */
+      width: 512px;
     }
     .help-toggle {
       background: none;
@@ -96,10 +240,7 @@
       font-size: 0.75rem;
     }
     .help-toggle:hover { color: #8be9fd; border-color: #6272a4; }
-    .help-content {
-      display: none;
-      margin-top: 0.5rem;
-    }
+    .help-content { display: none; margin-top: 0.5rem; }
     .help-content.visible { display: block; }
     .keybinds {
       display: flex;
@@ -107,6 +248,7 @@
       flex-wrap: wrap;
       font-size: 0.7rem;
       color: #6272a4;
+      font-family: monospace;
     }
     .keybinds table { border-collapse: collapse; }
     .keybinds th { color: #8be9fd; text-align: left; padding: 0.1rem 0.4rem; }
@@ -118,7 +260,7 @@
       color: #f8f8f2;
     }
 
-    /* ステートセーブ/ロード */
+    /* State save/load */
     .state-controls {
       margin-top: 0.5rem;
       display: flex;
@@ -126,16 +268,8 @@
       align-items: center;
       flex-wrap: wrap;
     }
-    .state-controls .slot-group {
-      display: flex;
-      gap: 0.2rem;
-      align-items: center;
-    }
-    .state-controls .slot-label {
-      font-size: 0.7rem;
-      color: #6272a4;
-      margin-right: 0.2rem;
-    }
+    .state-controls .slot-group { display: flex; gap: 0.2rem; align-items: center; }
+    .state-controls .slot-label { font-size: 0.7rem; color: #6272a4; margin-right: 0.2rem; font-family: monospace; }
     .state-controls button {
       padding: 0.25rem 0.5rem;
       background: #44475a;
@@ -151,22 +285,12 @@
     .state-controls button.save-btn:hover { background: #50fa7b66; }
     .state-controls button.load-btn { background: #8be9fd33; }
     .state-controls button.load-btn:hover { background: #8be9fd66; }
-    .state-controls button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-    .state-controls button:disabled:hover {
-      background: #44475a;
-    }
-    #state-status {
-      font-size: 0.7rem;
-      color: #50fa7b;
-      min-height: 1em;
-      margin-top: 0.2rem;
-    }
+    .state-controls button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .state-controls button:disabled:hover { background: #44475a; }
+    #state-status { font-size: 0.7rem; color: #50fa7b; min-height: 1em; margin-top: 0.2rem; font-family: monospace; }
     .state-slot-active { border: 1px solid #50fa7b !important; }
 
-    /* G1: ドラッグ&ドロップオーバーレイ */
+    /* Drop overlay */
     #drop-overlay {
       display: none;
       position: fixed;
@@ -180,12 +304,9 @@
     }
     #drop-overlay.visible { display: flex; }
     #drop-overlay .drop-icon { font-size: 4rem; }
-    #drop-overlay .drop-text {
-      font-size: 1.2rem;
-      color: #8be9fd;
-    }
+    #drop-overlay .drop-text { font-size: 1.2rem; color: #8be9fd; font-family: monospace; }
 
-    /* G5: エラーオーバーレイ */
+    /* Error overlay */
     #error-overlay {
       display: none;
       position: fixed;
@@ -205,6 +326,7 @@
       color: #ff5555;
       font-size: 1rem;
       line-height: 1.5;
+      font-family: monospace;
     }
     #error-close {
       padding: 0.5rem 1.5rem;
@@ -217,7 +339,7 @@
     }
     #error-close:hover { background: #6272a4; }
 
-    /* モバイル: バーチャルパッド */
+    /* Touch controls */
     .touch-controls {
       display: flex;
       justify-content: space-between;
@@ -230,52 +352,26 @@
       touch-action: none;
     }
     .touch-left, .touch-right { flex: 0 0 auto; }
-    .touch-center {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
-    .touch-dpad {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-    }
-    .dpad-middle {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-    }
+    .touch-center { display: flex; gap: 1rem; align-items: center; }
+    .touch-dpad { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .dpad-middle { display: flex; align-items: center; gap: 2px; }
     .dpad-center { width: 40px; height: 40px; }
     .dpad-btn {
-      width: 40px;
-      height: 40px;
-      background: #44475a;
-      color: #f8f8f2;
-      border: 1px solid #6272a4;
-      border-radius: 6px;
-      font-size: 1rem;
-      touch-action: none;
-      cursor: pointer;
+      width: 40px; height: 40px;
+      background: #44475a; color: #f8f8f2;
+      border: 1px solid #6272a4; border-radius: 6px;
+      font-size: 1rem; touch-action: none; cursor: pointer;
     }
     .dpad-btn:active { background: #6272a4; }
-    .action-buttons {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-    }
+    .action-buttons { display: flex; gap: 0.5rem; align-items: center; }
     .action-btn {
-      width: 52px;
-      height: 52px;
+      width: 52px; height: 52px;
       border-radius: 50%;
       border: 2px solid #6272a4;
       background: #44475a;
       color: #f8f8f2;
-      font-size: 0.9rem;
-      font-weight: bold;
-      font-family: monospace;
-      touch-action: none;
-      cursor: pointer;
+      font-size: 0.9rem; font-weight: bold; font-family: monospace;
+      touch-action: none; cursor: pointer;
     }
     .action-btn:active { background: #6272a4; }
     .btn-a { background: #ff5555aa; border-color: #ff5555; }
@@ -284,140 +380,516 @@
     .btn-b:active { background: #8be9fd; }
     .menu-btn {
       padding: 0.3rem 0.6rem;
-      background: #44475a;
-      color: #6272a4;
-      border: 1px solid #6272a4;
-      border-radius: 12px;
-      font-size: 0.6rem;
-      font-family: monospace;
-      touch-action: none;
-      cursor: pointer;
+      background: #44475a; color: #6272a4;
+      border: 1px solid #6272a4; border-radius: 12px;
+      font-size: 0.6rem; font-family: monospace;
+      touch-action: none; cursor: pointer;
     }
     .menu-btn:active { background: #6272a4; color: #f8f8f2; }
 
-    /* レスポンシブ */
+    /* --- Section: White sections (About / Constraints / Compat / Tests) --- */
+    .section-white {
+      padding: var(--section-gap) 1.5rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .section-white .section-label {
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .section-white h2 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+    .section-white .section-sub {
+      font-size: clamp(0.95rem, 1.8vw, 1.15rem);
+      color: var(--text-secondary);
+      margin-bottom: 3rem;
+      line-height: 1.5;
+    }
+
+    /* Transition from dark to white */
+    .dark-to-white {
+      height: 120px;
+      background: linear-gradient(180deg, var(--bg-dark), #fff);
+    }
+
+    /* --- Fade-in on scroll --- */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* --- About section --- */
+    .about-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+    .about-card {
+      padding: 2rem;
+      background: #fafafa;
+      border-radius: 12px;
+      border: 1px solid #f0f0f0;
+    }
+    .about-card p {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+    }
+    .about-highlight {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+    .about-highlight-label {
+      font-size: 0.85rem;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    /* --- Constraints section --- */
+    .constraints-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    .constraint-card {
+      padding: 2rem;
+      border-radius: 12px;
+    }
+    .constraint-card.allowed {
+      background: #f0faf0;
+      border: 1px solid #d0e8d0;
+    }
+    .constraint-card.denied {
+      background: #faf0f0;
+      border: 1px solid #e8d0d0;
+    }
+    .constraint-card h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .constraint-card.allowed h3 { color: #2d7a2d; }
+    .constraint-card.denied h3 { color: #c0392b; }
+    .constraint-card ul {
+      list-style: none;
+      padding: 0;
+    }
+    .constraint-card li {
+      padding: 0.4rem 0;
+      padding-left: 1.5rem;
+      position: relative;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .constraint-card.allowed li::before { content: '✓'; position: absolute; left: 0; color: #2d7a2d; font-weight: 700; }
+    .constraint-card.denied li::before { content: '✗'; position: absolute; left: 0; color: #c0392b; font-weight: 700; }
+    .constraint-card p {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .constraint-enforce {
+      margin-top: 0.8rem;
+      font-size: 0.85rem;
+      color: var(--text-tertiary);
+      font-style: italic;
+    }
+
+    /* --- Compatibility Dashboard --- */
+    .compat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+    }
+    .compat-card {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      background: #fafafa;
+      border-radius: 12px;
+      border: 1px solid #f0f0f0;
+    }
+    .compat-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+    .compat-value {
+      font-size: clamp(2.5rem, 6vw, 3.5rem);
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .compat-value .compat-total {
+      font-size: 0.5em;
+      color: var(--text-tertiary);
+    }
+    .compat-bar {
+      margin: 1rem auto 0;
+      width: 80%;
+      height: 6px;
+      background: #e8e8e8;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .compat-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 1.2s ease-out;
+    }
+    .compat-desc {
+      margin-top: 0.8rem;
+      font-size: 0.85rem;
+      color: var(--text-tertiary);
+      line-height: 1.4;
+    }
+
+    /* --- Test Results --- */
+    .tests-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 2rem;
+    }
+    .test-card {
+      padding: 2rem;
+      background: #fafafa;
+      border-radius: 12px;
+      border: 1px solid #f0f0f0;
+      text-align: center;
+    }
+    .test-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .test-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .test-value {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+    .test-desc {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-tertiary);
+      line-height: 1.4;
+    }
+
+    /* --- Footer --- */
+    .site-footer {
+      padding: 3rem 1.5rem;
+      text-align: center;
+      border-top: 1px solid #f0f0f0;
+    }
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .footer-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--accent); }
+    .footer-copy {
+      font-size: 0.8rem;
+      color: var(--text-tertiary);
+    }
+
+    /* --- Responsive --- */
     @media (max-width: 600px) {
-      body { justify-content: flex-start; padding-top: 0.5rem; }
-      h1 { font-size: 1rem; margin-bottom: 0.5rem; }
-      canvas {
+      .kv-headline { font-size: clamp(2.5rem, 12vw, 4rem); }
+      #screen {
         width: 100vw !important;
         height: auto !important;
         aspect-ratio: 256 / 240;
         border: none;
       }
-      .controls { flex-wrap: wrap; justify-content: center; }
       .help-section { width: 100% !important; padding: 0 0.5rem; }
+      .controls { flex-wrap: wrap; justify-content: center; }
       .state-controls { justify-content: center; }
       .touch-controls { max-width: 100vw; padding: 0.5rem; }
+      .constraints-grid { grid-template-columns: 1fr; }
+      .compat-grid { grid-template-columns: repeat(2, 1fr); }
+      .section-white { padding: 4rem 1.2rem; }
+      .github-link { top: 0.8rem; right: 0.8rem; }
+      .lang-switcher { top: 0.8rem; right: 4.5rem; }
     }
-
-    /* FPS カウンタ */
-    #fps-counter {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      background: rgba(0, 0, 0, 0.6);
-      color: #50fa7b;
-      font-size: 0.7rem;
-      padding: 2px 6px;
-      border-radius: 3px;
-      pointer-events: none;
-      z-index: 10;
-      font-family: monospace;
-    }
-    #fps-counter:empty { display: none; }
   </style>
 </head>
 <body>
-  <h1>nightowl-nes</h1>
-  <div style="position: relative; display: inline-block;">
-    <canvas id="screen"></canvas>
-    <div id="fps-counter"></div>
-  </div>
-  <div class="controls">
-    <label for="rom-input">ROM を選択 (.nes)</label>
-    <input type="file" id="rom-input" accept=".nes">
-    <button id="scale-btn" title="画面サイズ切替">2x</button>
-    <button id="fullscreen-btn" title="フルスクリーン">⛶</button>
-  </div>
-  <div id="status">ROM を読み込んでください（ファイル選択またはドラッグ&ドロップ）</div>
-  <div id="save-info"><button id="delete-save">セーブ削除</button></div>
 
-  <!-- ステートセーブ/ロード -->
-  <div class="state-controls" id="state-controls" style="display:none">
-    <div class="slot-group" data-slot="1">
-      <span class="slot-label">1:</span>
-      <button class="save-btn" data-action="save" data-slot="1" title="1: セーブ">💾</button>
-      <button class="load-btn" data-action="load" data-slot="1" title="Shift+1: ロード" disabled>📂</button>
-    </div>
-    <div class="slot-group" data-slot="2">
-      <span class="slot-label">2:</span>
-      <button class="save-btn" data-action="save" data-slot="2" title="2: セーブ">💾</button>
-      <button class="load-btn" data-action="load" data-slot="2" title="Shift+2: ロード" disabled>📂</button>
-    </div>
-    <div class="slot-group" data-slot="3">
-      <span class="slot-label">3:</span>
-      <button class="save-btn" data-action="save" data-slot="3" title="3: セーブ">💾</button>
-      <button class="load-btn" data-action="load" data-slot="3" title="Shift+3: ロード" disabled>📂</button>
-    </div>
-    <div class="slot-group" data-slot="4">
-      <span class="slot-label">4:</span>
-      <button class="save-btn" data-action="save" data-slot="4" title="4: セーブ">💾</button>
-      <button class="load-btn" data-action="load" data-slot="4" title="Shift+4: ロード" disabled>📂</button>
-    </div>
-  </div>
-  <div id="state-status"></div>
+  <!-- GitHub Link (top-right fixed) -->
+  <a class="github-link" id="github-link" href="https://github.com/rinoshiyo/nightowl-nes" target="_blank" rel="noopener">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    <span>GitHub</span>
+  </a>
 
-  <!-- G3: 操作ヘルプ -->
-  <div class="help-section" id="help-section">
-    <button class="help-toggle" id="help-toggle">操作ヘルプ ▼</button>
-    <div class="help-content" id="help-content">
-      <div class="keybinds">
-        <table>
-          <tr><th colspan="2">1P キーボード</th></tr>
-          <tr><td>方向</td><td><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></td></tr>
-          <tr><td>A / B</td><td><kbd>Z</kbd><kbd>X</kbd></td></tr>
-          <tr><td>Start / Select</td><td><kbd>Enter</kbd><kbd>Shift</kbd></td></tr>
-        </table>
-        <table>
-          <tr><th colspan="2">2P キーボード</th></tr>
-          <tr><td>方向</td><td><kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd></td></tr>
-          <tr><td>A / B</td><td><kbd>J</kbd><kbd>K</kbd></td></tr>
-          <tr><td>Start / Select</td><td><kbd>T</kbd><kbd>G</kbd></td></tr>
-        </table>
-        <table>
-          <tr><th colspan="2">ゲームパッド</th></tr>
-          <tr><td>方向</td><td>十字キー / 左スティック</td></tr>
-          <tr><td>A</td><td>ボタン 2 (○/B)</td></tr>
-          <tr><td>B</td><td>ボタン 1 (×/A)</td></tr>
-          <tr><td>Start</td><td>ボタン 10 (Start/Menu)</td></tr>
-          <tr><td>Select</td><td>ボタン 9 (Select/Back)</td></tr>
-        </table>
-        <table>
-          <tr><th colspan="2">その他</th></tr>
-          <tr><td>フルスクリーン</td><td><kbd>F</kbd></td></tr>
-          <tr><td>セーブ (Slot 1~4)</td><td><kbd>1</kbd>~<kbd>4</kbd></td></tr>
-          <tr><td>ロード (Slot 1~4)</td><td><kbd>Shift</kbd>+<kbd>1</kbd>~<kbd>4</kbd></td></tr>
-        </table>
+  <!-- Language Switcher -->
+  <div class="lang-switcher" id="lang-switcher">
+    <button class="lang-btn active" data-lang="en">EN</button>
+    <button class="lang-btn" data-lang="ja">日本語</button>
+    <button class="lang-btn" data-lang="zh">中文</button>
+  </div>
+
+  <!-- ===== 0. KV ===== -->
+  <section class="kv" id="kv">
+    <div class="kv-content" id="kv-content">
+      <h1 class="kv-headline">Built blind.</h1>
+      <p class="kv-sub">
+        No emulator was ever looked at.<br>
+        <span class="kv-typewriter">Just the <span class="kv-typewriter-word" id="typewriter-word"></span></span>
+      </p>
+    </div>
+    <div class="kv-scroll-hint">↓</div>
+  </section>
+
+  <!-- ===== 1. Emulator ===== -->
+  <section class="emulator-section" id="emulator-section">
+    <div class="section-label" data-i18n="emulator.title">Emulator</div>
+    <div class="emu-wrap">
+      <canvas id="screen"></canvas>
+      <div id="fps-counter"></div>
+    </div>
+    <div class="controls">
+      <label for="rom-input" data-i18n="emulator.romSelect">Select ROM (.nes)</label>
+      <input type="file" id="rom-input" accept=".nes">
+      <button id="scale-btn" title="Scale">2x</button>
+      <button id="fullscreen-btn" title="Fullscreen">⛶</button>
+    </div>
+    <div id="status">Drop or select a .nes ROM to begin</div>
+    <div id="save-info"><button id="delete-save" data-i18n="emulator.deleteSave">Delete save</button></div>
+
+    <!-- State save/load -->
+    <div class="state-controls" id="state-controls" style="display:none">
+      <div class="slot-group" data-slot="1">
+        <span class="slot-label">1:</span>
+        <button class="save-btn" data-action="save" data-slot="1" title="1: Save">💾</button>
+        <button class="load-btn" data-action="load" data-slot="1" title="Shift+1: Load" disabled>📂</button>
+      </div>
+      <div class="slot-group" data-slot="2">
+        <span class="slot-label">2:</span>
+        <button class="save-btn" data-action="save" data-slot="2" title="2: Save">💾</button>
+        <button class="load-btn" data-action="load" data-slot="2" title="Shift+2: Load" disabled>📂</button>
+      </div>
+      <div class="slot-group" data-slot="3">
+        <span class="slot-label">3:</span>
+        <button class="save-btn" data-action="save" data-slot="3" title="3: Save">💾</button>
+        <button class="load-btn" data-action="load" data-slot="3" title="Shift+3: Load" disabled>📂</button>
+      </div>
+      <div class="slot-group" data-slot="4">
+        <span class="slot-label">4:</span>
+        <button class="save-btn" data-action="save" data-slot="4" title="4: Save">💾</button>
+        <button class="load-btn" data-action="load" data-slot="4" title="Shift+4: Load" disabled>📂</button>
       </div>
     </div>
-  </div>
+    <div id="state-status"></div>
 
-  <!-- G1: ドラッグ&ドロップオーバーレイ -->
-  <div id="drop-overlay">
-    <div class="drop-icon">📂</div>
-    <div class="drop-text">.nes ファイルをドロップしてください</div>
-  </div>
+    <!-- Help section -->
+    <div class="help-section" id="help-section">
+      <button class="help-toggle" id="help-toggle">Controls ▼</button>
+      <div class="help-content" id="help-content">
+        <div class="keybinds">
+          <table>
+            <tr><th colspan="2" data-i18n="emulator.keyboard1p">1P Keyboard</th></tr>
+            <tr><td data-i18n="emulator.direction">D-Pad</td><td><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></td></tr>
+            <tr><td>A / B</td><td><kbd>Z</kbd><kbd>X</kbd></td></tr>
+            <tr><td>Start / Select</td><td><kbd>Enter</kbd><kbd>Shift</kbd></td></tr>
+          </table>
+          <table>
+            <tr><th colspan="2" data-i18n="emulator.keyboard2p">2P Keyboard</th></tr>
+            <tr><td data-i18n="emulator.direction">D-Pad</td><td><kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd></td></tr>
+            <tr><td>A / B</td><td><kbd>J</kbd><kbd>K</kbd></td></tr>
+            <tr><td>Start / Select</td><td><kbd>T</kbd><kbd>G</kbd></td></tr>
+          </table>
+          <table>
+            <tr><th colspan="2" data-i18n="emulator.gamepad">Gamepad</th></tr>
+            <tr><td data-i18n="emulator.direction">D-Pad</td><td>D-Pad / Left Stick</td></tr>
+            <tr><td>A</td><td>Button 2 (○/B)</td></tr>
+            <tr><td>B</td><td>Button 1 (×/A)</td></tr>
+            <tr><td>Start</td><td>Button 10 (Start/Menu)</td></tr>
+            <tr><td>Select</td><td>Button 9 (Select/Back)</td></tr>
+          </table>
+          <table>
+            <tr><th colspan="2" data-i18n="emulator.other">Other</th></tr>
+            <tr><td data-i18n="emulator.fullscreen">Fullscreen</td><td><kbd>F</kbd></td></tr>
+            <tr><td data-i18n="emulator.save">Save (Slot 1~4)</td><td><kbd>1</kbd>~<kbd>4</kbd></td></tr>
+            <tr><td data-i18n="emulator.load">Load (Slot 1~4)</td><td><kbd>Shift</kbd>+<kbd>1</kbd>~<kbd>4</kbd></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
 
-  <!-- G5: エラーオーバーレイ -->
-  <div id="error-overlay">
-    <div class="error-icon">⚠️</div>
-    <div id="error-message"></div>
-    <button id="error-close">閉じる</button>
-  </div>
+    <!-- Drop overlay -->
+    <div id="drop-overlay">
+      <div class="drop-icon">📂</div>
+      <div class="drop-text" data-i18n="emulator.dropText">Drop a .nes file here</div>
+    </div>
 
-  <!-- モバイル: バーチャルパッド -->
-  <div id="touch-container"></div>
+    <!-- Error overlay -->
+    <div id="error-overlay">
+      <div class="error-icon">⚠️</div>
+      <div id="error-message"></div>
+      <button id="error-close">Close</button>
+    </div>
+
+    <!-- Touch container -->
+    <div id="touch-container"></div>
+  </section>
+
+  <!-- Dark to white gradient -->
+  <div class="dark-to-white"></div>
+
+  <!-- ===== 2. About ===== -->
+  <section class="section-white" id="about-section">
+    <div class="fade-in">
+      <div class="section-label" data-i18n="about.title">About</div>
+      <h2 data-i18n="about.subtitle">An AI-built NES emulator that never looked at existing code</h2>
+    </div>
+    <div class="about-grid">
+      <div class="about-card fade-in">
+        <div class="about-highlight" id="nights-count">60+</div>
+        <div class="about-highlight-label">nights</div>
+      </div>
+      <div class="about-card fade-in">
+        <p data-i18n="about.desc1">Built with Claude Code's autonomous loop: GitHub Flow (Issue → Branch → PR → Review → Merge) running continuously without human intervention.</p>
+      </div>
+      <div class="about-card fade-in">
+        <p data-i18n="about.desc2">Human involvement is limited to seeding Issues and morning code reviews.</p>
+      </div>
+      <div class="about-card fade-in">
+        <p data-i18n="about.desc3">60+ nights of continuous autonomous development.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3. Constraints ===== -->
+  <section class="section-white" id="constraints-section">
+    <div class="fade-in">
+      <div class="section-label" data-i18n="constraints.title">Constraints</div>
+      <h2 data-i18n="constraints.subtitle">The rules that define this experiment</h2>
+    </div>
+    <div class="constraints-grid">
+      <div class="constraint-card allowed fade-in">
+        <h3 data-i18n="constraints.oracleTitle">✓ Allowed References (Oracle)</h3>
+        <ul id="oracle-list">
+          <li>nesdev.org wiki (NES hardware docs)</li>
+          <li>6502 instruction set specification</li>
+          <li>iNES / NES 2.0 header format</li>
+        </ul>
+      </div>
+      <div class="constraint-card denied fade-in">
+        <h3 data-i18n="constraints.denyTitle">✗ Denied References</h3>
+        <p data-i18n="constraints.denyDesc">All existing NES emulator source code — any language, any license. No peeking, no snippets.</p>
+        <p class="constraint-enforce" data-i18n="constraints.enforceDesc">Structurally enforced via pre-tool-use hooks with a deny list.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 4. Compatibility Dashboard ===== -->
+  <section class="section-white" id="compat-section">
+    <div class="fade-in">
+      <div class="section-label" data-i18n="compat.title">Compatibility</div>
+      <h2 data-i18n="compat.subtitle">What's implemented</h2>
+    </div>
+    <div class="compat-grid">
+      <div class="compat-card fade-in">
+        <div class="compat-label" data-i18n="compat.cpu">CPU</div>
+        <div class="compat-value"><span class="counter" data-target="256">0</span><span class="compat-total">/256</span></div>
+        <div class="compat-bar"><div class="compat-bar-fill" data-percent="100"></div></div>
+        <div class="compat-desc" data-i18n="compat.cpuDesc">opcodes (official 151 + unofficial 105)</div>
+      </div>
+      <div class="compat-card fade-in">
+        <div class="compat-label" data-i18n="compat.ppu">PPU</div>
+        <div class="compat-value">Full</div>
+        <div class="compat-bar"><div class="compat-bar-fill" data-percent="100"></div></div>
+        <div class="compat-desc" data-i18n="compat.ppuDesc">Full implementation (Sprite 0 Hit, loopy scroll, scanline timing)</div>
+      </div>
+      <div class="compat-card fade-in">
+        <div class="compat-label" data-i18n="compat.apu">APU</div>
+        <div class="compat-value"><span class="counter" data-target="5">0</span><span class="compat-total">/5</span></div>
+        <div class="compat-bar"><div class="compat-bar-fill" data-percent="100"></div></div>
+        <div class="compat-desc" data-i18n="compat.apuDesc">channels + expansion audio support</div>
+      </div>
+      <div class="compat-card fade-in">
+        <div class="compat-label" data-i18n="compat.mapper">Mappers</div>
+        <div class="compat-value"><span class="counter" data-target="20">0</span></div>
+        <div class="compat-bar"><div class="compat-bar-fill" data-percent="88"></div></div>
+        <div class="compat-desc" data-i18n="compat.mapperDesc">supported (~85–90% of NES library)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 5. Test Results ===== -->
+  <section class="section-white" id="tests-section">
+    <div class="fade-in">
+      <div class="section-label" data-i18n="tests.title">Tests</div>
+      <h2 data-i18n="tests.subtitle">Quality assurance</h2>
+    </div>
+    <div class="tests-grid">
+      <div class="test-card fade-in">
+        <div class="test-icon">✅</div>
+        <div class="test-name" data-i18n="tests.nestest">nestest trace</div>
+        <div class="test-value">PASS</div>
+        <div class="test-desc" data-i18n="tests.nestestDesc">CPU instruction accuracy verification via official test ROM</div>
+      </div>
+      <div class="test-card fade-in">
+        <div class="test-icon">🧪</div>
+        <div class="test-name" data-i18n="tests.unit">Unit tests</div>
+        <div class="test-value"><span class="counter" data-target="1572">0</span></div>
+        <div class="test-desc" data-i18n="tests.unitDesc">passing</div>
+      </div>
+      <div class="test-card fade-in">
+        <div class="test-icon">🔬</div>
+        <div class="test-name" data-i18n="tests.expects">Assertions</div>
+        <div class="test-value"><span class="counter" data-target="217919" data-format="compact">0</span></div>
+        <div class="test-desc" data-i18n="tests.expectsDesc">expect() calls</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 6. Footer ===== -->
+  <footer class="site-footer" id="footer-section">
+    <div class="footer-links">
+      <a href="https://github.com/rinoshiyo/nightowl-nes" target="_blank" rel="noopener">GitHub</a>
+      <span data-i18n="footer.license" style="color: var(--text-tertiary); font-size: 0.85rem;">MIT License</span>
+    </div>
+    <div class="footer-copy" data-i18n="footer.builtWith">Built with Claude Code</div>
+  </footer>
 
   <script type="module" src="./main.ts"></script>
 </body>
