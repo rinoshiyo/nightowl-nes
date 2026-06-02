@@ -9,6 +9,12 @@ Claude Code が夜間自走で TypeScript スクラッチ実装する NES エミ
 - `docs/design.md` — 設計書 v2 (全 10 部 + Appendix)
 - `docs/design.html` — 同上 HTML 版
 
+## デモ
+
+https://rinoshiyo.github.io/nightowl-nes/
+
+main ブランチへの merge で GitHub Pages に自動デプロイされる。
+
 ## 動かす (devcontainer 前提)
 
 ```bash
@@ -17,6 +23,7 @@ Claude Code が夜間自走で TypeScript スクラッチ実装する NES エミ
 cd /workspace/nightowl-nes
 bun install
 bun test
+bun run build   # dist/ にビルド成果物
 ```
 
 ## 自走起動
@@ -25,8 +32,7 @@ devcontainer 内で:
 
 ```bash
 claude --permission-mode bypassPermissions
-# 開いた claude セッションで:
-# /goal nights/pending/001-cpu-skeleton.md の DoD 全項目チェック, or stop after 25 turns
+# 開いた claude セッションで /loop-start を実行
 ```
 
 ## ライセンス

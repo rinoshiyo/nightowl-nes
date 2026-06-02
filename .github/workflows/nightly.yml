@@ -11,9 +11,7 @@ on:
       - 'tsconfig.json'
       - 'eslint.config.js'
       - 'vitest.config.ts'
-      # NOTE: .github/workflows/nightly.yml 自身は paths から除外。
-      #       workflow 編集だけで発火 → src/tests 空のまま typecheck 落ち、
-      #       のループを防ぐため
+      - '.github/workflows/nightly.yml'
   pull_request:
     branches: [main]
     # PR は全パスで発火 (夜N PR は src/ tests/ を必ず触る前提)
