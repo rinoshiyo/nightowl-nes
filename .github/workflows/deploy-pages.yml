@@ -4,13 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/browser/**'
+      - 'src/**'
       - 'vite.config.ts'
       - 'package.json'
       - 'bun.lock'
       - 'tsconfig.json'
-      # NOTE: .github/workflows/deploy-pages.yml 自身は paths から除外。
-      #       夜 N で src/browser/index.html 等が入った段階で初発火する
   workflow_dispatch:
 
 permissions:
