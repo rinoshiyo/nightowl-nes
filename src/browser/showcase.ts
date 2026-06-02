@@ -58,9 +58,9 @@ function initParallax(): void {
   const kvContent = document.getElementById("kv-content");
   const kvHint = document.querySelector<HTMLElement>(".kv-scroll-hint");
   const qualityBg = document.getElementById("quality-parallax-bg");
-  const revealBg = document.getElementById("reveal-parallax-bg");
+  const harnessBg = document.getElementById("harness-parallax-bg");
   const qualitySection = qualityBg?.parentElement ?? null;
-  const revealSection = revealBg?.parentElement ?? null;
+  const harnessSection = harnessBg?.parentElement ?? null;
 
   const nesFrames = Array.from(document.querySelectorAll<HTMLElement>(".nes-frame"));
   const frameData = nesFrames.map((frame) => ({
@@ -69,7 +69,7 @@ function initParallax(): void {
     rotate: parseFloat(frame.dataset["rotate"] ?? "0"),
   }));
 
-  if (!kvContent && !qualityBg && !revealBg && nesFrames.length === 0) return;
+  if (!kvContent && !qualityBg && !harnessBg && nesFrames.length === 0) return;
 
   let ticking = false;
   window.addEventListener("scroll", () => {
@@ -96,9 +96,9 @@ function initParallax(): void {
           qualityBg.style.transform = `translate3d(0, ${(-rect.top / vh) * 40}px, 0)`;
         }
 
-        if (revealBg && revealSection) {
-          const rect = revealSection.getBoundingClientRect();
-          revealBg.style.transform = `translate3d(0, ${(-rect.top / vh) * 30}px, 0)`;
+        if (harnessBg && harnessSection) {
+          const rect = harnessSection.getBoundingClientRect();
+          harnessBg.style.transform = `translate3d(0, ${(-rect.top / vh) * 30}px, 0)`;
         }
 
         ticking = false;
@@ -212,7 +212,7 @@ function applyI18n(): void {
   const oracleList = document.getElementById("oracle-list");
   if (oracleList) {
     oracleList.innerHTML = "";
-    for (const item of tr.reveal.oracleItems) {
+    for (const item of tr.harness.oracleItems) {
       const li = document.createElement("li");
       li.textContent = item;
       oracleList.appendChild(li);
