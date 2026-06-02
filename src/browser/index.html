@@ -66,7 +66,7 @@
       display: flex;
       align-items: center;
       gap: 0.4rem;
-      color: rgba(255,255,255,0.5);
+      color: rgba(0,0,0,0.4);
       text-decoration: none;
       font-size: 0.85rem;
       font-weight: 500;
@@ -85,9 +85,9 @@
       gap: 0.3rem;
     }
     .lang-btn {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.4);
+      background: rgba(0,0,0,0.04);
+      border: 1px solid rgba(0,0,0,0.1);
+      color: rgba(0,0,0,0.4);
       padding: 0.2rem 0.5rem;
       border-radius: 4px;
       cursor: pointer;
@@ -97,10 +97,6 @@
     }
     .lang-btn:hover { border-color: var(--accent); color: var(--accent); }
     .lang-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-    /* White section: invert nav colors */
-    .section-white ~ .github-link,
-    .section-white ~ .lang-switcher .lang-btn { /* handled by scroll-aware JS if needed */ }
 
     /* --- Section: KV (Key Visual) --- */
     .kv {
@@ -1236,7 +1232,7 @@ Zero runtime dependencies. Zero lines of human code.</p>
         <div class="test-card">
           <div class="test-icon">✅</div>
           <div class="test-name" data-i18n="quality.nestestLabel">nestest</div>
-          <div class="test-value"><span class="counter" data-target="8991" data-format="compact">0</span></div>
+          <div class="test-value"><span class="counter" data-target="8991">0</span></div>
           <div class="test-desc" data-i18n="quality.nestestDesc">The gold-standard CPU verification ROM. 8,991 trace lines matched. Passed.</div>
         </div>
         <div class="test-card">
