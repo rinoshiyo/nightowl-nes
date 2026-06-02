@@ -25,6 +25,7 @@ import { MapperNamco163 } from "./namco163.ts";
 import { MapperSunsoftFme7 } from "./sunsoft-fme7.ts";
 import { MapperMmc5 } from "./mmc5.ts";
 import { MapperVrc6 } from "./vrc6.ts";
+import { MapperVrc7 } from "./vrc7.ts";
 
 export interface Mapper {
   /** CPU アドレス空間 $8000-$FFFF の読み出し */
@@ -111,6 +112,8 @@ export function createMapper(cart: Cart): Mapper {
       return new MapperSunsoftFme7(cart);
     case 71:
       return new MapperCodemasters(cart);
+    case 85:
+      return new MapperVrc7(cart);
     case 206:
       return new MapperDxrom(cart);
     default:
