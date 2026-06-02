@@ -106,7 +106,7 @@ async function loadRom(file: File): Promise<void> {
   }
 
   nes = console;
-  audio.start(nes.apu);
+  await audio.start(nes.apu);
 
   let statusText = `${file.name} (PRG: ${cart.header.prgRomSize / 1024}KB, CHR: ${cart.header.chrRomSize / 1024}KB, Mapper: ${cart.header.mapper})`;
   if (currentHasBattery) {
@@ -220,15 +220,16 @@ document.addEventListener("keydown", (e) => {
     }
   }
 
-  // ステートセーブ/ロード キーバインド
-  if (e.key === "F5") {
+  // ステートセーブ/ロード: 1-4 = セーブ、Shift+1-4 = ロード
+  const slotMatch = e.code.match(/^Digit([1-4])$/);
+  if (slotMatch && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
-    doSaveState(e.shiftKey ? 2 : 1);
-    return;
-  }
-  if (e.key === "F7") {
-    e.preventDefault();
-    doLoadState(e.shiftKey ? 2 : 1);
+    const slot = parseInt(slotMatch[1]!, 10);
+    if (e.shiftKey) {
+      doLoadState(slot);
+    } else {
+      doSaveState(slot);
+    }
     return;
   }
 
@@ -298,6 +299,7 @@ function gameLoop(timestamp: number): void {
         nes.stepFrame();
       }
       renderer.render(nes.ppu.framebuffer);
+      audio.drain();
     } catch (e) {
       showError(e);
       audio.stop();
