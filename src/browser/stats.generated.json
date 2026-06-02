@@ -1,5 +1,5 @@
 {
-  "tsLines": 12634,
+  "tsLines": 12622,
   "testPass": 1572,
   "testSkip": 6,
   "testFail": 0,
@@ -19,6 +19,7 @@
   "romPassOthers": 8,
   "romRemaining": 197,
   "denyListRepos": 15,
+  "opcodesPercent": 84,
   "stuckTimeoutMin": 30,
   "saveSlots": 4
 }

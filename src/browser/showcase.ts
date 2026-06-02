@@ -169,7 +169,7 @@ function initCounters(): void {
   }
 }
 
-const numFmt = new Intl.NumberFormat();
+const numFmt = new Intl.NumberFormat("en-US");
 
 function animateCounter(el: HTMLElement, target: number, compact: boolean): void {
   const duration = 1500;
@@ -310,38 +310,26 @@ function initHeaderScroll(): void {
 // --- Init all showcase features ---
 
 function applyStatsToCounters(): void {
-  const targetMap: Record<string, number> = {
-    "216": stats.opcodesImplemented,
-    "1572": stats.testPass,
-    "217919": stats.expects,
-    "8991": stats.traceLines,
-    "81": stats.romPassTotal,
-    "4237": stats.tsLines,
-    "20": stats.mapperCount,
-  };
-  const totalMap: Record<string, string> = {
-    "216": `/${stats.opcodesTotal}`,
-    "81": `/${stats.romTotal}`,
-  };
-  const percentMap: Record<string, number> = {
-    "84": Math.round((stats.opcodesImplemented / stats.opcodesTotal) * 100),
-  };
+  const s = stats as Record<string, number>;
 
-  for (const el of document.querySelectorAll<HTMLElement>(".counter[data-target]")) {
-    const oldTarget = el.dataset["target"];
-    if (oldTarget !== undefined && oldTarget in targetMap) {
-      el.dataset["target"] = String(targetMap[oldTarget]);
-      const totalSpan = el.parentElement?.querySelector<HTMLElement>(".stat-total, .meta-total");
-      if (totalSpan && oldTarget in totalMap) {
-        totalSpan.textContent = totalMap[oldTarget]!;
-      }
+  for (const el of document.querySelectorAll<HTMLElement>(".counter[data-stat]")) {
+    const key = el.dataset["stat"];
+    if (key !== undefined && key in s) {
+      el.dataset["target"] = String(s[key]);
     }
   }
 
-  for (const el of document.querySelectorAll<HTMLElement>(".stat-bar-fill[data-percent]")) {
-    const oldPercent = el.dataset["percent"];
-    if (oldPercent !== undefined && oldPercent in percentMap) {
-      el.dataset["percent"] = String(percentMap[oldPercent]);
+  for (const el of document.querySelectorAll<HTMLElement>("[data-stat-total]")) {
+    const key = el.dataset["statTotal"];
+    if (key !== undefined && key in s) {
+      el.textContent = `/${s[key]}`;
+    }
+  }
+
+  for (const el of document.querySelectorAll<HTMLElement>("[data-stat-percent]")) {
+    const key = el.dataset["statPercent"];
+    if (key !== undefined && key in s) {
+      el.dataset["percent"] = String(s[key]);
     }
   }
 }

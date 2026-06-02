@@ -4,7 +4,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -31,9 +31,8 @@ interface CompatResult {
 
 function countCompatTests(pattern: string): CompatResult {
   const testsDir = join(ROOT, "tests");
-  const files = readdirSync(testsDir).filter(
-    (f) => f.startsWith(pattern) && f.endsWith(".test.ts"),
-  );
+  const re = new RegExp(`^${pattern}[^0-9].*\\.test\\.ts$|^${pattern}\\.test\\.ts$`);
+  const files = readdirSync(testsDir).filter((f) => re.test(f));
   let pass = 0;
   let skip = 0;
   for (const f of files) {
@@ -161,6 +160,7 @@ const stats = {
   romPassOthers,
   romRemaining,
   denyListRepos: countDenyListRepos(),
+  opcodesPercent: Math.round((opcodes.implemented / 256) * 100),
   stuckTimeoutMin: 30,
   saveSlots: 4,
 };
