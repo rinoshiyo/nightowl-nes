@@ -8,10 +8,11 @@ import { romTest } from "./helpers/run-test-rom.ts";
 describe("Mapper 0 互換性: PPU VBL/NMI", () => {
   const base = "roms/test/ppu_vbl_nmi/rom_singles";
   romTest("01-vbl_basics", `${base}/01-vbl_basics.nes`);
-  // 以下 3 件は cycle-accurate なドットタイミング精度を要求するため skip
+  // CPU-PPU 同期が命令バッチ方式のため、dot 単位の VBL タイミングがずれる
   romTest.skip("02-vbl_set_time", `${base}/02-vbl_set_time.nes`);
   romTest("03-vbl_clear_time", `${base}/03-vbl_clear_time.nes`);
   romTest("04-nmi_control", `${base}/04-nmi_control.nes`);
+  // NMI 発火の dot 精度が命令バッチ方式では不足
   romTest.skip("05-nmi_timing", `${base}/05-nmi_timing.nes`);
 });
 
