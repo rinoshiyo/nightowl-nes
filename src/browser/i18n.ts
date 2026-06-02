@@ -72,7 +72,7 @@ const en: Translations = {
     headline: "nightowl-nes",
     sub: "A NES emulator, built from scratch.\nNo existing code was ever referenced.",
     typewriterPrefix: "Just the ",
-    typewriterWords: ["specs.", "silicon.", "soul."],
+    typewriterWords: ["specs.", "AI.", "loop."],
   },
   emulator: {
     title: "Play",
@@ -142,7 +142,7 @@ const ja: Translations = {
     headline: "nightowl-nes",
     sub: "A NES emulator, built from scratch.\nNo existing code was ever referenced.",
     typewriterPrefix: "Just the ",
-    typewriterWords: ["specs.", "silicon.", "soul."],
+    typewriterWords: ["specs.", "AI.", "loop."],
   },
   emulator: {
     title: "プレイ",
@@ -212,7 +212,7 @@ const zh: Translations = {
     headline: "nightowl-nes",
     sub: "A NES emulator, built from scratch.\nNo existing code was ever referenced.",
     typewriterPrefix: "Just the ",
-    typewriterWords: ["specs.", "silicon.", "soul."],
+    typewriterWords: ["specs.", "AI.", "loop."],
   },
   emulator: {
     title: "游玩",
