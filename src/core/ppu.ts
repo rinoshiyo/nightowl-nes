@@ -46,6 +46,8 @@ export class Ppu {
 
   /** IO latch (open bus) — レジスタへの最後の write/read 値 */
   ioLatch = 0;
+  /** IO latch のビットごとの decay カウンタ (各ビット 36 フレーム ≈ 600ms で 0 に) */
+  private ioLatchDecay = new Uint8Array(8);
 
   /** loopy v — current VRAM address (15 bit) */
   v = 0;
@@ -73,6 +75,8 @@ export class Ppu {
   scanline = 0;
   /** フレーム完了フラグ (1 フレーム描画終了時に true) */
   frameComplete = false;
+  /** 奇数フレームフラグ (背景描画有効時、pre-render line 最終ドットをスキップ) */
+  oddFrame = false;
 
   /** NMI 通知コールバック */
   onNmi: (() => void) | null = null;
@@ -103,6 +107,30 @@ export class Ppu {
   /** 直近の PPU アドレスの A12 ビット (MMC3 IRQ カウンタ用) */
   private lastA12 = 0;
 
+  /** open bus decay 処理用の定数 — 36 フレーム ≈ 600ms at 60fps */
+  private static readonly DECAY_FRAMES = 36;
+
+  /** IO latch の decay カウンタをリフレッシュ (read/write 時にビットごとに設定) */
+  private refreshLatchDecay(val: number): void {
+    for (let i = 0; i < 8; i++) {
+      if ((val & (1 << i)) !== 0) {
+        this.ioLatchDecay[i] = Ppu.DECAY_FRAMES;
+      }
+    }
+  }
+
+  /** フレームごとの open bus decay 処理 */
+  decayOpenBus(): void {
+    for (let i = 0; i < 8; i++) {
+      if (this.ioLatchDecay[i]! > 0) {
+        this.ioLatchDecay[i]!--;
+        if (this.ioLatchDecay[i] === 0) {
+          this.ioLatch &= ~(1 << i);
+        }
+      }
+    }
+  }
+
   /** PPU 状態をリセット */
   reset(): void {
     this.ctrl = 0;
@@ -114,10 +142,12 @@ export class Ppu {
     this.x = 0;
     this.w = false;
     this.ioLatch = 0;
+    this.ioLatchDecay.fill(0);
     this.readBuffer = 0;
     this.dot = 0;
     this.scanline = 0;
     this.frameComplete = false;
+    this.oddFrame = false;
     this.bgNametable = 0;
     this.bgAttribute = 0;
     this.bgPatternLo = 0;
@@ -258,12 +288,14 @@ export class Ppu {
         break;
     }
     this.ioLatch = val;
+    this.refreshLatchDecay(val);
     return val;
   }
 
   /** $2000-$2007 の write (addr は 0-7 にマスク済み、value は 0-255 で渡される想定) */
   write(reg: number, value: number): void {
     this.ioLatch = value;
+    this.refreshLatchDecay(value);
     switch (reg) {
       case 0: {
         const prevNmi = this.ctrl & 0x80;
@@ -352,7 +384,18 @@ export class Ppu {
       if (this.scanline >= TOTAL_LINES) {
         this.scanline = 0;
         this.frameComplete = true;
+        this.oddFrame = !this.oddFrame;
       }
+    }
+
+    // 奇数フレームスキップ: 背景描画有効 + 奇数フレームでは
+    // pre-render line (261) の dot 339 で即座にフレーム切替
+    if (this.scanline === PRE_RENDER_LINE && this.dot === 339
+        && this.oddFrame && renderEnabled) {
+      this.dot = 0;
+      this.scanline = 0;
+      this.frameComplete = true;
+      this.oddFrame = !this.oddFrame;
     }
   }
 
@@ -403,7 +446,7 @@ export class Ppu {
       this.slInitNtX = (Ppu.ntSelect(this.v) & 1);
       this.bgFetchedCol = -1;
     }
-    if (dot === 1) {
+    if (dot === 0) {
       this.evaluateSprites();
     }
 
@@ -422,6 +465,13 @@ export class Ppu {
    */
   private renderBgPixel(screenX: number, fbIdx: number): void {
     if ((this.mask & 0x08) === 0) {
+      this.framebuffer[fbIdx] = this.palette[0]!;
+      this.bgColorIdx = 0;
+      return;
+    }
+
+    // $2001 bit1=0: 背景左端 8px クリッピング
+    if (screenX < 8 && (this.mask & 0x02) === 0) {
       this.framebuffer[fbIdx] = this.palette[0]!;
       this.bgColorIdx = 0;
       return;
@@ -531,10 +581,15 @@ export class Ppu {
   private renderSpritePixel(screenX: number, fbIdx: number): void {
     if ((this.mask & 0x10) === 0) return;
 
+    // $2001 bit2=0: スプライト左端 8px クリッピング
+    if (screenX < 8 && (this.mask & 0x04) === 0) return;
+
     const count = this.spriteCount;
     if (count === 0) return;
 
     const bgOpaque = this.bgColorIdx !== 0;
+    // left clipping がどちらか無効 (bit1 or bit2 = 0) なら左端ではスプライト 0 hit しない
+    const leftClipActive = screenX < 8 && ((this.mask & 0x06) !== 0x06);
     const secOam = this.secOam;
     const sprLoArr = this.sprPatternLo;
     const sprHiArr = this.sprPatternHi;
@@ -558,7 +613,8 @@ export class Ppu {
 
       const palAddr = 0x10 + ((attr & 0x03) << 2) + colorIdx;
 
-      if (this.sprite0InLine && i === 0 && bgOpaque && screenX < 255) {
+      // スプライト 0 hit: 背景不透明 + スプライト不透明 + x<255 + クリッピング領域外
+      if (this.sprite0InLine && i === 0 && bgOpaque && screenX < 255 && !leftClipActive) {
         this.status |= 0x40;
       }
 
@@ -697,6 +753,8 @@ export class Ppu {
       dot: this.dot,
       scanline: this.scanline,
       frameComplete: this.frameComplete,
+      oddFrame: this.oddFrame,
+      ioLatchDecay: Array.from(this.ioLatchDecay),
       bgNametable: this.bgNametable,
       bgAttribute: this.bgAttribute,
       bgPatternLo: this.bgPatternLo,
@@ -730,6 +788,8 @@ export class Ppu {
     this.dot = state.dot;
     this.scanline = state.scanline;
     this.frameComplete = state.frameComplete;
+    this.oddFrame = state.oddFrame;
+    this.ioLatchDecay.set(state.ioLatchDecay);
     this.bgNametable = state.bgNametable;
     this.bgAttribute = state.bgAttribute;
     this.bgPatternLo = state.bgPatternLo;

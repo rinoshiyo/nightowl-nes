@@ -119,7 +119,7 @@ describe("PPU ミラーリング write 経由検証", () => {
 describe("PPU X スクロール", () => {
   function setupScrollTest(ppu: Ppu): void {
     ppu.write(0, 0x00);
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
     ppu.mirroring = "vertical";
     ppu.palette[0] = 0x0F;
     ppu.palette[1] = 0x01;
@@ -214,7 +214,7 @@ describe("PPU Y スクロール", () => {
   it("scrollY=8 で 2 行目のタイルが画面最上段に表示される", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
     ppu.mirroring = "vertical";
     ppu.scrollX = 0;
     ppu.scrollY = 8;
@@ -238,7 +238,7 @@ describe("PPU Y スクロール", () => {
   it("scrollY で fineY が正しく反映される", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
     ppu.mirroring = "vertical";
     ppu.scrollX = 0;
     ppu.scrollY = 2;
@@ -260,7 +260,7 @@ describe("PPU Y スクロール", () => {
   it("scrollY=240 で垂直方向の NT 切替が起きる", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
     ppu.mirroring = "horizontal";
     ppu.scrollX = 0;
     ppu.scrollY = 240;
@@ -284,7 +284,7 @@ describe("PPU X+Y 複合スクロール", () => {
   it("scrollX=128, scrollY=16 で正しいタイルが描画される", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
     ppu.mirroring = "vertical";
     ppu.scrollX = 128;
     ppu.scrollY = 16;
@@ -309,7 +309,7 @@ describe("PPU X+Y 複合スクロール", () => {
   it("scrollX=255 で画面右端が正しく隣 NT から描画される", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
     ppu.mirroring = "vertical";
     ppu.scrollX = 255;
     ppu.scrollY = 0;
@@ -333,7 +333,7 @@ describe("PPU X+Y 複合スクロール", () => {
   it("scrollY=232 + scanline=7 でタイル行29→0への wrap が起きる", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
     ppu.mirroring = "horizontal";
     ppu.scrollX = 0;
     ppu.scrollY = 232;
@@ -358,7 +358,7 @@ describe("PPU PPUCTRL ベース NT 選択", () => {
   it("PPUCTRL bit0-1 = 1 で NT $2400 がベースになる", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x01);
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
     ppu.mirroring = "vertical";
     ppu.scrollX = 0;
     ppu.scrollY = 0;
@@ -380,7 +380,7 @@ describe("PPU PPUCTRL ベース NT 選択", () => {
   it("PPUCTRL bit0-1 = 2 で NT $2800 がベースになる", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x02);
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
     ppu.mirroring = "vertical";
     ppu.scrollX = 0;
     ppu.scrollY = 0;

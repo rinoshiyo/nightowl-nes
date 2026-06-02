@@ -52,7 +52,7 @@ describe("PPU スプライト描画", () => {
   beforeEach(() => {
     ppu = new Ppu();
     ppu.oam.fill(0xff);
-    ppu.mask = 0x18;
+    ppu.mask = 0x1e;
     ppu.palette[0] = 0x0f;
   });
 

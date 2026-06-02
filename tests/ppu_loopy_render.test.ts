@@ -20,7 +20,7 @@ function renderScanline0(ppu: Ppu): void {
 
 function setupBasicBg(ppu: Ppu): void {
   ppu.write(0, 0x00);
-  ppu.mask = 0x08;
+  ppu.mask = 0x0a;
   ppu.mirroring = "vertical";
   ppu.palette[0] = 0x0F;
   ppu.palette[1] = 0x30;
@@ -154,7 +154,7 @@ describe("loopy スクロール split scroll シナリオ", () => {
   it("scanline 途中で hori(v)=hori(t) が水平位置をリセットする", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x18;
+    ppu.mask = 0x1e;
     ppu.mirroring = "vertical";
     ppu.palette[0] = 0x0F;
     ppu.palette[1] = 0x30;
@@ -180,7 +180,7 @@ describe("loopy スクロール split scroll シナリオ", () => {
   it("レンダリング有効時、各 visible scanline の dot 257 で hori(v)=hori(t)", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x18;
+    ppu.mask = 0x1e;
     ppu.mirroring = "vertical";
 
     ppu.t = Ppu.setCoarseX(0, 10) | 0x0400;
@@ -199,7 +199,7 @@ describe("loopy 複数スキャンライン Y 進行", () => {
   it("2 スキャンライン描画で fine Y が 0→1→2 と進む", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x18;
+    ppu.mask = 0x1e;
     ppu.mirroring = "vertical";
     ppu.palette[0] = 0x0F;
 
@@ -220,7 +220,7 @@ describe("loopy 複数スキャンライン Y 進行", () => {
   it("8 スキャンライン描画で coarse Y が 1 進む", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x18;
+    ppu.mask = 0x1e;
     ppu.mirroring = "vertical";
     ppu.palette[0] = 0x0F;
 
@@ -242,7 +242,7 @@ describe("loopy スプライト描画との互換", () => {
   it("loopy スクロール後もスプライトが正しく描画される", () => {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x18;
+    ppu.mask = 0x1e;
     ppu.mirroring = "vertical";
     ppu.palette[0] = 0x0F;
     ppu.palette[0x11] = 0x26;

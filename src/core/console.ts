@@ -110,6 +110,7 @@ export class NesConsole {
     while (!ppu.frameComplete) {
       this.step();
     }
+    ppu.decayOpenBus();
   }
 
   saveState(): NesState {

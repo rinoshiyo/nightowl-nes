@@ -210,7 +210,7 @@ describe("loopy coarse X/Y increment", () => {
   function setupRenderPpu(): Ppu {
     const ppu = new Ppu();
     ppu.write(0, 0x00);
-    ppu.mask = 0x18;
+    ppu.mask = 0x1e;
     ppu.mirroring = "vertical";
     return ppu;
   }
@@ -344,7 +344,7 @@ describe("loopy scrollX/scrollY 後方互換 getter/setter", () => {
 describe("loopy pre-render scanline", () => {
   it("dot 280-304 で vert(v) = vert(t) が発生する", () => {
     const ppu = new Ppu();
-    ppu.mask = 0x18;
+    ppu.mask = 0x1e;
     ppu.t = Ppu.setFineY(Ppu.setCoarseY(0, 20), 5) | 0x0800;
     ppu.v = 0;
     ppu.scanline = 261;

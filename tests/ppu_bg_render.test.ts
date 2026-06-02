@@ -9,7 +9,7 @@ describe("PPU 背景レンダリング", () => {
    */
   function setupBgTile(ppu: Ppu): void {
     ppu.ctrl = 0;
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
 
     ppu.chrRam[0] = 0b11001100;
     ppu.chrRam[8] = 0b10101010;
@@ -65,7 +65,7 @@ describe("PPU 背景レンダリング", () => {
   it("カラーインデックス 0 のピクセルは常に palette[0] (背景色) を参照", () => {
     const ppu = new Ppu();
     ppu.ctrl = 0;
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
 
     ppu.chrRam[0] = 0x00;
     ppu.chrRam[8] = 0x00;
@@ -84,7 +84,7 @@ describe("PPU 背景レンダリング", () => {
   it("アトリビュートテーブルのパレット番号が反映される", () => {
     const ppu = new Ppu();
     ppu.ctrl = 0;
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
 
     ppu.chrRam[0] = 0xff;
     ppu.chrRam[8] = 0x00;
@@ -107,7 +107,7 @@ describe("PPU 背景レンダリング", () => {
   it("PPUCTRL bit4 でパターンテーブル $1000 を選択できる", () => {
     const ppu = new Ppu();
     ppu.ctrl = 0x10;
-    ppu.mask = 0x08;
+    ppu.mask = 0x0a;
 
     ppu.chrRam[0x1000] = 0xff;
     ppu.chrRam[0x1008] = 0x00;
