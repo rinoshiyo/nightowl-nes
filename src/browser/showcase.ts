@@ -28,7 +28,7 @@ function initTypewriter(): void {
     if (!isDeleting) {
       charIndex++;
       typewriterEl.textContent = word.slice(0, charIndex);
-      if (charIndex === word.length) {
+      if (charIndex >= word.length) {
         setTimeout(() => {
           isDeleting = true;
           tick();
@@ -57,9 +57,19 @@ function initTypewriter(): void {
 function initParallax(): void {
   const kvContent = document.getElementById("kv-content");
   const kvHint = document.querySelector<HTMLElement>(".kv-scroll-hint");
-  const kvScreenshots = document.querySelector<HTMLElement>(".kv-screenshots");
   const qualityBg = document.getElementById("quality-parallax-bg");
   const revealBg = document.getElementById("reveal-parallax-bg");
+  const qualitySection = qualityBg?.parentElement ?? null;
+  const revealSection = revealBg?.parentElement ?? null;
+
+  const nesFrames = Array.from(document.querySelectorAll<HTMLElement>(".nes-frame"));
+  const frameData = nesFrames.map((frame) => ({
+    el: frame,
+    speed: parseFloat(frame.dataset["speed"] ?? "0.1"),
+    rotate: parseFloat(frame.dataset["rotate"] ?? "0"),
+  }));
+
+  if (!kvContent && !qualityBg && !revealBg && nesFrames.length === 0) return;
 
   let ticking = false;
   window.addEventListener("scroll", () => {
@@ -67,45 +77,28 @@ function initParallax(): void {
       requestAnimationFrame(() => {
         const scrollY = window.scrollY;
         const vh = window.innerHeight;
+        const progress = Math.min(scrollY / vh, 1);
 
-        // KV: コンテンツ parallax + fade out
         if (kvContent) {
-          const progress = Math.min(scrollY / vh, 1);
           kvContent.style.transform = `translate3d(0, ${scrollY * 0.4}px, 0)`;
           kvContent.style.opacity = String(Math.max(0, 1 - progress * 1.5));
         }
         if (kvHint) {
-          const progress = Math.min(scrollY / vh, 1);
           kvHint.style.opacity = String(Math.max(0, 1 - progress * 3));
         }
 
-        // KV: NES screenshot frames parallax
-        if (kvScreenshots) {
-          const frames = kvScreenshots.querySelectorAll<HTMLElement>(".nes-frame");
-          frames.forEach((frame, i) => {
-            const speed = 0.1 + i * 0.05;
-            frame.style.transform = `translateY(${scrollY * speed}px) rotate(${frame.classList.contains("nes-frame-1") ? -8 : frame.classList.contains("nes-frame-2") ? 6 : frame.classList.contains("nes-frame-3") ? 4 : -5}deg)`;
-          });
+        for (const fd of frameData) {
+          fd.el.style.transform = `translateY(${scrollY * fd.speed}px) rotate(${fd.rotate}deg)`;
         }
 
-        // Quality section: background parallax
-        if (qualityBg) {
-          const section = qualityBg.parentElement;
-          if (section) {
-            const rect = section.getBoundingClientRect();
-            const sectionProgress = -rect.top / vh;
-            qualityBg.style.transform = `translate3d(0, ${sectionProgress * 40}px, 0)`;
-          }
+        if (qualityBg && qualitySection) {
+          const rect = qualitySection.getBoundingClientRect();
+          qualityBg.style.transform = `translate3d(0, ${(-rect.top / vh) * 40}px, 0)`;
         }
 
-        // Reveal section: background parallax
-        if (revealBg) {
-          const section = revealBg.parentElement;
-          if (section) {
-            const rect = section.getBoundingClientRect();
-            const sectionProgress = -rect.top / vh;
-            revealBg.style.transform = `translate3d(0, ${sectionProgress * 30}px, 0)`;
-          }
+        if (revealBg && revealSection) {
+          const rect = revealSection.getBoundingClientRect();
+          revealBg.style.transform = `translate3d(0, ${(-rect.top / vh) * 30}px, 0)`;
         }
 
         ticking = false;
@@ -211,11 +204,7 @@ function applyI18n(): void {
     const key = el.dataset["i18n"]!;
     const value = resolveKey(tr, key);
     if (typeof value === "string") {
-      if (key === "kv.sub") {
-        el.textContent = value;
-      } else {
-        el.textContent = value;
-      }
+      el.textContent = value;
     }
   }
 

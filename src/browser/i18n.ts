@@ -140,7 +140,7 @@ const ja: Translations = {
   nav: { github: "GitHub" },
   kv: {
     headline: "nightowl-nes",
-    sub: "スクラッチ実装の NES エミュレータ。\n既存のコードは一切参照していない。",
+    sub: "A NES emulator, built from scratch.\nNo existing code was ever referenced.",
     typewriterPrefix: "Just the ",
     typewriterWords: ["specs.", "silicon.", "soul."],
   },
@@ -210,7 +210,7 @@ const zh: Translations = {
   nav: { github: "GitHub" },
   kv: {
     headline: "nightowl-nes",
-    sub: "从零构建的 NES 模拟器。\n从未参考任何现有代码。",
+    sub: "A NES emulator, built from scratch.\nNo existing code was ever referenced.",
     typewriterPrefix: "Just the ",
     typewriterWords: ["specs.", "silicon.", "soul."],
   },

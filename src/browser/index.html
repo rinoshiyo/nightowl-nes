@@ -741,6 +741,15 @@
       color: var(--text-secondary);
       font-weight: 500;
     }
+    .loop-flow-text {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      color: var(--accent);
+      line-height: 2;
+    }
+    .loop-flow-sub {
+      color: var(--text-tertiary);
+    }
 
     /* Constraints (within reveal) */
     .constraints-grid {
@@ -880,10 +889,10 @@
     <div class="kv-pixel-grid"></div>
     <div class="kv-glow"></div>
     <div class="kv-screenshots">
-      <div class="nes-frame nes-frame-1"><div class="nes-frame-inner"></div></div>
-      <div class="nes-frame nes-frame-2"><div class="nes-frame-inner"></div></div>
-      <div class="nes-frame nes-frame-3"><div class="nes-frame-inner"></div></div>
-      <div class="nes-frame nes-frame-4"><div class="nes-frame-inner"></div></div>
+      <div class="nes-frame nes-frame-1" data-speed="0.10" data-rotate="-8"><div class="nes-frame-inner"></div></div>
+      <div class="nes-frame nes-frame-2" data-speed="0.15" data-rotate="6"><div class="nes-frame-inner"></div></div>
+      <div class="nes-frame nes-frame-3" data-speed="0.20" data-rotate="4"><div class="nes-frame-inner"></div></div>
+      <div class="nes-frame nes-frame-4" data-speed="0.25" data-rotate="-5"><div class="nes-frame-inner"></div></div>
     </div>
     <div class="kv-content" id="kv-content">
       <div class="kv-badge">NES Emulator</div>
@@ -1075,11 +1084,11 @@ No existing code was ever referenced.</p>
           <h3 data-i18n="reveal.loopTitle">Autonomous GitHub Flow</h3>
           <p data-i18n="reveal.loopDesc">Issue, branch, PR, code review, merge — every night, without human hands on the keyboard. Claude Code runs the full development cycle autonomously.</p>
         </div>
-        <div class="loop-card fade-in fade-in-delay-2">
+        <div class="loop-card loop-flow fade-in fade-in-delay-2">
           <h3>GitHub Flow</h3>
-          <p style="font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem; color: var(--accent); line-height: 2;">
+          <p class="loop-flow-text">
             Issue → Branch → PR → Review → Merge<br>
-            <span style="color: var(--text-tertiary);">repeat every night, autonomously</span>
+            <span class="loop-flow-sub">repeat every night, autonomously</span>
           </p>
         </div>
       </div>
