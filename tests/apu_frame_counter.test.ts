@@ -61,9 +61,9 @@ describe("APU フレームカウンタ", () => {
       expect(apu.pulse1.envelope.decayLevel).toBeLessThanOrEqual(decayBefore);
     });
 
-    it("step 3 (cycle 29829+DELAY): quarter + half + IRQ が発火する", () => {
+    it("step 3 (cycle 29828+DELAY): IRQ が最初に発火する", () => {
       apu.frameIrqFlag = false;
-      tickN(apu, 29829 + DELAY - 1);
+      tickN(apu, 29828 + DELAY - 1);
       expect(apu.frameIrqFlag).toBe(false);
 
       apu.tick();
@@ -317,7 +317,7 @@ describe("APU フレームカウンタ", () => {
       apu.write(0x4017, 0x00);
       apu.frameIrqFlag = false;
 
-      tickN(apu, 29829 + DELAY - 1);
+      tickN(apu, 29828 + DELAY - 1);
       expect(apu.frameIrqFlag).toBe(false);
 
       apu.tick();
@@ -391,24 +391,29 @@ describe("APU フレームカウンタ", () => {
   });
 
   describe("複数周期にわたるタイミング安定性", () => {
-    it("4-step モード: 3 周期分の IRQ 発火タイミングが安定している", () => {
-      const irqCycles: number[] = [];
+    it("4-step モード: 3 周期分の IRQ 最初の発火タイミングが安定している", () => {
+      const firstIrqPerPeriod: number[] = [];
       let totalCycles = 0;
+      let lastPeriodIrq = 0;
 
-      apu.onIrq = () => { irqCycles.push(totalCycles); };
+      apu.onIrq = () => {
+        if (totalCycles > lastPeriodIrq + 10) {
+          firstIrqPerPeriod.push(totalCycles);
+          lastPeriodIrq = totalCycles;
+        }
+      };
       apu.write(0x4017, 0x00);
 
-      // 3 周期分 (1周目は DELAY 付き、2周目以降は 29830 ぴったり)
-      for (let i = 0; i < 29830 * 3 + DELAY; i++) {
+      for (let i = 0; i < 29830 * 3 + DELAY + 10; i++) {
         totalCycles++;
         apu.tick();
       }
 
-      // 1周目: 29829+DELAY=29832, 2周目: 29832+29830=59662, 3周目: 59662+29830=89492
-      expect(irqCycles).toEqual([
-        29829 + DELAY,
-        29829 + DELAY + 29830,
-        29829 + DELAY + 29830 * 2,
+      // 各周期の最初の IRQ: 29828+DELAY, 29828+DELAY+29830, 29828+DELAY+29830*2
+      expect(firstIrqPerPeriod).toEqual([
+        29828 + DELAY,
+        29828 + DELAY + 29830,
+        29828 + DELAY + 29830 * 2,
       ]);
     });
 

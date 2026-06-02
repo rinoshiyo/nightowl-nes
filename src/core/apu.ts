@@ -32,8 +32,9 @@ const FRAME_4STEP: readonly { cycle: number; action: number }[] = [
   { cycle: 7457,  action: ACT_Q },
   { cycle: 14913, action: ACT_Q | ACT_H },
   { cycle: 22371, action: ACT_Q },
+  { cycle: 29828, action: ACT_I },
   { cycle: 29829, action: ACT_Q | ACT_H | ACT_I },
-  { cycle: 29830, action: ACT_R },
+  { cycle: 29830, action: ACT_I | ACT_R },
 ];
 
 const FRAME_5STEP: readonly { cycle: number; action: number }[] = [
@@ -321,22 +322,25 @@ export class Apu {
   /** パワーオン初期化: 全チャンネル無効化 + フレームカウンタ初期化 */
   powerOn(): void {
     this.write(0x4015, 0x00);
+    // パワーオン時も $4017 write と同じ遅延リセットを経由
     this.write(0x4017, 0x00);
     this.frameIrqFlag = false;
     this.dmc.irqFlag = false;
   }
 
-  /** RESET 時の APU 初期化。パワーオンとは異なりチャンネル状態を部分的に保持する */
+  /** RESET 時の APU 初期化 (nesdev wiki: CPU_power_up_state) */
   reset(): void {
-    // $4015 に 0 書込: 全チャンネル disable + length counter 0
+    // $4015=$00 と同等: 全チャンネル disable + length counter halt
     this.write(0x4015, 0x00);
-    // $4017 に現在のモードを再書込: フレームカウンタリセット
-    this.write(0x4017, this.frameMode << 7);
-    // IRQ フラグクリア
+    // $4017 は最後の値で再起動: mode/inhibit は保持、frame counter リセット
+    this.frameCycle = 0;
+    this.frameStep = 0;
+    this.frameResetDelay = 0;
+    // IRQ フラグクリア (inhibit は維持)
     this.frameIrqFlag = false;
     this.dmc.irqFlag = false;
-    // DMC 出力レベルは維持 (リセットでクリアされない)
-    // トライアングルのシーケンサ位置は維持
+    // Triangle phase をリセット
+    this.triangle.sequencerPos = 0;
   }
 
   /** バッファからサンプルを読み出して output 配列を埋める。読み出し分だけ進む */

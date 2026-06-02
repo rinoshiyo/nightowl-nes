@@ -29,11 +29,24 @@ export function runTestRom(romPath: string, maxFrames = 600): TestRomResult {
 
   let frames = 0;
   let lastStatus = 0x80;
+  let resetDone = false;
 
   for (frames = 0; frames < maxFrames; frames++) {
     nes.stepFrame();
 
     const status = nes.bus.read(0x6000);
+
+    // apu_reset テスト ROM は "Press RESET" を表示して 0x81 を返す
+    // $6000=0x81 かつ結果テキストに "RESET" を含む場合、リセットを実行
+    if (!resetDone && status === 0x81 && frames > 5) {
+      const msg = readResultText(nes, 0x6004);
+      if (msg.includes("RESET")) {
+        nes.reset();
+        resetDone = true;
+        lastStatus = 0x80;
+        continue;
+      }
+    }
 
     if (status !== 0x80 && status !== 0x00 && frames > 10) {
       lastStatus = status;
