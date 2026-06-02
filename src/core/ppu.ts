@@ -377,6 +377,17 @@ export class Ppu {
       }
     }
 
+    // 奇数フレームスキップ: 背景描画有効 + 奇数フレームでは
+    // pre-render line の最終 dot (340) をスキップしてフレーム終了
+    if (this.scanline === PRE_RENDER_LINE && this.dot === 339
+        && this.oddFrame && renderEnabled) {
+      this.dot = 0;
+      this.scanline = 0;
+      this.frameComplete = true;
+      this.oddFrame = !this.oddFrame;
+      return;
+    }
+
     this.dot++;
     if (this.dot >= DOTS_PER_LINE) {
       this.dot = 0;
@@ -386,16 +397,6 @@ export class Ppu {
         this.frameComplete = true;
         this.oddFrame = !this.oddFrame;
       }
-    }
-
-    // 奇数フレームスキップ: 背景描画有効 + 奇数フレームでは
-    // pre-render line (261) の dot 339 で即座にフレーム切替
-    if (this.scanline === PRE_RENDER_LINE && this.dot === 339
-        && this.oddFrame && renderEnabled) {
-      this.dot = 0;
-      this.scanline = 0;
-      this.frameComplete = true;
-      this.oddFrame = !this.oddFrame;
     }
   }
 
