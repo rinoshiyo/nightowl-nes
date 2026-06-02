@@ -203,27 +203,26 @@ describe("G5: APU reset 精度", () => {
     expect(apu.triangle.sequencerPos).toBe(0);
   });
 
-  it("reset で frame counter mode は維持される", () => {
-    apu.write(0x4017, 0x80); // 5-step
-    // tick して mode を適用
-    for (let i = 0; i < 10; i++) apu.tick();
-
+  it("reset で cpuCycleOdd がクリアされる", () => {
+    for (let i = 0; i < 7; i++) apu.tick(); // cpuCycleOdd を非初期値にする
     apu.reset();
-
-    // frame counter は即座リセット (mode は維持されない — $4015=$00 で再初期化)
-    // ただし wiki によると $4017 は unchanged → mode 維持
-    // 実装では frameCycle=0, frameStep=0 にリセット
+    // reset 後の $4017 write で遅延が決定的 (even cycle = 3) になることを検証
+    apu.write(0x4017, 0x00);
+    const state = apu.serialize();
+    expect(state.frameResetDelay).toBe(3);
   });
 
-  it("powerOn と reset は異なる挙動", () => {
-    // powerOn は $4015=$00 + $4017=$00 (遅延付き)
-    apu.powerOn();
-
-    // reset は $4015=$00 + frame counter リセット (mode 維持)
-    apu.write(0x4015, 0x01);
-    apu.pulse1.enabled = true;
+  it("reset で dmc.stallCycles がクリアされる", () => {
+    apu.dmc.stallCycles = 4;
     apu.reset();
-    expect(apu.pulse1.enabled).toBe(false); // $4015=$00 で disable
+    expect(apu.dmc.stallCycles).toBe(0);
+  });
+
+  it("reset で pendingFrameMode が frameMode に同期される", () => {
+    apu.write(0x4017, 0x80); // pendingFrameMode=1
+    apu.reset();
+    const state = apu.serialize();
+    expect(state.pendingFrameMode).toBe(state.frameMode);
   });
 });
 

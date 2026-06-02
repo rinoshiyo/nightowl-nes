@@ -104,7 +104,7 @@ export class DmcChannel {
 
     this.sampleBuffer = this.readSample(this.currentAddress);
     this.sampleBufferEmpty = false;
-    // DMC サンプルフェッチ時、CPU は 1-4 cycle stall する (nesdev wiki: APU_DMC)
+    // DMC サンプルフェッチ時の CPU stall (実機は 1-4 cycle 可変、ここでは worst-case 固定)
     this.stallCycles += 4;
 
     // アドレスインクリメント ($FFFF → $8000 ラップ)

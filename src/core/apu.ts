@@ -336,9 +336,12 @@ export class Apu {
     this.frameCycle = 0;
     this.frameStep = 0;
     this.frameResetDelay = 0;
+    this.pendingFrameMode = this.frameMode;
+    this.cpuCycleOdd = false;
     // IRQ フラグクリア (inhibit は維持)
     this.frameIrqFlag = false;
     this.dmc.irqFlag = false;
+    this.dmc.stallCycles = 0;
     // Triangle phase をリセット
     this.triangle.sequencerPos = 0;
   }
