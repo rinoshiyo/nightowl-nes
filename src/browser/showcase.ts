@@ -63,7 +63,7 @@ function initParallax(): void {
         const vh = window.innerHeight;
         const progress = Math.min(scrollY / vh, 1);
         kvContent.style.transform = `translate3d(0, ${scrollY * 0.4}px, 0)`;
-        kvContent.style.opacity = String(1 - progress * 1.5);
+        kvContent.style.opacity = String(Math.max(0, 1 - progress * 1.5));
         if (kvHint) {
           kvHint.style.opacity = String(Math.max(0, 1 - progress * 3));
         }
@@ -117,6 +117,8 @@ function initCounters(): void {
   }
 }
 
+const numFmt = new Intl.NumberFormat();
+
 function animateCounter(el: HTMLElement, target: number, compact: boolean): void {
   const duration = 1500;
   const start = performance.now();
@@ -125,7 +127,7 @@ function animateCounter(el: HTMLElement, target: number, compact: boolean): void
     const progress = Math.min((now - start) / duration, 1);
     const eased = 1 - Math.pow(1 - progress, 3);
     const current = Math.round(eased * target);
-    el.textContent = compact ? formatCompact(current) : current.toLocaleString();
+    el.textContent = compact ? formatCompact(current) : numFmt.format(current);
     if (progress < 1) requestAnimationFrame(step);
   }
 
@@ -183,7 +185,7 @@ function applyI18n(): void {
     }
   }
 
-  document.documentElement.lang = getLocale() === "ja" ? "ja" : getLocale() === "zh" ? "zh" : "en";
+  document.documentElement.lang = getLocale();
 }
 
 function resolveKey(obj: object, path: string): unknown {

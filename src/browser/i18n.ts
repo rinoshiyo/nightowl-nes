@@ -273,8 +273,12 @@ const translations: Record<Locale, Translations> = { en, ja, zh };
 const STORAGE_KEY = "nightowl-nes-locale";
 
 function getDefaultLocale(): Locale {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === "en" || saved === "ja" || saved === "zh") return saved;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === "en" || saved === "ja" || saved === "zh") return saved;
+  } catch {
+    // localStorage が使えない環境（Safari プライベート等）
+  }
   const lang = navigator.language.toLowerCase();
   if (lang.startsWith("ja")) return "ja";
   if (lang.startsWith("zh")) return "zh";
@@ -290,7 +294,7 @@ export function getLocale(): Locale {
 
 export function setLocale(locale: Locale): void {
   currentLocale = locale;
-  localStorage.setItem(STORAGE_KEY, locale);
+  try { localStorage.setItem(STORAGE_KEY, locale); } catch { /* noop */ }
   for (const fn of listeners) fn(locale);
 }
 
@@ -302,4 +306,4 @@ export function t(): Translations {
   return translations[currentLocale];
 }
 
-export type { Locale, Translations };
+export type { Locale };

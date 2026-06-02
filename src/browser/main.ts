@@ -10,6 +10,7 @@ import { applyGamepadState } from "./gamepad.ts";
 import { isNesFile } from "./drag-drop.ts";
 import { TouchControls, isTouchDevice } from "./touch-controls.ts";
 import { initShowcase } from "./showcase.ts";
+import { t, onLocaleChange } from "./i18n.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -72,7 +73,7 @@ function updateSaveUi(): void {
     return;
   }
   if (hasSaveData(currentRomHash)) {
-    saveInfo.textContent = "💾 セーブデータあり ";
+    saveInfo.textContent = t().emulator.saveBanner;
     saveInfo.appendChild(deleteBtn);
     deleteBtn.style.display = "inline";
   } else {
@@ -363,9 +364,14 @@ fullscreenBtn.addEventListener("click", toggleFullscreen);
 const helpToggle = getEl<HTMLButtonElement>("help-toggle");
 const helpContent = getEl<HTMLDivElement>("help-content");
 
+function updateHelpToggleText(): void {
+  const visible = helpContent.classList.contains("visible");
+  helpToggle.textContent = visible ? t().emulator.helpToggleClose : t().emulator.helpToggle;
+}
+
 helpToggle.addEventListener("click", () => {
-  const visible = helpContent.classList.toggle("visible");
-  helpToggle.textContent = visible ? "操作ヘルプ ▲" : "操作ヘルプ ▼";
+  helpContent.classList.toggle("visible");
+  updateHelpToggleText();
 });
 
 deleteBtn.addEventListener("click", () => {
@@ -432,3 +438,13 @@ stateControls.addEventListener("click", (e) => {
 
 // --- ショーケース初期化 ---
 initShowcase();
+
+// i18n: 初期テキスト設定 + locale 変更時に動的要素を更新
+status.textContent = t().emulator.status;
+updateHelpToggleText();
+
+onLocaleChange(() => {
+  if (!nes) status.textContent = t().emulator.status;
+  updateSaveUi();
+  updateHelpToggleText();
+});
