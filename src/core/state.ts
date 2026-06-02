@@ -123,6 +123,7 @@ export interface DmcState {
   loop: boolean;
   irqEnabled: boolean;
   irqFlag: boolean;
+  stallCycles: number;
 }
 
 export interface ApuState {
@@ -137,6 +138,8 @@ export interface ApuState {
   frameIrqInhibit: boolean;
   frameIrqFlag: boolean;
   cpuCycleOdd: boolean;
+  frameResetDelay: number;
+  pendingFrameMode: number;
 }
 
 export interface BusState {

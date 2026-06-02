@@ -53,6 +53,7 @@ export class NesConsole {
     if ("ciram" in this.mapper) {
       (this.mapper as { ciram: Uint8Array }).ciram = this.ppu.vram;
     }
+    this.apu.powerOn();
     this.reset();
   }
 
@@ -67,7 +68,7 @@ export class NesConsole {
     this.cpu.nmiPending = false;
     this.cpu.irqPending = false;
     this.bus.dmaCycles = 0;
-    this.apu.powerOn();
+    this.apu.reset();
     this.apu.resetFilters();
     this.mapper.reset();
     this.ppu.reset();
@@ -82,6 +83,12 @@ export class NesConsole {
     if (dma > 0) {
       totalCycles += dma;
       this.bus.dmaCycles = 0;
+    }
+
+    const dmcStall = this.apu.dmc.stallCycles;
+    if (dmcStall > 0) {
+      totalCycles += dmcStall;
+      this.apu.dmc.stallCycles = 0;
     }
 
     const ppu = this.ppu;
