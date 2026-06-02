@@ -5,6 +5,7 @@ interface Translations {
   kv: {
     headline: string;
     sub: string;
+    typewriterPrefix: string;
     typewriterWords: string[];
   };
   emulator: {
@@ -70,6 +71,7 @@ const en: Translations = {
   kv: {
     headline: "nightowl-nes",
     sub: "A NES emulator, built from scratch.\nNo existing code was ever referenced.",
+    typewriterPrefix: "Just the ",
     typewriterWords: ["specs.", "silicon.", "soul."],
   },
   emulator: {
@@ -139,7 +141,8 @@ const ja: Translations = {
   kv: {
     headline: "nightowl-nes",
     sub: "スクラッチ実装の NES エミュレータ。\n既存のコードは一切参照していない。",
-    typewriterWords: ["仕様.", "回路.", "魂."],
+    typewriterPrefix: "Just the ",
+    typewriterWords: ["specs.", "silicon.", "soul."],
   },
   emulator: {
     title: "プレイ",
@@ -208,7 +211,8 @@ const zh: Translations = {
   kv: {
     headline: "nightowl-nes",
     sub: "从零构建的 NES 模拟器。\n从未参考任何现有代码。",
-    typewriterWords: ["规格.", "芯片.", "灵魂."],
+    typewriterPrefix: "Just the ",
+    typewriterWords: ["specs.", "silicon.", "soul."],
   },
   emulator: {
     title: "游玩",

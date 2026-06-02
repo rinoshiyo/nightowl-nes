@@ -622,10 +622,9 @@
       overflow: hidden;
     }
     .test-card {
-      background: var(--bg-card);
+      background: rgba(255,255,255,0.02);
       padding: 2rem 1.5rem;
       text-align: center;
-      backdrop-filter: blur(10px);
     }
     .test-icon {
       font-size: 1.5rem;
@@ -891,7 +890,7 @@
       <h1 class="kv-headline" data-i18n="kv.headline">nightowl-nes</h1>
       <p class="kv-sub" data-i18n="kv.sub">A NES emulator, built from scratch.
 No existing code was ever referenced.</p>
-      <span class="kv-typewriter">Just the <span class="kv-typewriter-word" id="typewriter-word"></span></span>
+      <span class="kv-typewriter"><span id="typewriter-prefix" data-i18n="kv.typewriterPrefix">Just the </span><span class="kv-typewriter-word" id="typewriter-word"></span></span>
     </div>
     <div class="kv-scroll-hint">↓</div>
   </section>
