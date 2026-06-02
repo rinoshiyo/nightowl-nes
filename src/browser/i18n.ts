@@ -88,7 +88,7 @@ const en: Translations = {
   nav: { github: "GitHub" },
   kv: {
     headline: "nightowl-NES",
-    sub: "A NES emulator, built from scratch in TypeScript.\nZero runtime dependencies. Zero lines of human code.",
+    sub: "A NES emulator, built from scratch in TypeScript.\nZero runtime dependencies. Zero lines of human-written code.",
     typewriterPrefix: "Just the ",
     typewriterWords: ["specs.", "AI.", "loop."],
   },
@@ -177,7 +177,7 @@ const ja: Translations = {
   nav: { github: "GitHub" },
   kv: {
     headline: "nightowl-NES",
-    sub: "A NES emulator, built from scratch in TypeScript.\nZero runtime dependencies. Zero lines of human code.",
+    sub: "A NES emulator, built from scratch in TypeScript.\nZero runtime dependencies. Zero lines of human-written code.",
     typewriterPrefix: "Just the ",
     typewriterWords: ["specs.", "AI.", "loop."],
   },
@@ -266,7 +266,7 @@ const zh: Translations = {
   nav: { github: "GitHub" },
   kv: {
     headline: "nightowl-NES",
-    sub: "A NES emulator, built from scratch in TypeScript.\nZero runtime dependencies. Zero lines of human code.",
+    sub: "A NES emulator, built from scratch in TypeScript.\nZero runtime dependencies. Zero lines of human-written code.",
     typewriterPrefix: "Just the ",
     typewriterWords: ["specs.", "AI.", "loop."],
   },
