@@ -54,6 +54,13 @@ function initTypewriter(): void {
 
 // --- Parallax (全セクション対応) ---
 
+function lerpColor(a: [number, number, number], b: [number, number, number], t: number): string {
+  const r = Math.round(a[0] + (b[0] - a[0]) * t);
+  const g = Math.round(a[1] + (b[1] - a[1]) * t);
+  const bl = Math.round(a[2] + (b[2] - a[2]) * t);
+  return `rgb(${r},${g},${bl})`;
+}
+
 function initParallax(): void {
   const kvContent = document.getElementById("kv-content");
   const kvHint = document.querySelector<HTMLElement>(".kv-scroll-hint");
@@ -61,6 +68,7 @@ function initParallax(): void {
   const harnessBg = document.getElementById("harness-parallax-bg");
   const qualitySection = qualityBg?.parentElement ?? null;
   const harnessSection = harnessBg?.parentElement ?? null;
+  const emulatorSection = document.getElementById("emulator-section");
 
   const nesFrames = Array.from(document.querySelectorAll<HTMLElement>(".nes-frame"));
   const frameData = nesFrames.map((frame) => ({
@@ -69,7 +77,8 @@ function initParallax(): void {
     rotate: parseFloat(frame.dataset["rotate"] ?? "0"),
   }));
 
-  if (!kvContent && !qualityBg && !harnessBg && nesFrames.length === 0) return;
+  const darkColor: [number, number, number] = [15, 15, 36];
+  const whiteColor: [number, number, number] = [255, 255, 255];
 
   let ticking = false;
   window.addEventListener("scroll", () => {
@@ -99,6 +108,14 @@ function initParallax(): void {
         if (harnessBg && harnessSection) {
           const rect = harnessSection.getBoundingClientRect();
           harnessBg.style.transform = `translate3d(0, ${(-rect.top / vh) * 30}px, 0)`;
+        }
+
+        if (emulatorSection) {
+          const transitionStart = emulatorSection.offsetTop + emulatorSection.offsetHeight * 0.4;
+          const transitionEnd = emulatorSection.offsetTop + emulatorSection.offsetHeight;
+          const range = transitionEnd - transitionStart;
+          const t = range > 0 ? Math.max(0, Math.min(1, (scrollY - transitionStart) / range)) : 0;
+          document.body.style.backgroundColor = lerpColor(darkColor, whiteColor, t);
         }
 
         ticking = false;
@@ -261,6 +278,34 @@ function initLangSwitcher(): void {
   applyI18n();
 }
 
+// --- ヘッダーのスクロール追従カラー切替 ---
+
+function initHeaderScroll(): void {
+  const header = document.querySelector<HTMLElement>(".site-header");
+  if (!header) return;
+
+  const whiteSections = Array.from(document.querySelectorAll<HTMLElement>(".section-white"));
+
+  let ticking = false;
+  function update(): void {
+    const y = header!.getBoundingClientRect().bottom;
+    const onLight = whiteSections.some((s) => {
+      const r = s.getBoundingClientRect();
+      return r.top < y && r.bottom > y;
+    });
+    header!.classList.toggle("on-light", onLight);
+    ticking = false;
+  }
+
+  window.addEventListener("scroll", () => {
+    if (!ticking) {
+      requestAnimationFrame(update);
+      ticking = true;
+    }
+  });
+  update();
+}
+
 // --- Init all showcase features ---
 
 export function initShowcase(): void {
@@ -270,4 +315,5 @@ export function initShowcase(): void {
   initCounters();
   initStatBars();
   initLangSwitcher();
+  initHeaderScroll();
 }
