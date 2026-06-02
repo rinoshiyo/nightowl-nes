@@ -33,6 +33,12 @@
       --nes-green: #30e060;
       --nes-blue: #5080f0;
       --nes-red: #e04040;
+      /* White section tokens */
+      --w-text: #1a1a2e;
+      --w-text-secondary: #555566;
+      --w-text-tertiary: #888899;
+      --w-card-bg: #f8f7f5;
+      --w-card-border: #e8e8ee;
     }
 
     /* --- Scanline overlay (global) --- */
@@ -60,7 +66,7 @@
       display: flex;
       align-items: center;
       gap: 0.4rem;
-      color: rgba(255,255,255,0.5);
+      color: rgba(0,0,0,0.4);
       text-decoration: none;
       font-size: 0.85rem;
       font-weight: 500;
@@ -79,9 +85,9 @@
       gap: 0.3rem;
     }
     .lang-btn {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.4);
+      background: rgba(0,0,0,0.04);
+      border: 1px solid rgba(0,0,0,0.1);
+      color: rgba(0,0,0,0.4);
       padding: 0.2rem 0.5rem;
       border-radius: 4px;
       cursor: pointer;
@@ -509,17 +515,25 @@
       will-change: transform;
     }
 
-    /* --- Section: Quality (Numbers) --- */
+    /* --- Section: White (shared for quality + harness) --- */
+    .section-white {
+      background: #ffffff;
+      color: var(--w-text);
+    }
+    .section-white .section-label { color: var(--accent); }
+    .section-white .section-headline { color: var(--w-text); }
+    .section-white .section-subtitle { color: var(--w-text-secondary); }
+
+    /* --- Section: Quality (Numbers) — white background --- */
     .quality-section {
-      background: var(--bg-dark-3);
       padding: var(--section-gap) 1.5rem;
       position: relative;
       overflow: hidden;
     }
     .quality-section .parallax-bg {
       background:
-        radial-gradient(circle at 20% 50%, rgba(217,119,87,0.08) 0%, transparent 50%),
-        radial-gradient(circle at 80% 30%, rgba(80,128,240,0.06) 0%, transparent 50%);
+        radial-gradient(circle at 20% 50%, rgba(217,119,87,0.06) 0%, transparent 50%),
+        radial-gradient(circle at 80% 30%, rgba(80,128,240,0.04) 0%, transparent 50%);
     }
     .quality-inner {
       max-width: 1100px;
@@ -542,33 +556,30 @@
     .section-headline {
       font-size: clamp(1.8rem, 4vw, 2.8rem);
       font-weight: 700;
-      color: var(--text-primary);
       margin-bottom: 0.5rem;
       line-height: 1.2;
     }
     .section-subtitle {
       font-size: clamp(0.95rem, 1.8vw, 1.1rem);
-      color: var(--text-secondary);
       line-height: 1.6;
       max-width: 700px;
       margin: 0 auto;
     }
 
-    /* Stats grid (big numbers) */
+    /* Stats grid (big numbers) — white variant */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1px;
-      background: var(--bg-card-border);
+      background: var(--w-card-border);
       border-radius: 16px;
       overflow: hidden;
       margin-bottom: 2rem;
     }
     .stat-card {
-      background: var(--bg-card);
+      background: var(--w-card-bg);
       padding: 2rem 1.5rem;
       text-align: center;
-      backdrop-filter: blur(10px);
     }
     .stat-label {
       font-size: 0.75rem;
@@ -581,20 +592,20 @@
     .stat-value {
       font-size: clamp(2.5rem, 6vw, 3.5rem);
       font-weight: 800;
-      color: var(--text-primary);
+      color: var(--w-text);
       line-height: 1;
       font-variant-numeric: tabular-nums;
       font-family: 'SF Mono', 'Fira Code', monospace;
     }
     .stat-value .stat-total {
       font-size: 0.4em;
-      color: var(--text-tertiary);
+      color: var(--w-text-tertiary);
     }
     .stat-bar {
       margin: 1rem auto 0;
       width: 80%;
       height: 4px;
-      background: rgba(255,255,255,0.06);
+      background: rgba(0,0,0,0.08);
       border-radius: 2px;
       overflow: hidden;
     }
@@ -608,7 +619,7 @@
     .stat-desc {
       margin-top: 0.8rem;
       font-size: 0.8rem;
-      color: var(--text-tertiary);
+      color: var(--w-text-tertiary);
       line-height: 1.5;
     }
 
@@ -617,12 +628,13 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 1px;
-      background: var(--bg-card-border);
+      background: var(--w-card-border);
       border-radius: 16px;
       overflow: hidden;
+      margin-bottom: 2rem;
     }
     .test-card {
-      background: rgba(255,255,255,0.02);
+      background: #fafaf8;
       padding: 2rem 1.5rem;
       text-align: center;
     }
@@ -641,53 +653,95 @@
     .test-value {
       font-size: clamp(2rem, 5vw, 3rem);
       font-weight: 800;
-      color: var(--text-primary);
+      color: var(--w-text);
       font-variant-numeric: tabular-nums;
       font-family: 'SF Mono', 'Fira Code', monospace;
     }
     .test-desc {
       margin-top: 0.5rem;
       font-size: 0.8rem;
-      color: var(--text-tertiary);
+      color: var(--w-text-tertiary);
       line-height: 1.4;
     }
 
-    /* --- Section: Reveal (AI Loop) --- */
-    .reveal-section {
-      background: var(--bg-dark);
+    /* Meta row (test ROMs, source, deps) */
+    .meta-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--w-card-border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .meta-card {
+      background: #fafaf8;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .meta-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .meta-value {
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 800;
+      color: var(--w-text);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      line-height: 1.2;
+      margin-bottom: 0.3rem;
+    }
+    .meta-value .meta-total {
+      font-size: 0.5em;
+      color: var(--w-text-tertiary);
+    }
+    .meta-desc {
+      font-size: 0.75rem;
+      color: var(--w-text-tertiary);
+      line-height: 1.4;
+    }
+
+    /* --- Section: Harness — white background --- */
+    .harness-section {
       padding: var(--section-gap) 1.5rem;
       position: relative;
       overflow: hidden;
+      border-top: 1px solid var(--w-card-border);
     }
-    .reveal-section .parallax-bg {
+    .harness-section .parallax-bg {
       background:
-        radial-gradient(circle at 50% 50%, rgba(217,119,87,0.06) 0%, transparent 60%);
+        radial-gradient(circle at 50% 50%, rgba(217,119,87,0.04) 0%, transparent 60%);
     }
-    .reveal-inner {
+    .harness-inner {
       max-width: 900px;
       margin: 0 auto;
       position: relative;
       z-index: 2;
     }
-    .reveal-hero {
+
+    /* Harness hero */
+    .harness-hero {
       text-align: center;
       margin-bottom: 4rem;
     }
-    .reveal-headline {
+    .harness-headline {
       font-size: clamp(2.2rem, 5vw, 3.8rem);
       font-weight: 800;
-      color: var(--text-primary);
+      color: var(--w-text);
       line-height: 1.15;
       margin-bottom: 1.5rem;
     }
-    .reveal-subtitle {
+    .harness-subtitle {
       font-size: clamp(1rem, 2vw, 1.2rem);
-      color: var(--text-secondary);
+      color: var(--w-text-secondary);
       line-height: 1.7;
-      max-width: 650px;
+      max-width: 700px;
       margin: 0 auto;
     }
-    .reveal-line {
+    .harness-reveal-line {
       display: block;
       margin-top: 2rem;
       font-size: clamp(0.9rem, 1.5vw, 1rem);
@@ -696,77 +750,203 @@
       font-style: italic;
     }
 
-    /* Loop explanation */
-    .loop-grid {
+    /* Harness stats */
+    .harness-stats {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-      margin-bottom: 3rem;
-    }
-    .loop-card {
-      background: var(--bg-card);
-      border: 1px solid var(--bg-card-border);
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--w-card-border);
       border-radius: 16px;
-      padding: 2rem;
+      overflow: hidden;
+      margin-bottom: 1rem;
     }
-    .loop-card h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 0.8rem;
+    .harness-stat {
+      background: var(--w-card-bg);
+      padding: 2rem 1.5rem;
+      text-align: center;
     }
-    .loop-card p {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      line-height: 1.6;
-    }
-    .loop-highlight {
-      grid-column: 1 / -1;
-    }
-    .nights-display {
-      display: flex;
-      align-items: baseline;
-      gap: 0.8rem;
-      margin-bottom: 0.8rem;
-    }
-    .nights-number {
+    .harness-stat-number {
+      display: block;
       font-size: clamp(3rem, 8vw, 5rem);
       font-weight: 800;
       color: var(--accent);
       font-family: 'SF Mono', 'Fira Code', monospace;
       line-height: 1;
     }
-    .nights-label {
-      font-size: 1.2rem;
-      color: var(--text-secondary);
+    .harness-stat-label {
+      display: block;
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--w-text-secondary);
       font-weight: 500;
     }
-    .loop-flow-text {
+    .harness-breakdown {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 4rem;
+      font-size: 0.85rem;
+      color: var(--w-text-tertiary);
+    }
+    .harness-breakdown-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .breakdown-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .breakdown-dot.nes { background: var(--accent); }
+    .breakdown-dot.harness-color { background: var(--nes-blue); }
+
+    /* Harness story */
+    .harness-story {
+      margin-bottom: 4rem;
+    }
+    .harness-story-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--w-text);
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .harness-story-intro {
+      font-size: 1rem;
+      color: var(--w-text-secondary);
+      line-height: 1.8;
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto 3rem;
+    }
+
+    /* Timeline */
+    .timeline {
+      position: relative;
+      padding-left: 1rem;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--w-card-border);
+    }
+    .timeline-item {
+      position: relative;
+      padding: 0 0 2.5rem 2rem;
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--w-card-border);
+      border: 2px solid #fff;
+    }
+    .timeline-item.milestone::before {
+      background: var(--accent);
+    }
+    .timeline-day {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+    .timeline-bars {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      margin-bottom: 0.4rem;
+      height: 20px;
+    }
+    .timeline-bar {
+      height: 100%;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #fff;
+      min-width: 0;
+      transition: width 0.8s ease-out;
+    }
+    .timeline-bar.nes { background: var(--accent); }
+    .timeline-bar.harness-bar { background: var(--nes-blue); }
+    .timeline-bar.zero {
+      background: none;
+      color: var(--w-text-tertiary);
+      font-weight: 400;
+      font-size: 0.7rem;
+      justify-content: flex-start;
+    }
+    .timeline-desc {
+      font-size: 0.85rem;
+      color: var(--w-text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Loop mechanism */
+    .harness-loop {
+      margin-bottom: 4rem;
+    }
+    .harness-loop h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--w-text);
+      margin-bottom: 1rem;
+    }
+    .harness-loop p {
+      font-size: 0.95rem;
+      color: var(--w-text-secondary);
+      line-height: 1.7;
+    }
+    .loop-flow-diagram {
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      background: var(--w-card-bg);
+      border: 1px solid var(--w-card-border);
+      border-radius: 12px;
+      text-align: center;
       font-family: 'SF Mono', 'Fira Code', monospace;
       font-size: 0.85rem;
       color: var(--accent);
       line-height: 2;
     }
     .loop-flow-sub {
-      color: var(--text-tertiary);
+      display: block;
+      color: var(--w-text-tertiary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      font-size: 0.8rem;
     }
 
-    /* Constraints (within reveal) */
+    /* Constraints */
     .constraints-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1.5rem;
+      margin-bottom: 3rem;
     }
     .constraint-card {
       border-radius: 16px;
       padding: 2rem;
     }
     .constraint-card.allowed {
-      background: rgba(48,224,96,0.05);
+      background: rgba(48,224,96,0.04);
       border: 1px solid rgba(48,224,96,0.15);
     }
     .constraint-card.denied {
-      background: rgba(224,64,64,0.05);
+      background: rgba(224,64,64,0.04);
       border: 1px solid rgba(224,64,64,0.15);
     }
     .constraint-card h3 {
@@ -774,8 +954,8 @@
       font-weight: 700;
       margin-bottom: 1rem;
     }
-    .constraint-card.allowed h3 { color: var(--nes-green); }
-    .constraint-card.denied h3 { color: var(--nes-red); }
+    .constraint-card.allowed h3 { color: #1a8a3a; }
+    .constraint-card.denied h3 { color: #c03030; }
     .constraint-card ul {
       list-style: none;
       padding: 0;
@@ -785,21 +965,32 @@
       padding-left: 1.5rem;
       position: relative;
       font-size: 0.9rem;
-      color: var(--text-secondary);
+      color: var(--w-text-secondary);
       line-height: 1.5;
     }
-    .constraint-card.allowed li::before { content: '✓'; position: absolute; left: 0; color: var(--nes-green); font-weight: 700; }
-    .constraint-card.denied li::before { content: '✗'; position: absolute; left: 0; color: var(--nes-red); font-weight: 700; }
+    .constraint-card.allowed li::before { content: '✓'; position: absolute; left: 0; color: #1a8a3a; font-weight: 700; }
+    .constraint-card.denied li::before { content: '✗'; position: absolute; left: 0; color: #c03030; font-weight: 700; }
     .constraint-card p {
       font-size: 0.9rem;
-      color: var(--text-secondary);
+      color: var(--w-text-secondary);
       line-height: 1.6;
     }
     .constraint-enforce {
       margin-top: 0.8rem;
       font-size: 0.8rem;
-      color: var(--text-tertiary);
+      color: var(--w-text-tertiary);
       font-style: italic;
+    }
+
+    /* WIP note */
+    .harness-wip {
+      text-align: center;
+      padding: 1.5rem;
+      background: rgba(217,119,87,0.06);
+      border: 1px solid rgba(217,119,87,0.15);
+      border-radius: 12px;
+      font-size: 0.9rem;
+      color: var(--w-text-secondary);
     }
 
     /* --- Fade-in on scroll --- */
@@ -820,8 +1011,8 @@
     .site-footer {
       padding: 3rem 1.5rem;
       text-align: center;
-      border-top: 1px solid rgba(255,255,255,0.06);
-      background: var(--bg-dark);
+      border-top: 1px solid var(--w-card-border);
+      background: #fafaf8;
     }
     .footer-links {
       display: flex;
@@ -832,7 +1023,7 @@
       margin-bottom: 1rem;
     }
     .footer-links a {
-      color: var(--text-secondary);
+      color: var(--w-text-secondary);
       text-decoration: none;
       font-size: 0.85rem;
       transition: color 0.2s;
@@ -840,14 +1031,15 @@
     .footer-links a:hover { color: var(--accent); }
     .footer-copy {
       font-size: 0.8rem;
-      color: var(--text-tertiary);
+      color: var(--w-text-tertiary);
     }
 
     /* --- Responsive --- */
     @media (max-width: 768px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .test-row { grid-template-columns: 1fr; }
-      .loop-grid { grid-template-columns: 1fr; }
+      .meta-row { grid-template-columns: 1fr; }
+      .harness-stats { grid-template-columns: 1fr; }
       .constraints-grid { grid-template-columns: 1fr; }
       .nes-frame { display: none; }
     }
@@ -897,8 +1089,8 @@
     <div class="kv-content" id="kv-content">
       <div class="kv-badge">NES Emulator</div>
       <h1 class="kv-headline" data-i18n="kv.headline">nightowl-nes</h1>
-      <p class="kv-sub" data-i18n="kv.sub">A NES emulator, built from scratch.
-No existing code was ever referenced.</p>
+      <p class="kv-sub" data-i18n="kv.sub">A NES emulator, built from scratch in TypeScript.
+Zero runtime dependencies. Zero lines of human code.</p>
       <span class="kv-typewriter"><span id="typewriter-prefix" data-i18n="kv.typewriterPrefix">Just the </span><span class="kv-typewriter-word" id="typewriter-word"></span></span>
     </div>
     <div class="kv-scroll-hint">↓</div>
@@ -997,41 +1189,41 @@ No existing code was ever referenced.</p>
     <div id="touch-container"></div>
   </section>
 
-  <!-- ===== 2. Quality & Numbers ===== -->
-  <section class="quality-section parallax-section" id="quality-section">
+  <!-- ===== 2. Quality & Numbers (white) ===== -->
+  <section class="quality-section section-white parallax-section" id="quality-section">
     <div class="parallax-bg" id="quality-parallax-bg"></div>
     <div class="quality-inner">
       <div class="section-header fade-in">
         <div class="section-label" data-i18n="quality.sectionLabel">Precision</div>
-        <h2 class="section-headline" data-i18n="quality.headline">Every opcode. Every channel. Every scanline.</h2>
-        <p class="section-subtitle" data-i18n="quality.subtitle">Not a proof of concept. A production-grade emulator with full hardware coverage and rigorous test infrastructure.</p>
+        <h2 class="section-headline" data-i18n="quality.headline">Every opcode. Every scanline. Every channel.</h2>
+        <p class="section-subtitle" data-i18n="quality.subtitle">4,237 lines of TypeScript. 1,572 tests. Zero runtime dependencies. Verified against the NES hardware specification.</p>
       </div>
 
       <!-- Hardware stats -->
       <div class="stats-grid fade-in">
         <div class="stat-card">
           <div class="stat-label" data-i18n="quality.cpuLabel">CPU</div>
-          <div class="stat-value"><span class="counter" data-target="256">0</span><span class="stat-total">/256</span></div>
-          <div class="stat-bar"><div class="stat-bar-fill" data-percent="100"></div></div>
-          <div class="stat-desc" data-i18n="quality.cpuDesc">All 256 opcodes — 151 official + 105 unofficial — faithfully implemented from the 6502 specification alone.</div>
+          <div class="stat-value"><span class="counter" data-target="216">0</span><span class="stat-total">/256</span></div>
+          <div class="stat-bar"><div class="stat-bar-fill" data-percent="84"></div></div>
+          <div class="stat-desc" data-i18n="quality.cpuDesc">216 of 256 opcodes — 151 official + 65 unofficial — implemented from the 6502 specification alone.</div>
         </div>
         <div class="stat-card">
           <div class="stat-label" data-i18n="quality.ppuLabel">PPU</div>
           <div class="stat-value">Full</div>
           <div class="stat-bar"><div class="stat-bar-fill" data-percent="100"></div></div>
-          <div class="stat-desc" data-i18n="quality.ppuDesc">Pixel-perfect rendering: Sprite 0 Hit detection, loopy scrolling, and scanline-accurate timing.</div>
+          <div class="stat-desc" data-i18n="quality.ppuDesc">Background + sprite rendering, loopy scroll registers, Sprite 0 Hit detection, scanline-accurate timing.</div>
         </div>
         <div class="stat-card">
           <div class="stat-label" data-i18n="quality.apuLabel">APU</div>
           <div class="stat-value"><span class="counter" data-target="5">0</span><span class="stat-total">/5</span></div>
           <div class="stat-bar"><div class="stat-bar-fill" data-percent="100"></div></div>
-          <div class="stat-desc" data-i18n="quality.apuDesc">All 5 audio channels with expansion audio support, delivering authentic 8-bit sound.</div>
+          <div class="stat-desc" data-i18n="quality.apuDesc">All 5 channels — two Pulse, Triangle, Noise, DMC — with non-linear mixing.</div>
         </div>
         <div class="stat-card">
           <div class="stat-label" data-i18n="quality.mapperLabel">Mappers</div>
           <div class="stat-value"><span class="counter" data-target="20">0</span></div>
           <div class="stat-bar"><div class="stat-bar-fill" data-percent="88"></div></div>
-          <div class="stat-desc" data-i18n="quality.mapperDesc">20 mappers covering ~85–90% of the entire NES game library.</div>
+          <div class="stat-desc" data-i18n="quality.mapperDesc">20 mappers covering ~85–90% of the commercial NES library.</div>
         </div>
       </div>
 
@@ -1040,75 +1232,178 @@ No existing code was ever referenced.</p>
         <div class="test-card">
           <div class="test-icon">✅</div>
           <div class="test-name" data-i18n="quality.nestestLabel">nestest</div>
-          <div class="test-value">PASS</div>
-          <div class="test-desc" data-i18n="quality.nestestDesc">The gold-standard CPU test ROM — every instruction, every flag, every edge case. Passed.</div>
+          <div class="test-value"><span class="counter" data-target="8991">0</span></div>
+          <div class="test-desc" data-i18n="quality.nestestDesc">The gold-standard CPU verification ROM. 8,991 trace lines matched. Passed.</div>
         </div>
         <div class="test-card">
           <div class="test-icon">🧪</div>
           <div class="test-name" data-i18n="quality.testLabel">Tests</div>
           <div class="test-value"><span class="counter" data-target="1572">0</span></div>
-          <div class="test-desc" data-i18n="quality.testDesc">Comprehensive test suite with continuous integration.</div>
+          <div class="test-desc" data-i18n="quality.testDesc">1,572 pass / 6 skip / 0 fail. CI on every commit.</div>
         </div>
         <div class="test-card">
           <div class="test-icon">🔬</div>
           <div class="test-name" data-i18n="quality.assertLabel">Assertions</div>
           <div class="test-value"><span class="counter" data-target="217919" data-format="compact">0</span></div>
-          <div class="test-desc" data-i18n="quality.assertDesc">Individual verification points ensuring correctness at every level.</div>
+          <div class="test-desc" data-i18n="quality.assertDesc">217,919 expect() calls verifying correctness at opcode, register, and pixel level.</div>
+        </div>
+      </div>
+
+      <!-- Meta: Test ROMs, Source, Deps -->
+      <div class="meta-row fade-in">
+        <div class="meta-card">
+          <div class="meta-label" data-i18n="quality.romLabel">Test ROMs</div>
+          <div class="meta-value"><span class="counter" data-target="81">0</span><span class="meta-total">/263</span></div>
+          <div class="meta-desc" data-i18n="quality.romDesc">81 of 263 ROMs from nes-test-roms. CPU 24 / PPU 33 / APU 14 / Mapper 7 / others 3. 182 still to go.</div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label" data-i18n="quality.sourceLabel">Source</div>
+          <div class="meta-value"><span class="counter" data-target="4237" data-format="compact">0</span></div>
+          <div class="meta-desc" data-i18n="quality.sourceDesc">4,237 lines of TypeScript. Not a line more than needed.</div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label" data-i18n="quality.depsLabel">Dependencies</div>
+          <div class="meta-value">0</div>
+          <div class="meta-desc" data-i18n="quality.depsDesc">Zero runtime dependencies. TypeScript, Vite, and Vitest are dev-only.</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ===== 3. AI Reveal ===== -->
-  <section class="reveal-section parallax-section" id="reveal-section">
-    <div class="parallax-bg" id="reveal-parallax-bg"></div>
-    <div class="reveal-inner">
-      <!-- The big reveal -->
-      <div class="reveal-hero fade-in">
-        <div class="section-label" data-i18n="reveal.sectionLabel">The Experiment</div>
-        <h2 class="reveal-headline" data-i18n="reveal.headline">Zero lines of human-written code.</h2>
-        <p class="reveal-subtitle" data-i18n="reveal.subtitle">Everything you just played was written by an AI that never saw another emulator.</p>
-        <span class="reveal-line" data-i18n="reveal.revealLine">No human wrote a single line. Not one function. Not one fix.</span>
+  <!-- ===== 3. Harness (white) ===== -->
+  <section class="harness-section section-white parallax-section" id="harness-section">
+    <div class="parallax-bg" id="harness-parallax-bg"></div>
+    <div class="harness-inner">
+
+      <!-- Hero reveal -->
+      <div class="harness-hero fade-in">
+        <div class="section-label" data-i18n="harness.sectionLabel">The Harness</div>
+        <h2 class="harness-headline" data-i18n="harness.headline">Zero lines of human-written code.</h2>
+        <p class="harness-subtitle" data-i18n="harness.subtitle">Everything you just played was built by Claude Code — running a self-driving loop that executes the full GitHub Flow without human intervention. The emulator is what you see. The harness is why it exists.</p>
+        <span class="harness-reveal-line" data-i18n="harness.revealLine">The human seeds Issues and reviews in the morning. The machine does everything else.</span>
       </div>
 
-      <!-- Loop explanation -->
-      <div class="loop-grid">
-        <div class="loop-card loop-highlight fade-in">
-          <div class="nights-display">
-            <span class="nights-number"><span class="counter" data-target="60">0</span>+</span>
-            <span class="nights-label" data-i18n="reveal.nightsLabel">nights</span>
+      <!-- Stats -->
+      <div class="harness-stats fade-in">
+        <div class="harness-stat">
+          <span class="harness-stat-number counter" data-target="104">0</span>
+          <span class="harness-stat-label" data-i18n="harness.prsLabel">merged PRs</span>
+        </div>
+        <div class="harness-stat">
+          <span class="harness-stat-number counter" data-target="68">0</span>
+          <span class="harness-stat-label" data-i18n="harness.issuesLabel">Issues closed</span>
+        </div>
+        <div class="harness-stat">
+          <span class="harness-stat-number counter" data-target="8">0</span>
+          <span class="harness-stat-label" data-i18n="harness.daysLabel">days</span>
+        </div>
+      </div>
+
+      <!-- NES vs Harness breakdown -->
+      <div class="harness-breakdown fade-in">
+        <div class="harness-breakdown-item">
+          <span class="breakdown-dot nes"></span>
+          <span><strong data-i18n="harness.nesPrsLabel">NES</strong>: 68 PRs</span>
+        </div>
+        <div class="harness-breakdown-item">
+          <span class="breakdown-dot harness-color"></span>
+          <span><strong data-i18n="harness.harnessPrsLabel">Harness</strong>: 36 PRs</span>
+        </div>
+      </div>
+
+      <!-- Timeline story -->
+      <div class="harness-story fade-in">
+        <h3 class="harness-story-title" data-i18n="harness.storyTitle">8 Days</h3>
+        <p class="harness-story-intro" data-i18n="harness.storyIntro">The first four days were almost entirely about the harness. Getting an AI to run a sustainable development loop — branching, committing, opening PRs, reviewing its own code, merging, and picking up the next Issue — turned out to be the hardest part.</p>
+
+        <div class="timeline">
+          <!-- Day 1-2 -->
+          <div class="timeline-item">
+            <div class="timeline-day">Day 1–2</div>
+            <div class="timeline-bars">
+              <div class="timeline-bar nes" style="width: calc(12 / 26 * 60%)">12</div>
+              <div class="timeline-bar harness-bar" style="width: calc(13 / 26 * 60%)">13</div>
+            </div>
+            <div class="timeline-desc" data-i18n="harness.day12Desc">CPU skeleton and first loop attempts. The harness crashed, lost context, couldn't recover. Broken PRs every morning.</div>
           </div>
-          <p data-i18n="reveal.nightsDesc">Of continuous autonomous development. Human involvement: seeding Issues and morning code reviews.</p>
+          <!-- Day 3 -->
+          <div class="timeline-item milestone">
+            <div class="timeline-day">Day 3</div>
+            <div class="timeline-bars">
+              <div class="timeline-bar zero">0 NES</div>
+              <div class="timeline-bar harness-bar" style="width: calc(5 / 26 * 60%)">5</div>
+            </div>
+            <div class="timeline-desc" data-i18n="harness.day3Desc">Zero NES code. The entire day spent on the harness — surviving context resets, retrying from failures, automatic Issue pickup.</div>
+          </div>
+          <!-- Day 4 -->
+          <div class="timeline-item milestone">
+            <div class="timeline-day">Day 4</div>
+            <div class="timeline-bars">
+              <div class="timeline-bar nes" style="width: calc(7 / 26 * 60%)">7</div>
+              <div class="timeline-bar harness-bar" style="width: calc(13 / 26 * 60%)">13</div>
+            </div>
+            <div class="timeline-desc" data-i18n="harness.day4Desc">The biggest rewrite: 13 harness PRs. Stop hooks, auto-recovery, bot reviewer identity, stuck protocol. The machinery for everything that followed.</div>
+          </div>
+          <!-- Day 5-6 -->
+          <div class="timeline-item">
+            <div class="timeline-day">Day 5–6</div>
+            <div class="timeline-bars">
+              <div class="timeline-bar nes" style="width: calc(15 / 26 * 60%)">15</div>
+              <div class="timeline-bar harness-bar" style="width: calc(9 / 26 * 60%)">9</div>
+            </div>
+            <div class="timeline-desc" data-i18n="harness.day56Desc">nestest trace passed. PPU rendering came alive. APU producing sound. The loop was starting to hold.</div>
+          </div>
+          <!-- Day 7 -->
+          <div class="timeline-item milestone">
+            <div class="timeline-day">Day 7</div>
+            <div class="timeline-bars">
+              <div class="timeline-bar nes" style="width: 60%">26</div>
+              <div class="timeline-bar harness-bar" style="width: calc(5 / 26 * 60%)">5</div>
+            </div>
+            <div class="timeline-desc" data-i18n="harness.day7Desc">26 NES issues closed in a single day. The harness worked — Issue → Branch → PR → Review → Merge, on repeat until the queue was empty.</div>
+          </div>
+          <!-- Day 8 -->
+          <div class="timeline-item milestone">
+            <div class="timeline-day">Day 8</div>
+            <div class="timeline-bars">
+              <div class="timeline-bar nes" style="width: calc(8 / 26 * 60%)">8</div>
+              <div class="timeline-bar zero">0 Harness</div>
+            </div>
+            <div class="timeline-desc" data-i18n="harness.day8Desc">Zero harness PRs. Just NES. The loop ran all night without intervention.</div>
+          </div>
         </div>
-        <div class="loop-card fade-in fade-in-delay-1">
-          <h3 data-i18n="reveal.loopTitle">Autonomous GitHub Flow</h3>
-          <p data-i18n="reveal.loopDesc">Issue, branch, PR, code review, merge — every night, without human hands on the keyboard. Claude Code runs the full development cycle autonomously.</p>
-        </div>
-        <div class="loop-card loop-flow fade-in fade-in-delay-2">
-          <h3>GitHub Flow</h3>
-          <p class="loop-flow-text">
-            Issue → Branch → PR → Review → Merge<br>
-            <span class="loop-flow-sub">repeat every night, autonomously</span>
-          </p>
+      </div>
+
+      <!-- Self-driving loop mechanism -->
+      <div class="harness-loop fade-in">
+        <h3 data-i18n="harness.loopTitle">The Self-Driving Loop</h3>
+        <p data-i18n="harness.loopDesc">Shell scripts and event-driven hooks orchestrate the cycle: worker completes Issue → writes flag → Stop hook fires → loop-helper runs /clear → fresh session picks up next open Issue. Code review runs 7-angle finders under a bot identity. Stuck protocol drafts PRs back after 30 min. Auto-recover restarts from crashes.</p>
+        <div class="loop-flow-diagram">
+          Issue → Branch → PR → Review → Merge<br>
+          <span class="loop-flow-sub">repeat every night, autonomously</span>
         </div>
       </div>
 
       <!-- Constraints -->
-      <div class="constraints-grid">
-        <div class="constraint-card allowed fade-in">
-          <h3 data-i18n="reveal.oracleTitle">✓ Allowed References</h3>
+      <div class="constraints-grid fade-in">
+        <div class="constraint-card allowed">
+          <h3 data-i18n="harness.oracleTitle">✓ Allowed References</h3>
           <ul id="oracle-list">
             <li>nesdev.org wiki — NES hardware documentation</li>
             <li>6502 instruction set specification</li>
             <li>iNES / NES 2.0 header format</li>
+            <li>nes-test-roms (submodule) — test ROMs</li>
           </ul>
         </div>
-        <div class="constraint-card denied fade-in">
-          <h3 data-i18n="reveal.denyTitle">✗ Denied References</h3>
-          <p data-i18n="reveal.denyDesc">All existing NES emulator source code — any language, any license. Structurally enforced.</p>
-          <p class="constraint-enforce" data-i18n="reveal.enforceDesc">Pre-tool-use hooks with a deny list prevent even accidental access to existing implementations.</p>
+        <div class="constraint-card denied">
+          <h3 data-i18n="harness.denyTitle">✗ Denied References</h3>
+          <p data-i18n="harness.denyDesc">All existing NES emulator source code — 16 known repositories, any language, any license.</p>
+          <p class="constraint-enforce" data-i18n="harness.enforceDesc">Pre-tool-use hooks block WebFetch URLs matching the deny list. A structural constraint, not an airtight seal — WebSearch results and local files are not blocked.</p>
         </div>
       </div>
+
+      <!-- WIP note -->
+      <div class="harness-wip fade-in" data-i18n="harness.wipNote">81 of 263 test ROMs passing. 182 still to go. This project is under active development.</div>
     </div>
   </section>
 
@@ -1116,7 +1411,7 @@ No existing code was ever referenced.</p>
   <footer class="site-footer" id="footer-section">
     <div class="footer-links">
       <a href="https://github.com/rinoshiyo/nightowl-nes" target="_blank" rel="noopener">GitHub</a>
-      <span data-i18n="footer.license" style="color: var(--text-tertiary); font-size: 0.85rem;">MIT License</span>
+      <span data-i18n="footer.license" style="color: var(--w-text-tertiary); font-size: 0.85rem;">MIT License</span>
     </div>
     <div class="footer-copy" data-i18n="footer.builtWith">Built autonomously with Claude Code</div>
   </footer>
