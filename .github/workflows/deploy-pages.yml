@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - 'src/**'
-      - 'scripts/**'
+      - 'scripts/collect-stats.ts'
+      - 'scripts/inject-stats-html.ts'
       - 'vite.config.ts'
       - 'package.json'
       - 'bun.lock'

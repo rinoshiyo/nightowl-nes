@@ -71,7 +71,6 @@ const i18nFallbacks: Record<string, string> = {
   "quality.romDesc": `${fmt(stats["romPassTotal"]!)} of ${fmt(stats["romTotal"]!)} ROMs from nes-test-roms. CPU ${fmt(stats["romPassCpu"]!)} / PPU ${fmt(stats["romPassPpu"]!)} / APU ${fmt(stats["romPassApu"]!)} / Mapper ${fmt(stats["romPassMapper"]!)} / others ${fmt(stats["romPassOthers"]!)}. ${fmt(stats["romRemaining"]!)} still to go.`,
   "quality.sourceDesc": `${fmt(stats["tsLines"]!)} lines of TypeScript. Not a line more than needed.`,
   "harness.denyDesc": `All existing NES emulator source code — ${fmt(stats["denyListRepos"]!)} known repositories, any language, any license.`,
-  "harness.wipNote": `${fmt(stats["romPassTotal"]!)} of ${fmt(stats["romTotal"]!)} test ROMs passing. ${fmt(stats["romRemaining"]!)} still to go. This project is under active development.`,
 };
 
 for (const [key, text] of Object.entries(i18nFallbacks)) {
