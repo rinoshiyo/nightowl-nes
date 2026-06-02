@@ -226,3 +226,44 @@ describe("G5: APU reset 精度", () => {
     expect(apu.pulse1.enabled).toBe(false); // $4015=$00 で disable
   });
 });
+
+describe("新フィールドの serialize/deserialize", () => {
+  let apu: Apu;
+
+  beforeEach(() => {
+    apu = new Apu();
+  });
+
+  it("DMC stallCycles が保存/復元される", () => {
+    apu.dmc.stallCycles = 3;
+    const state = apu.serialize();
+    expect(state.dmc.stallCycles).toBe(3);
+
+    apu.dmc.stallCycles = 0;
+    apu.deserialize(state);
+    expect(apu.dmc.stallCycles).toBe(3);
+  });
+
+  it("frameResetDelay が保存/復元される", () => {
+    apu.write(0x4017, 0x00); // frameResetDelay が設定される
+    const state = apu.serialize();
+    expect(state.frameResetDelay).toBe(3); // 偶数 cycle なので 3
+
+    // tick して delay を消費
+    apu.tick(); apu.tick(); apu.tick();
+    expect(apu.serialize().frameResetDelay).toBe(0);
+
+    // 復元
+    apu.deserialize(state);
+    expect(apu.serialize().frameResetDelay).toBe(3);
+  });
+
+  it("pendingFrameMode が保存/復元される", () => {
+    apu.write(0x4017, 0x80); // 5-step mode
+    const state = apu.serialize();
+    expect(state.pendingFrameMode).toBe(1);
+
+    apu.deserialize(state);
+    expect(apu.serialize().pendingFrameMode).toBe(1);
+  });
+});
