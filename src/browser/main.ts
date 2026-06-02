@@ -9,6 +9,7 @@ import { formatErrorMessage } from "./error-messages.ts";
 import { applyGamepadState } from "./gamepad.ts";
 import { isNesFile } from "./drag-drop.ts";
 import { TouchControls, isTouchDevice } from "./touch-controls.ts";
+import { initShowcase } from "./showcase.ts";
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -428,3 +429,6 @@ stateControls.addEventListener("click", (e) => {
     doLoadState(slot);
   }
 });
+
+// --- ショーケース初期化 ---
+initShowcase();

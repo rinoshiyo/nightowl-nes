@@ -1,0 +1,259 @@
+import { getLocale, setLocale, onLocaleChange, t } from "./i18n.ts";
+import type { Locale } from "./i18n.ts";
+
+// --- タイプライターアニメーション ---
+
+const WORDS = ["specs.", "AI.", "loop."];
+const TYPE_SPEED = 100;
+const DELETE_SPEED = 60;
+const PAUSE_AFTER_TYPE = 1800;
+const PAUSE_AFTER_DELETE = 400;
+
+function initTypewriter(): void {
+  const maybeEl = document.getElementById("typewriter-word");
+  if (!maybeEl) return;
+  const typewriterEl: HTMLElement = maybeEl;
+
+  let wordIndex = 0;
+  let charIndex = 0;
+  let isDeleting = false;
+
+  function tick(): void {
+    const word = WORDS[wordIndex]!;
+
+    if (!isDeleting) {
+      charIndex++;
+      typewriterEl.textContent = word.slice(0, charIndex);
+      if (charIndex === word.length) {
+        setTimeout(() => {
+          isDeleting = true;
+          tick();
+        }, PAUSE_AFTER_TYPE);
+        return;
+      }
+      setTimeout(tick, TYPE_SPEED);
+    } else {
+      charIndex--;
+      typewriterEl.textContent = word.slice(0, charIndex);
+      if (charIndex === 0) {
+        isDeleting = false;
+        wordIndex = (wordIndex + 1) % WORDS.length;
+        setTimeout(tick, PAUSE_AFTER_DELETE);
+        return;
+      }
+      setTimeout(tick, DELETE_SPEED);
+    }
+  }
+
+  tick();
+}
+
+// --- Parallax KV ---
+
+function initParallax(): void {
+  const kvContent = document.getElementById("kv-content");
+  const kvHint = document.querySelector<HTMLElement>(".kv-scroll-hint");
+  if (!kvContent) return;
+
+  let ticking = false;
+  window.addEventListener("scroll", () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        const scrollY = window.scrollY;
+        const vh = window.innerHeight;
+        const progress = Math.min(scrollY / vh, 1);
+        kvContent.style.transform = `translate3d(0, ${scrollY * 0.4}px, 0)`;
+        kvContent.style.opacity = String(1 - progress * 1.5);
+        if (kvHint) {
+          kvHint.style.opacity = String(Math.max(0, 1 - progress * 3));
+        }
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+}
+
+// --- Fade-in on scroll (Intersection Observer) ---
+
+function initFadeIn(): void {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          (entry.target as HTMLElement).classList.add("visible");
+          observer.unobserve(entry.target);
+        }
+      }
+    },
+    { threshold: 0.15 }
+  );
+
+  for (const el of document.querySelectorAll<HTMLElement>(".fade-in")) {
+    observer.observe(el);
+  }
+}
+
+// --- カウントアップアニメーション ---
+
+function initCounters(): void {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          const el = entry.target as HTMLElement;
+          const target = parseInt(el.dataset["target"] ?? "0", 10);
+          const format = el.dataset["format"];
+          animateCounter(el, target, format === "compact");
+          observer.unobserve(el);
+        }
+      }
+    },
+    { threshold: 0.3 }
+  );
+
+  for (const el of document.querySelectorAll<HTMLElement>(".counter")) {
+    observer.observe(el);
+  }
+}
+
+function animateCounter(el: HTMLElement, target: number, compact: boolean): void {
+  const duration = 1500;
+  const start = performance.now();
+
+  function step(now: number): void {
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(eased * target);
+    el.textContent = compact ? formatCompact(current) : current.toLocaleString();
+    if (progress < 1) requestAnimationFrame(step);
+  }
+
+  requestAnimationFrame(step);
+}
+
+function formatCompact(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K`;
+  return String(n);
+}
+
+// --- 互換性バーのアニメーション ---
+
+function initCompatBars(): void {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          const fill = entry.target as HTMLElement;
+          const percent = fill.dataset["percent"] ?? "0";
+          fill.style.width = `${percent}%`;
+          observer.unobserve(fill);
+        }
+      }
+    },
+    { threshold: 0.3 }
+  );
+
+  for (const el of document.querySelectorAll<HTMLElement>(".compat-bar-fill")) {
+    observer.observe(el);
+  }
+}
+
+// --- i18n ---
+
+function applyI18n(): void {
+  const tr = t();
+
+  for (const el of document.querySelectorAll<HTMLElement>("[data-i18n]")) {
+    const key = el.dataset["i18n"]!;
+    const value = resolveKey(tr, key);
+    if (typeof value === "string") {
+      el.textContent = value;
+    }
+  }
+
+  // Oracle items (dynamic list)
+  const oracleList = document.getElementById("oracle-list");
+  if (oracleList) {
+    oracleList.innerHTML = "";
+    for (const item of tr.constraints.oracleItems) {
+      const li = document.createElement("li");
+      li.textContent = item;
+      oracleList.appendChild(li);
+    }
+  }
+
+  document.documentElement.lang = getLocale() === "ja" ? "ja" : getLocale() === "zh" ? "zh" : "en";
+}
+
+function resolveKey(obj: object, path: string): unknown {
+  const parts = path.split(".");
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current === null || current === undefined || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+function initLangSwitcher(): void {
+  const switcher = document.getElementById("lang-switcher");
+  if (!switcher) return;
+
+  function updateActive(): void {
+    const locale = getLocale();
+    for (const btn of switcher!.querySelectorAll<HTMLButtonElement>(".lang-btn")) {
+      btn.classList.toggle("active", btn.dataset["lang"] === locale);
+    }
+  }
+
+  switcher.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".lang-btn");
+    if (!btn) return;
+    const lang = btn.dataset["lang"];
+    if (lang === "en" || lang === "ja" || lang === "zh") {
+      setLocale(lang as Locale);
+    }
+  });
+
+  onLocaleChange(() => {
+    updateActive();
+    applyI18n();
+  });
+
+  updateActive();
+  applyI18n();
+}
+
+// --- GitHub link dark/light ---
+
+function initGithubLinkTheme(): void {
+  const link = document.getElementById("github-link");
+  if (!link) return;
+
+  const emulatorSection = document.getElementById("emulator-section");
+  if (!emulatorSection) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        link.classList.toggle("on-dark", entry.isIntersecting);
+      }
+    },
+    { threshold: 0 }
+  );
+
+  observer.observe(emulatorSection);
+}
+
+// --- Init all showcase features ---
+
+export function initShowcase(): void {
+  initTypewriter();
+  initParallax();
+  initFadeIn();
+  initCounters();
+  initCompatBars();
+  initLangSwitcher();
+  initGithubLinkTheme();
+}
