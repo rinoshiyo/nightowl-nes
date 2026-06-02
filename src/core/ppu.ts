@@ -80,6 +80,8 @@ export class Ppu {
 
   /** NMI 通知コールバック */
   onNmi: (() => void) | null = null;
+  /** NMI 遅延カウンタ ($2000 書き込みで NMI enable 遷移時、console.step() が管理) */
+  nmiDelay = 0;
 
   /** 背景 fetch 用の内部バッファ */
   private bgNametable = 0;
@@ -157,6 +159,7 @@ export class Ppu {
     this.scanline = 0;
     this.frameComplete = false;
     this.oddFrame = false;
+    this.nmiDelay = 0;
     this.bgNametable = 0;
     this.bgAttribute = 0;
     this.bgPatternLo = 0;
@@ -324,9 +327,14 @@ export class Ppu {
         this.ctrl = value;
         // NT 選択 bit (bit 0-1) を t の bit 10-11 に反映
         this.t = (this.t & ~0x0c00) | ((value & 0x03) << 10);
-        // NMI enable が 0→1 に変わり、VBL フラグが既に立っていれば即座に NMI 発火
-        if (prevNmi === 0 && (value & 0x80) !== 0 && (this.status & 0x80) !== 0 && this.onNmi) {
-          this.onNmi();
+        // NMI enable が 0→1 に変わり、VBL フラグが既に立っていれば NMI を予約
+        // (実機では次の命令完了後に発火 — nmiDelayTicks で遅延)
+        if (prevNmi === 0 && (value & 0x80) !== 0 && (this.status & 0x80) !== 0) {
+          this.nmiDelay = 2;
+        }
+        // NMI disable (1→0) で pending NMI をキャンセル
+        if (prevNmi !== 0 && (value & 0x80) === 0) {
+          this.nmiDelay = 0;
         }
         break;
       }

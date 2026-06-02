@@ -11,7 +11,7 @@ describe("Mapper 0 互換性: PPU VBL/NMI", () => {
   // 以下 3 件は cycle-accurate なドットタイミング精度を要求するため skip
   romTest.skip("02-vbl_set_time", `${base}/02-vbl_set_time.nes`);
   romTest("03-vbl_clear_time", `${base}/03-vbl_clear_time.nes`);
-  romTest.skip("04-nmi_control", `${base}/04-nmi_control.nes`);
+  romTest("04-nmi_control", `${base}/04-nmi_control.nes`);
   romTest.skip("05-nmi_timing", `${base}/05-nmi_timing.nes`);
 });
 

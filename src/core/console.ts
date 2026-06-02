@@ -100,6 +100,15 @@ export class NesConsole {
       }
     }
     this.cpu.irqPending = apu.frameIrqFlag || apu.dmc.irqFlag || mapper.irqPending;
+
+    // $2000 書き込みによる遅延 NMI (次の命令完了後に発火)
+    if (ppu.nmiDelay > 0) {
+      ppu.nmiDelay--;
+      if (ppu.nmiDelay === 0 && (ppu.ctrl & 0x80) !== 0 && (ppu.status & 0x80) !== 0) {
+        this.cpu.nmiPending = true;
+      }
+    }
+
     return totalCycles;
   }
 
