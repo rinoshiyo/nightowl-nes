@@ -1,5 +1,6 @@
 import { getLocale, setLocale, onLocaleChange, t } from "./i18n.ts";
 import type { Locale } from "./i18n.ts";
+import stats from "./stats.generated.json";
 
 // --- タイプライターアニメーション ---
 
@@ -308,7 +309,45 @@ function initHeaderScroll(): void {
 
 // --- Init all showcase features ---
 
+function applyStatsToCounters(): void {
+  const targetMap: Record<string, number> = {
+    "216": stats.opcodesImplemented,
+    "1572": stats.testPass,
+    "217919": stats.expects,
+    "8991": stats.traceLines,
+    "81": stats.romPassTotal,
+    "4237": stats.tsLines,
+    "20": stats.mapperCount,
+  };
+  const totalMap: Record<string, string> = {
+    "216": `/${stats.opcodesTotal}`,
+    "81": `/${stats.romTotal}`,
+  };
+  const percentMap: Record<string, number> = {
+    "84": Math.round((stats.opcodesImplemented / stats.opcodesTotal) * 100),
+  };
+
+  for (const el of document.querySelectorAll<HTMLElement>(".counter[data-target]")) {
+    const oldTarget = el.dataset["target"];
+    if (oldTarget !== undefined && oldTarget in targetMap) {
+      el.dataset["target"] = String(targetMap[oldTarget]);
+      const totalSpan = el.parentElement?.querySelector<HTMLElement>(".stat-total, .meta-total");
+      if (totalSpan && oldTarget in totalMap) {
+        totalSpan.textContent = totalMap[oldTarget]!;
+      }
+    }
+  }
+
+  for (const el of document.querySelectorAll<HTMLElement>(".stat-bar-fill[data-percent]")) {
+    const oldPercent = el.dataset["percent"];
+    if (oldPercent !== undefined && oldPercent in percentMap) {
+      el.dataset["percent"] = String(percentMap[oldPercent]);
+    }
+  }
+}
+
 export function initShowcase(): void {
+  applyStatsToCounters();
   initTypewriter();
   initParallax();
   initFadeIn();
